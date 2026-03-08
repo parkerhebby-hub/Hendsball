@@ -15,10 +15,13 @@
 
   * { box-sizing:border-box; margin:0; padding:0; }
 
+  html, body {
+    width:100%; height:100%;
+  }
+
   body {
     background:#050200;
-    min-height:100vh;
-    min-height:100dvh;
+    width:100%; height:100%;
     display:flex; align-items:center; justify-content:center;
     font-family:'Press Start 2P',monospace;
     overflow:hidden; image-rendering:pixelated;
@@ -29,6 +32,8 @@
     position:relative; width:360px; height:680px; overflow:hidden;
     border:3px solid #d07800; outline:2px solid #4a2000;
     box-shadow:5px 5px 0 #280e00;
+    transform-origin: center center;
+    flex-shrink:0;
   }
 
   canvas {
@@ -140,6 +145,32 @@
     margin-bottom:16px;
   }
 
+  #devmenu {
+    background:rgba(0,6,2,0.97);
+    padding:20px 14px;
+    align-items:center;
+    gap:0;
+  }
+  #devTitle {
+    font-size:0.75rem; color:#30e060;
+    text-shadow:2px 2px 0 #003010;
+    letter-spacing:2px; margin-bottom:4px; text-align:center;
+  }
+  #devSub {
+    font-size:0.38rem; color:#1a5030;
+    letter-spacing:1px; margin-bottom:18px; text-align:center;
+  }
+  #devBody {
+    display:flex; flex-direction:column; align-items:center; gap:8px; width:100%;
+  }
+  .devRow {
+    display:flex; align-items:center; gap:10px; margin-bottom:4px;
+  }
+  .devLvLabel {
+    font-family:'Press Start 2P',monospace; font-size:0.75rem;
+    color:#30e060; min-width:44px; text-align:center;
+  }
+
   @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
 </style>
 </head>
@@ -159,7 +190,7 @@
   </div>
 
   <div id="summary" class="panel">
-    <div id="sumTitle">HIVE CLEARED</div>
+    <div id="sumTitle">LEVEL COMPLETE</div>
     <div id="sumLv"></div>
     <canvas id="sumCanvas" width="290" height="210"></canvas>
   </div>
@@ -168,6 +199,12 @@
     <div id="puTitle">HONEY FULL</div>
     <div id="puSub">CHOOSE A POWER-UP</div>
     <div id="puCards"></div>
+  </div>
+
+  <div id="devmenu" class="panel">
+    <div id="devTitle">DEV MENU</div>
+    <div id="devSub">DEVELOPER OPTIONS</div>
+    <div id="devBody"></div>
   </div>
 </div>
 
@@ -181,6 +218,27 @@ const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
 const W = canvas.width;   // 360
 const H = canvas.height;  // 680
+
+// ── Full-screen scaling ──────────────────────────────
+// Keeps canvas at 360×680 internally; scales the wrapper
+// to fill the screen while preserving aspect ratio.
+const gw = document.getElementById('gw');
+
+function scaleToFit() {
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const scale = Math.min(vw / 360, vh / 680);
+  gw.style.transform = `scale(${scale})`;
+  // Centre in viewport using margin offset so the border shadow isn't clipped
+  gw.style.marginLeft = `${(vw - 360) / 2}px`;
+  gw.style.marginTop  = `${(vh - 680) / 2}px`;
+  // Make body non-flex so our manual margin controls position
+  document.body.style.display = 'block';
+}
+
+scaleToFit();
+window.addEventListener('resize', scaleToFit);
+screen.orientation && screen.orientation.addEventListener('change', scaleToFit);
 
 const PLAY_BOTTOM = 0.795;               // fraction where play zone ends
 const HUD_Y       = Math.round(H * PLAY_BOTTOM) + 2;   // ≈543
@@ -200,6 +258,47 @@ const PAL = {
   hexCrack: '#2a1000',
   bg:       '#0e0500',
   honey:    '#f5c030',
+};
+
+// ═══════════════════════════════════════════════════════
+// AUDIO — procedural SFX via Web Audio API
+// ═══════════════════════════════════════════════════════
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+function acResume() { if (AC.state === 'suspended') AC.resume(); }
+
+function _tone(freq, type, vol, dur, freqEnd) {
+  acResume();
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = type;
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, AC.currentTime + dur);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur);
+}
+function _noise(vol, dur) {
+  acResume();
+  const buf = AC.createBuffer(1, Math.ceil(AC.sampleRate * dur), AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = AC.createBufferSource(), g = AC.createGain();
+  src.buffer = buf; src.connect(g); g.connect(AC.destination);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+  src.start(); src.stop(AC.currentTime + dur);
+}
+
+const sfx = {
+  wall:   () => { _tone(160, 'sine',     0.10, 0.07); },
+  paddle: () => { _tone(260, 'triangle', 0.22, 0.10); _tone(130, 'sine', 0.14, 0.08); },
+  hit:    () => { _tone(360, 'square',   0.07, 0.04, 280); },
+  normal: () => { _tone(400, 'square',   0.12, 0.08, 260); _noise(0.05, 0.05); },
+  thick:  () => { _tone(120, 'sawtooth', 0.20, 0.20, 70);  _noise(0.12, 0.12); },
+  brood:  () => { _tone(100, 'sawtooth', 0.22, 0.28, 55);  _tone(200, 'square', 0.10, 0.18, 150); },
+  honey:  () => { _tone(700, 'sine', 0.18, 0.22, 950);     _tone(950, 'sine', 0.10, 0.18, 1200); },
+  wax:    () => { _noise(0.20, 0.14); _tone(280, 'sawtooth', 0.10, 0.10, 180); },
+  queen:  () => { [440,554,659,880].forEach((f,i) => setTimeout(() => _tone(f,'sine',0.16,0.38,f*1.6), i*45)); },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -480,7 +579,7 @@ canvas.addEventListener('touchend', e => {
 // ═══════════════════════════════════════════════════════
 const PH_COLL = 6, PSPD = 520; // px per second
 let paddle;
-function mkPaddle() { return { x: W/2 - getPW()/2, squish:0 }; }
+function mkPaddle() { return { x: W/2 - getPW()/2, squish:0, prevX: W/2 - getPW()/2 }; }
 
 // Pixel colors
 const H_SK = '#c09050';   // skin mid
@@ -1015,20 +1114,43 @@ function drawHUD() {
   ctx.textAlign='left';
 }
 
-// Tap the pause icon in HUD to open pause screen on mobile
 const PAUSE_TAP = { x: W-30, y: HUD_Y, w: 30, h: 22 };
-canvas.addEventListener('touchstart', e => {
-  if (gameOver || pickerPending) return;
-  const tx = getCanvasX(e.touches[0]);
-  const ty = (e.touches[0].clientY - canvas.getBoundingClientRect().top)
-             * (canvas.height / canvas.getBoundingClientRect().height);
-  if (tx >= PAUSE_TAP.x && tx <= PAUSE_TAP.x+PAUSE_TAP.w &&
-      ty >= PAUSE_TAP.y && ty <= PAUSE_TAP.y+PAUSE_TAP.h) {
-    e.preventDefault();
-    paused = true;
-    showPause();
+const DEV_TAP   = { x: 0, y: H-20,   w: 36, h: 20 };
+
+function getCanvasXY(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  return {
+    x: (clientX - r.left) * (canvas.width  / r.width),
+    y: (clientY - r.top)  * (canvas.height / r.height)
+  };
+}
+
+function handleCanvasTap(cx, cy, e) {
+  // Pause zone
+  if (!gameOver && !pickerPending &&
+      cx >= PAUSE_TAP.x && cx <= PAUSE_TAP.x+PAUSE_TAP.w &&
+      cy >= PAUSE_TAP.y && cy <= PAUSE_TAP.y+PAUSE_TAP.h) {
+    if (e) e.preventDefault();
+    paused = true; showPause(); return true;
   }
+  // Dev zone
+  if (cx >= DEV_TAP.x && cx <= DEV_TAP.x+DEV_TAP.w &&
+      cy >= DEV_TAP.y && cy <= DEV_TAP.y+DEV_TAP.h) {
+    if (e) e.preventDefault();
+    showDevMenu(); return true;
+  }
+  return false;
+}
+
+canvas.addEventListener('touchstart', e => {
+  const {x,y} = getCanvasXY(e.touches[0].clientX, e.touches[0].clientY);
+  handleCanvasTap(x, y, e);
 }, {passive:false, capture:true});
+
+canvas.addEventListener('click', e => {
+  const {x,y} = getCanvasXY(e.clientX, e.clientY);
+  handleCanvasTap(x, y, null);
+});
 
 // ═══════════════════════════════════════════════════════
 // LEVEL GENERATION
@@ -1195,6 +1317,7 @@ function update() {
   tick++;
   const pw=getPW();
 
+  paddle.prevX = paddle.x;
   // keyboard paddle
   if (keys['ArrowLeft']||keys['a']||keys['A'])
     paddle.x=Math.max(0,paddle.x-PSPD*dt);
@@ -1213,9 +1336,9 @@ function update() {
     b.x+=b.vx*dt*60; b.y+=b.vy*dt*60;
 
     // walls
-    if (b.x-BALL_R<0)  {b.x=BALL_R;    b.vx= Math.abs(b.vx);  normSpd(b,b.speed);}
-    if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  normSpd(b,b.speed);}
-    if (b.y-BALL_R<0)  {b.y=BALL_R;    b.vy= Math.abs(b.vy);   normSpd(b,b.speed);}
+    if (b.x-BALL_R<0)  {b.x=BALL_R;    b.vx= Math.abs(b.vx);  normSpd(b,b.speed); sfx.wall();}
+    if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  normSpd(b,b.speed); sfx.wall();}
+    if (b.y-BALL_R<0)  {b.y=BALL_R;    b.vy= Math.abs(b.vy);   normSpd(b,b.speed); sfx.wall();}
 
     // paddle
     if (b.vy>0 && b.y+BALL_R>=PADDLE_Y && b.y+BALL_R<=PADDLE_Y+PH_COLL+8
@@ -1224,6 +1347,11 @@ function update() {
       const rel=(b.x-(paddle.x+pw/2))/(pw/2);
       const ang = rel * ((62 + powers.wideAngle * 5) * Math.PI/180);
       b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
+      // velocity boost from paddle movement
+      const pv = dt > 0 ? (paddle.x - paddle.prevX) / dt : 0;
+      b.vx += pv * 0.28;
+      b.speed = Math.min(b.speed + Math.abs(pv) * 0.005, getMaxSpd());
+      sfx.paddle();
       normSpd(b,b.speed);
     }
 
@@ -1238,7 +1366,7 @@ function update() {
         if (h.queen) {
           // QUEEN: 3 honey drops + huge swarm + dramatic particles
           for (let d=0;d<3;d++) spawnDroplet(h.x+d*4-4, h.y);
-          spawnParts(h.x,h.y,32,['#cc60ff','#e080ff','#f0c0ff','#9020d0','#ffffff']);
+          sfx.queen(); spawnParts(h.x,h.y,32,['#cc60ff','#e080ff','#f0c0ff','#9020d0','#ffffff']);
           broodMsgs.push({x:h.x,y:h.y-8,life:100,txt:'QUEEN RELEASED!'});
           const n = 4 + Math.floor(Math.random()*3) + powers.swarmBonus; // 4-6 + bonus
           for (let i=0;i<n;i++) {
@@ -1250,7 +1378,7 @@ function update() {
           }
         } else if (h.brood) {
           spawnDroplet(h.x, h.y);
-          spawnParts(h.x,h.y,20,['#f5a010','#f5d040','#ffe080','#fff']);
+          sfx.brood(); spawnParts(h.x,h.y,20,['#f5a010','#f5d040','#ffe080','#fff']);
           broodMsgs.push({x:h.x,y:h.y-8,life:80,txt:'BROOD RELEASED'});
           const n = 2 + Math.floor(Math.random()*2) + powers.swarmBonus;
           for (let i=0;i<n;i++) {
@@ -1263,12 +1391,12 @@ function update() {
         } else if (h.honey) {
           // HONEY: 3 drops + bright golden particles
           for (let d=0;d<3;d++) spawnDroplet(h.x+(d-1)*6, h.y+(d===1?-4:0));
-          spawnParts(h.x,h.y,16,['#ffe050','#ffd020','#ffb800','#fff8c0','#ff9800']);
+          sfx.honey(); spawnParts(h.x,h.y,16,['#ffe050','#ffd020','#ffb800','#fff8c0','#ff9800']);
           broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'HONEY!'});
         } else if (h.wax) {
           // WAX: 1 drop + pale crumbly particles
           spawnDroplet(h.x,h.y);
-          spawnParts(h.x,h.y,14,['#e8dfc0','#d8cf9e','#c8b870','#fff','#b0a060']);
+          sfx.wax(); spawnParts(h.x,h.y,14,['#e8dfc0','#d8cf9e','#c8b870','#fff','#b0a060']);
           // splash particles on each killed neighbour
           for (const n of hexes) {
             if (n.dead && Math.hypot(n.x-h.x,n.y-h.y)<HEX_R*2.2 && n!==h) {
@@ -1279,15 +1407,15 @@ function update() {
         } else if (h.thick) {
           spawnDroplet(h.x,h.y);
           spawnDroplet(h.x+4,h.y-4);
-          spawnParts(h.x,h.y,12,PAL.hexThick);
+          sfx.thick(); spawnParts(h.x,h.y,12,PAL.hexThick);
         } else {
           // NORMAL
           spawnDroplet(h.x,h.y);
-          spawnParts(h.x,h.y,10,PAL.hexNorm);
+          sfx.normal(); spawnParts(h.x,h.y,10,PAL.hexNorm);
         }
       } else {
         // partial hit flash
-        spawnParts(h.x,h.y,4,['#fff','#ffc840']);
+        sfx.hit(); spawnParts(h.x,h.y,4,['#fff','#ffc840']);
       }
       normSpd(b,b.speed);
     }
@@ -1331,6 +1459,15 @@ function render() {
   ctx.globalAlpha=1; ctx.textAlign='left';
 
   drawHUD();
+
+  // DEV tap icon — bottom-left corner
+  ctx.fillStyle = '#081a0c';
+  ctx.fillRect(0, H-20, 36, 20);
+  ctx.font = '5px "Press Start 2P",monospace';
+  ctx.fillStyle = '#1a5030';
+  ctx.textAlign = 'left';
+  ctx.fillText('DEV', 5, H-7);
+  ctx.textAlign = 'left';
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1414,6 +1551,7 @@ function drawSummary() {
 }
 
 function showSummary() {
+  hideOv();
   document.getElementById('sumLv').textContent = 'LEVEL ' + currentLevel;
   drawSummary();
 
@@ -1646,6 +1784,71 @@ window.addEventListener('keydown', e => {
     }
   }
 });
+
+// ═══════════════════════════════════════════════════════
+// DEV MENU
+// ═══════════════════════════════════════════════════════
+const devPanel = document.getElementById('devmenu');
+const devBody  = document.getElementById('devBody');
+let devLvTarget = 1;
+
+function buildDevMenu() {
+  devBody.innerHTML = '';
+
+  // ── Level picker ─────────────────────────
+  const row = document.createElement('div');
+  row.className = 'devRow';
+
+  const minus = document.createElement('button');
+  minus.className = 'ob'; minus.textContent = '−'; minus.style.minWidth = '40px';
+
+  const lbl = document.createElement('div');
+  lbl.className = 'devLvLabel';
+  lbl.textContent = devLvTarget;
+
+  const plus = document.createElement('button');
+  plus.className = 'ob'; plus.textContent = '+'; plus.style.minWidth = '40px';
+
+  minus.onclick = () => { devLvTarget = Math.max(1,  devLvTarget-1); lbl.textContent = devLvTarget; };
+  plus.onclick  = () => { devLvTarget = Math.min(99, devLvTarget+1); lbl.textContent = devLvTarget; };
+
+  row.appendChild(minus); row.appendChild(lbl); row.appendChild(plus);
+  devBody.appendChild(row);
+
+  // ── Jump button ──────────────────────────
+  const jumpBtn = document.createElement('button');
+  jumpBtn.className = 'ob pr'; jumpBtn.textContent = 'JUMP TO LEVEL';
+  jumpBtn.style.borderColor = '#30e060'; jumpBtn.style.color = '#30e060';
+  jumpBtn.onclick = () => { hideDevMenu(); resetRun(); startLevel(devLvTarget); };
+  devBody.appendChild(jumpBtn);
+
+  // ── Clear level ──────────────────────────
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'ob'; clearBtn.textContent = 'CLEAR LEVEL';
+  clearBtn.style.borderColor = '#e06030'; clearBtn.style.color = '#e06030';
+  clearBtn.onclick = () => {
+    hideDevMenu();
+    if (!gameOver) { hexes.forEach(h => h.dead = true); }
+    if (!gameOver && !pickerPending) { paused = false; loop(); }
+  };
+  devBody.appendChild(clearBtn);
+
+  // ── Close ────────────────────────────────
+  const closeBtn = document.createElement('button');
+  closeBtn.className = 'ob'; closeBtn.textContent = 'CLOSE';
+  closeBtn.onclick = () => {
+    hideDevMenu();
+    if (!gameOver && !pickerPending) { paused = false; loop(); }
+  };
+  devBody.appendChild(closeBtn);
+}
+
+function showDevMenu() {
+  paused = true;
+  buildDevMenu();
+  devPanel.classList.add('show');
+}
+function hideDevMenu() { devPanel.classList.remove('show'); }
 
 // ═══════════════════════════════════════════════════════
 // BOOT
