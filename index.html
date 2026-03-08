@@ -576,15 +576,21 @@ function hidePicker() { puPanel.classList.remove('show'); }
 // HONEY (fills meter; triggers power-up picker when full)
 // ═══════════════════════════════════════════════════════
 let totalHoney = 0;
-const METER_BASE = 40;   // base cap; reduced by fastReset stacks
+const METER_BASE = 30;   // base cap at LV1
 let droplets = [];
 
 function getMeterCap() {
-  return Math.max(12, METER_BASE - powers.fastReset * 4);
+  // Level scaling: LV1≈30, LV10≈61, LV20≈122
+  const levelScale = Math.pow(1.075, currentLevel - 1);
+  // Upgrade scaling: each upgrade picked adds ~20% more on top
+  const upgradeScale = Math.pow(1.20, upgradeCount);
+  const base = Math.round(METER_BASE * levelScale * upgradeScale);
+  const discount = powers.fastReset * Math.max(2, Math.round(base * 0.08));
+  return Math.max(20, base - discount);
 }
 
 function spawnDroplet(fx, fy) {
-  droplets.push({ x:fx, y:fy, tx:W/2, ty:HUD_Y+20, prog:0,
+  droplets.push({ x:fx, y:fy, tx:JAR_CX, ty:JAR_BY + JAR_BH * 0.5, prog:0,
                   spd:0.022 + Math.random()*0.018 });
 }
 
@@ -608,6 +614,7 @@ function checkMeterFull() {
     paused = true;
     totalHoney = 0;
     showPicker(() => {
+      upgradeCount++;
       pickerPending = false;
       lastTime = 0;
       startCountdown(() => loop());
@@ -1300,8 +1307,26 @@ function drawBG() {
 // Bee count removed.
 // Powerup slots are hex-shaped outlines.
 // ═══════════════════════════════════════════════════════
-const METER_X = 8, METER_W = W-16, METER_H = 11;
-const METER_Y = HUD_Y + 18;
+// Jar constants
+const JAR_CX  = W - 52;        // jar centre x
+const JAR_BW  = 54;            // max belly width
+const JAR_BH  = 90;            // body height
+const JAR_NW  = 24;            // neck width
+const JAR_NH  = 8;             // neck height
+const JAR_RW  = 32;            // rim width
+const JAR_RH  = 5;             // rim height
+const JAR_NY  = HUD_Y + 14;   // neck top y
+const JAR_RY  = JAR_NY - JAR_RH; // rim top y
+const JAR_BY  = JAR_NY + JAR_NH; // body top y
+const JAR_BB  = JAR_BY + JAR_BH; // body bottom
+const JAR_BX  = JAR_CX - JAR_BW / 2;
+const JAR_NX  = JAR_CX - JAR_NW / 2;
+const JAR_RX  = JAR_CX - JAR_RW / 2;
+// Upgrade slot constants
+const SLOT_R   = 20;
+const SLOT_SPC = 50;
+const SLOT_Y   = HUD_Y + 78;
+const SLOT0_X  = 40;
 
 function drawHexOutline(cx, cy, r) {
   const pts = hexPts(cx, cy, r);
@@ -1312,66 +1337,128 @@ function drawHexOutline(cx, cy, r) {
 
 function drawHUD() {
   const F7 = '7px "Press Start 2P",monospace';
+  const F5 = '5px "Press Start 2P",monospace';
 
-  // LV
+  // LV label — top left
   ctx.font = F7; ctx.textAlign='left'; ctx.fillStyle='#4a2808';
   ctx.fillText('LV'+currentLevel, 8, HUD_Y+12);
 
-  // Pause icon — top right of HUD, 3 vertical bars
-  const PIX = HUD_Y+4, PIY = HUD_Y+4, PIW = 18, PIH = 12;
+  // Pause icon — top right (keep away from jar)
+  const PIY = HUD_Y+4, PIW = 18, PIH = 12;
   ctx.fillStyle='#3a1c08';
   ctx.fillRect(W-PIW-6, PIY,   5, PIH);
   ctx.fillRect(W-PIW+2, PIY,   5, PIH);
   ctx.fillRect(W-PIW+10,PIY,   5, PIH);
 
-  // Honey meter bar
-  ctx.fillStyle='#180900'; ctx.fillRect(METER_X,METER_Y,METER_W,METER_H);
-  ctx.strokeStyle='#3a1a00'; ctx.lineWidth=1;
-  ctx.strokeRect(METER_X,METER_Y,METER_W,METER_H);
-  const fill=Math.min(1,totalHoney/getMeterCap());
-  if (fill>0) {
-    const fw=Math.floor((METER_W-2)*fill);
-    const sw=4, sg=1;
-    let sx=METER_X+1;
-    while (sx+sw <= METER_X+1+fw) {
-      const f=(sx-METER_X)/METER_W;
-      ctx.fillStyle=`rgb(${Math.round(130+f*120)},${Math.round(55+f*145)},0)`;
-      ctx.fillRect(sx, METER_Y+1, sw, METER_H-2); sx+=sw+sg;
-    }
-    ctx.fillStyle='rgba(255,255,180,0.13)';
-    ctx.fillRect(METER_X+1,METER_Y+1,fw,2);
+  // ── Honey Pot ─────────────────────────────────────────
+  const fill = Math.min(1, totalHoney / getMeterCap());
+
+  // Pot shape built from paths for a rounded honey-pot silhouette
+  // Rim at top, narrow neck, wide round belly, flat base
+  const rimY  = JAR_NY;
+  const rimW  = JAR_NW + 6;
+  const rimX  = JAR_CX - rimW / 2;
+  const rimH  = 4;
+  const neckW = JAR_NW;
+  const neckX = JAR_CX - neckW / 2;
+  const neckY = rimY + rimH;
+  const neckH = JAR_NH;
+  const bodyT = neckY + neckH;      // body top
+  const bodyB = JAR_BY + JAR_BH;    // body bottom
+  const bodyH = bodyB - bodyT;
+  const bW    = JAR_BW;             // max body width (belly)
+
+  // Helper: draw the pot body as a rounded trapezoid path
+  // Narrow at top (neck width), widens to belly, slight curve
+  function potBodyPath() {
+    const tl = neckX, tr = neckX + neckW;
+    const bl = JAR_BX, br = JAR_BX + bW;
+    const mid = bodyT + bodyH * 0.45;
+    ctx.beginPath();
+    ctx.moveTo(tl, bodyT);
+    ctx.lineTo(tr, bodyT);
+    // right side curves out to belly then back in slightly at base
+    ctx.bezierCurveTo(tr + 8, mid, br + 2, mid + 8, br, bodyB);
+    ctx.lineTo(bl, bodyB);
+    ctx.bezierCurveTo(bl - 2, mid + 8, tl - 8, mid, tl, bodyT);
+    ctx.closePath();
   }
 
-  // HONEY label + count
-  ctx.font=F7; ctx.textAlign='center';
-  ctx.fillStyle='#7a4a10'; ctx.fillText('HONEY',W/2,METER_Y+METER_H+13);
-  ctx.fillStyle=PAL.honey;  ctx.fillText(String(totalHoney),W/2,METER_Y+METER_H+25);
+  // Body shadow/bg
+  ctx.fillStyle = '#0a0400';
+  potBodyPath(); ctx.fill();
+
+  // Honey fill clipped to body shape
+  if (fill > 0) {
+    const fillH = Math.floor(bodyH * fill);
+    const fillY = bodyB - fillH;
+    ctx.save();
+    potBodyPath(); ctx.clip();
+    const grad = ctx.createLinearGradient(0, fillY, 0, bodyB);
+    grad.addColorStop(0, '#f5c030');
+    grad.addColorStop(1, '#a05000');
+    ctx.fillStyle = grad;
+    ctx.fillRect(JAR_BX - 4, fillY, bW + 8, fillH + 2);
+    // Surface shimmer
+    ctx.fillStyle = 'rgba(255,240,120,0.50)';
+    ctx.fillRect(JAR_BX - 4, fillY, bW + 8, 2);
+    ctx.restore();
+  }
+
+  // Body outline
+  ctx.strokeStyle = '#7a3800'; ctx.lineWidth = 1.5;
+  potBodyPath(); ctx.stroke();
+
+  // Glass highlight on left side of belly
+  ctx.save();
+  potBodyPath(); ctx.clip();
+  ctx.fillStyle = 'rgba(255,220,100,0.09)';
+  ctx.fillRect(JAR_BX - 2, bodyT + 6, 5, bodyH - 12);
+  ctx.restore();
+
+  // Neck bg + outline
+  ctx.fillStyle = '#0a0400';
+  ctx.fillRect(neckX, neckY, neckW, neckH);
+  if (fill >= 0.97) {
+    ctx.fillStyle = '#f5c030';
+    ctx.fillRect(neckX + 1, neckY + 1, neckW - 2, neckH - 1);
+  }
+  ctx.strokeStyle = '#7a3800'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(neckX, neckY, neckW, neckH);
+
+  // Rim — slightly wider than neck, flat top
+  ctx.fillStyle = '#120600';
+  ctx.fillRect(rimX, rimY, rimW, rimH);
+  ctx.strokeStyle = '#7a3800'; ctx.lineWidth = 1.5;
+  ctx.strokeRect(rimX, rimY, rimW, rimH);
+  // Rim inner highlight
+  ctx.fillStyle = 'rgba(255,200,60,0.18)';
+  ctx.fillRect(rimX + 2, rimY + 1, rimW - 4, 2);
+
+  // Tick marks on right side of belly
+  for (let t = 1; t < 4; t++) {
+    const ty = Math.round(bodyT + (bodyH / 4) * t);
+    ctx.fillStyle = 'rgba(255,160,0,0.22)';
+    ctx.fillRect(JAR_BX + bW - 4, ty, 4, 1);
+  }
+
+  // Count below pot
+  ctx.font = F5; ctx.textAlign = 'center';
+  ctx.fillStyle = '#7a4a10';
+  ctx.fillText(totalHoney+'/'+getMeterCap(), JAR_CX, bodyB + 11);
 
   // ── Upgrade slots ─────────────────────────────────────
-  // 3 hex-shaped slots. Filled slots show: tinted hex + icon + short label + stack badge.
-  // Empty slots show a dim hex outline only.
-  const SLOT_R = 22;          // hex radius — bigger than before for readability
-  const SLOT_GAP = 14;        // gap between slot centres
-  const SLOT_TOTAL_W = 3 * SLOT_R * 2 + 2 * SLOT_GAP;
-  const slot0X = (W - SLOT_TOTAL_W) / 2 + SLOT_R;
-  const slotY  = METER_Y + METER_H + 52;   // vertical centre of slots
-
-  // Tag → accent color mapping
   const TAG_COL = {
-    PADDLE:  '#f0c040',
-    CONTROL: '#40c0f0',
-    DAMAGE:  '#f04040',
-    SWARM:   '#80e060',
-    HONEY:   '#f0a020',
+    PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
+    SWARM:'#80e060',  HONEY:'#f0a020',
   };
 
   for (let i = 0; i < 3; i++) {
-    const cx = slot0X + i * (SLOT_R * 2 + SLOT_GAP);
+    const cx   = SLOT0_X + i * SLOT_SPC;
     const slot = upgradeSlots[i];
-    const pts = hexPts(cx, slotY, SLOT_R);
+    const pts  = hexPts(cx, SLOT_Y, SLOT_R);
 
     if (!slot) {
-      // Empty — dim outline only
       ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
       for (let p=1;p<6;p++) ctx.lineTo(pts[p][0],pts[p][1]);
       ctx.closePath();
@@ -1382,32 +1469,27 @@ function drawHUD() {
     const pu  = ALL_POWERUPS.find(p => p.id === slot.id);
     const col = TAG_COL[pu.tag] || '#f0c040';
 
-    // Filled hex background
     ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
     for (let p=1;p<6;p++) ctx.lineTo(pts[p][0],pts[p][1]);
     ctx.closePath();
     ctx.fillStyle = '#100800'; ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.stroke();
 
-    // Inner highlight ring
-    const ipts = hexPts(cx, slotY, SLOT_R * 0.62);
+    const ipts = hexPts(cx, SLOT_Y, SLOT_R * 0.62);
     ctx.beginPath(); ctx.moveTo(ipts[0][0],ipts[0][1]);
     for (let p=1;p<6;p++) ctx.lineTo(ipts[p][0],ipts[p][1]);
     ctx.closePath();
     ctx.strokeStyle = col+'30'; ctx.lineWidth=1; ctx.stroke();
 
-    // Short label — centred in slot
-    ctx.font = '5px "Press Start 2P",monospace';
-    ctx.textAlign = 'center'; ctx.fillStyle = col;
-    ctx.fillText(pu.short, cx, slotY + 3);
+    ctx.font = F5; ctx.textAlign='center'; ctx.fillStyle=col;
+    ctx.fillText(pu.short, cx, SLOT_Y + 3);
 
-    // Stack badge — top-right corner of hex
     if (slot.stacks > 1) {
-      const bx = cx + SLOT_R * 0.72, by = slotY - SLOT_R * 0.60;
+      const bx = cx + SLOT_R*0.72, by = SLOT_Y - SLOT_R*0.60;
       ctx.fillStyle = col;
-      ctx.fillRect(bx - 7, by - 7, 14, 9);
+      ctx.fillRect(bx-7, by-7, 14, 9);
       ctx.fillStyle = '#000';
-      ctx.font = '5px "Press Start 2P",monospace';
+      ctx.font = F5;
       ctx.fillText('X'+slot.stacks, bx, by);
     }
   }
@@ -1582,10 +1664,12 @@ let destroyed=0, currentLevel=1;
 let bees=[], broodMsgs=[];
 let levelHoneyEarned = 0;   // honey collected this level specifically
 
+let upgradeCount = 0; // total upgrades picked this run
+
 function resetRun() {
   for (const k of Object.keys(powers)) powers[k] = 0;
   totalHoney = 0; droplets = []; pickerPending = false; paused = false;
-  upgradeSlots = [];
+  upgradeSlots = []; levelHoneyEarned = 0; upgradeCount = 0;
   levelHoneyEarned = 0;
 }
 
@@ -1673,7 +1757,6 @@ if (b.tpCooldown > 0) b.tpCooldown--;
         if (destroyed%4===0) b.speed=Math.min(b.speed+0.12, getMaxSpd());
 
         if (h.brood) {
-          spawnDroplet(h.x, h.y);
           sfx.brood(); spawnParts(h.x,h.y,20,['#f5a010','#f5d040','#ffe080','#fff']);
           broodMsgs.push({x:h.x,y:h.y-8,life:80,txt:'BROOD RELEASED'});
           const n = 2 + Math.floor(Math.random()*2) + powers.swarmBonus;
@@ -1690,14 +1773,12 @@ if (b.tpCooldown > 0) b.tpCooldown--;
           sfx.honey(); spawnParts(h.x,h.y,16,['#ffe050','#ffd020','#ffb800','#fff8c0','#ff9800']);
           broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'HONEY!'});
         } else if (h.wax) {
-          // WAX: 1 drop + pale crumbly particles
-          spawnDroplet(h.x,h.y);
+          // WAX: 0 honey + pale crumbly particles
           sfx.wax(); spawnParts(h.x,h.y,14,['#e8dfc0','#d8cf9e','#c8b870','#fff','#b0a060']);
           // splash particles on each killed neighbour
           for (const n of hexes) {
             if (n.dead && Math.hypot(n.x-h.x,n.y-h.y)<HEX_R*2.2 && n!==h) {
               spawnParts(n.x,n.y,6,['#e8dfc0','#d8cf9e','#c8b870']);
-              spawnDroplet(n.x,n.y);
             }
           }
         } else if (h.thick) {
@@ -1862,11 +1943,11 @@ function buildGuide() {
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,230,140,0.45)" stroke-width="1"/>` },
     { name:'THICK',   col:'#7a4800', out:'#7a3d00', lw:1.5, hits:'2 HITS', honey:'2 HONEY', note:'CRACKS AT 1 HP',
       svg:`<line x1="0" y1="0" x2="-5" y2="-6" stroke="#2a1000" stroke-width="1.2"/><line x1="0" y1="0" x2="5" y2="-5" stroke="#2a1000" stroke-width="1.2"/>` },
-    { name:'BROOD',   col:'#3a2408', out:'#a86800', lw:1.5, hits:'1 HIT', honey:'1 HONEY', note:'RELEASES BEES',
+    { name:'BROOD',   col:'#3a2408', out:'#a86800', lw:1.5, hits:'1 HIT', honey:'0 HONEY', note:'RELEASES BEES',
       svg:`<circle cx="-4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="0" cy="4" r="2" fill="#f5a010" opacity="0.8"/>` },
     { name:'HONEY',   col:'#ffe050', out:'#e8b000', lw:1.5, hits:'1 HIT', honey:'3 HONEY', note:'EXTRA HONEY',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,240,80,0.6)" stroke-width="1.5"/><circle cx="-3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="0" cy="-4" r="2" fill="#ff9800" opacity="0.9"/>` },
-    { name:'WAX',     col:'#e2d9b2', out:'#b0a070', lw:1.5, hits:'1 HIT', honey:'1 HONEY', note:'WEAKENS NEIGHBORS',
+    { name:'WAX',     col:'#e2d9b2', out:'#b0a070', lw:1.5, hits:'1 HIT', honey:'0 HONEY', note:'WEAKENS NEIGHBORS',
       svg:`<line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(180,170,120,0.5)" stroke-width="1"/><line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(180,170,120,0.5)" stroke-width="1"/>` },
     { name:'PORTAL',  col:'#9020d0', out:'#cc60ff', lw:2.0, hits:'IMMUNE', honey:'0 HONEY', note:'TELEPORTS THE BEE',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(220,140,255,0.8)" stroke-width="1.5"/><text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="6" fill="#f0c0ff">1</text>` },
