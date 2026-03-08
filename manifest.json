@@ -1,0 +1,18 @@
+{
+  "name": "HENDSBALL",
+  "short_name": "HENDSBALL",
+  "description": "Bounce the bee. Clear the hive.",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "portrait-primary",
+  "background_color": "#0e0500",
+  "theme_color": "#0e0500",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%230e0500'/><text x='256' y='340' font-size='320' text-anchor='middle'>🐝</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
