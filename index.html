@@ -124,26 +124,63 @@
     display: block; image-rendering: pixelated; margin-bottom: 14px;
   }
 
-  /* ── pause / legend ──────────────────── */
+  /* ── pause / guide ──────────────────── */
   #pause {
     background:rgba(4,1,0,0.97);
-    padding:18px 14px;
+    padding:10px 0 0 0;
     align-items:center;
+    justify-content:flex-start;
   }
   #pauseTitle {
-    font-size:0.80rem; color:#f0a020;
+    font-size:0.75rem; color:#f0a020;
     text-shadow:2px 2px 0 #6a3000;
-    letter-spacing:2px; margin-bottom:3px; text-align:center;
+    letter-spacing:2px; margin-bottom:8px; text-align:center;
+    flex-shrink:0;
   }
-  #pauseSub {
-    font-size:0.40rem; color:#5a3800;
-    letter-spacing:1px; margin-bottom:14px; text-align:center;
+  #guideBody {
+    flex:1; width:100%; overflow-y:auto; overflow-x:hidden;
+    padding:0 12px 8px 12px; box-sizing:border-box;
   }
-  #legendCanvas {
-    display:block;
-    image-rendering:pixelated;
-    margin-bottom:16px;
+  .gsec-title {
+    font-size:0.40rem; color:#f0a020; letter-spacing:2px;
+    padding:10px 0 6px 0; text-align:left;
   }
+  .gsec-divider {
+    height:1px; background:#3a1e00; margin:10px 0;
+  }
+
+  /* Hex cell rows */
+  .gc-row {
+    display:flex; align-items:center; gap:10px;
+    padding:7px 0; border-bottom:1px solid #221000;
+  }
+  .gc-hex { flex-shrink:0; }
+  .gc-info { flex:1; }
+  .gc-name { font-size:0.42rem; letter-spacing:0.5px; margin-bottom:3px; }
+  .gc-note { font-size:0.33rem; color:#a07840; letter-spacing:0.3px; margin-bottom:3px; }
+  .gc-stats { display:flex; gap:8px; }
+  .gc-stat  { font-size:0.32rem; letter-spacing:0.3px; white-space:nowrap; }
+
+  /* Power-up rows */
+  .gp-row {
+    display:flex; align-items:center; gap:10px;
+    padding:7px 0; border-bottom:1px solid #221000;
+  }
+  .gp-icon { width:28px; height:28px; flex-shrink:0; }
+  .gp-info { flex:1; }
+  .gp-name { font-size:0.40rem; letter-spacing:0.5px; margin-bottom:3px; }
+  .gp-desc { font-size:0.32rem; color:#a07840; letter-spacing:0.3px; }
+  .gp-tag  { display:none; }
+
+  /* Upgrade rows */
+  .gu-row {
+    display:flex; align-items:center; gap:10px;
+    padding:7px 0; border-bottom:1px solid #221000;
+  }
+  .gu-icon { width:28px; height:28px; flex-shrink:0; }
+  .gu-info { flex:1; }
+  .gu-name { font-size:0.40rem; letter-spacing:0.5px; margin-bottom:3px; }
+  .gu-desc { font-size:0.32rem; color:#a07840; letter-spacing:0.3px; }
 
   #devmenu {
     background:rgba(0,6,2,0.97);
@@ -171,6 +208,58 @@
     color:#30e060; min-width:44px; text-align:center;
   }
 
+  #sumContent {
+    width: 300px;
+    background: #0c0500;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .sum-row {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 10px; padding-bottom: 10px;
+    border-bottom: 1px solid #2e1800;
+  }
+  .sum-label {
+    font-size: 0.40rem; color: #a07030; letter-spacing: 1px;
+  }
+  .sum-value {
+    font-size: 0.50rem; color: #ffe050; letter-spacing: 1px;
+  }
+  .sum-section-title {
+    font-size: 0.40rem; color: #a07030; letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .sum-upgrade {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 8px; padding-bottom: 8px;
+    border-bottom: 1px solid #1a0a00;
+  }
+  .sum-upgrade-hex {
+    width: 18px; height: 18px; flex-shrink: 0;
+  }
+  .sum-upgrade-info { flex: 1; }
+  .sum-upgrade-name {
+    font-size: 0.42rem; letter-spacing: 1px; margin-bottom: 3px;
+  }
+  .sum-upgrade-tag {
+    font-size: 0.34rem; color: #4a3010; letter-spacing: 1px;
+  }
+  .sum-upgrade-stack {
+    font-size: 0.40rem; letter-spacing: 1px;
+  }
+  .sum-none {
+    font-size: 0.38rem; color: #4a2e10; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .sum-footer {
+    font-size: 0.34rem; color: #3a2010; text-align: center;
+    letter-spacing: 1px; margin-top: 8px;
+  }
+
+  #guideBody::-webkit-scrollbar { width:2px; }
+  #guideBody::-webkit-scrollbar-track { background:#0a0400; }
+  #guideBody::-webkit-scrollbar-thumb { background:#3a1e00; }
+
   @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
 </style>
 </head>
@@ -185,14 +274,22 @@
 
   <div id="pause" class="panel">
     <div id="pauseTitle">PAUSED</div>
-    <div id="pauseSub">HEX CELL GUIDE</div>
-    <canvas id="legendCanvas" width="300" height="245"></canvas>
+    <div id="guideBody">
+      <div class="gsec-title">HEX CELLS</div>
+      <div id="tab-cells"></div>
+      <div class="gsec-divider"></div>
+      <div class="gsec-title">POWER-UPS</div>
+      <div id="tab-powers"></div>
+      <div class="gsec-divider"></div>
+      <div class="gsec-title">ACTIVE UPGRADES</div>
+      <div id="tab-upgrades"></div>
+    </div>
   </div>
 
   <div id="summary" class="panel">
-    <div id="sumTitle">LEVEL COMPLETE</div>
+    <div id="sumTitle">HIVE CLEARED</div>
     <div id="sumLv"></div>
-    <canvas id="sumCanvas" width="290" height="210"></canvas>
+    <div id="sumContent"></div>
   </div>
 
   <div id="pu" class="panel">
@@ -253,7 +350,7 @@ const PAL = {
   hexBrood: ['#2e1c04','#3a2408','#46300c'],
   hexHoney: ['#ffe050','#ffd020','#ffea80','#ffe860','#ffc800'], // bright saturated gold
   hexWax:   ['#e8dfc0','#d8cf9e','#cfc28a','#e2d9b2'],          // pale waxy cream
-  hexQueen: ['#9020d0','#7810b0','#b030f0','#6808a0'],          // vivid royal purple
+  hexPortal: ['#9020d0','#7810b0','#b030f0','#6808a0'],          // vivid royal purple
   hexLine:  '#7a3d00',
   hexCrack: '#2a1000',
   bg:       '#0e0500',
@@ -299,6 +396,7 @@ const sfx = {
   honey:  () => { _tone(700, 'sine', 0.18, 0.22, 950);     _tone(950, 'sine', 0.10, 0.18, 1200); },
   wax:    () => { _noise(0.20, 0.14); _tone(280, 'sawtooth', 0.10, 0.10, 180); },
   queen:  () => { [440,554,659,880].forEach((f,i) => setTimeout(() => _tone(f,'sine',0.16,0.38,f*1.6), i*45)); },
+  teleport: () => { _tone(880,'sine',0.18,0.12,440); setTimeout(()=>_tone(440,'sine',0.18,0.18,880),120); },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -338,7 +436,7 @@ const powers = {
 };
 
 function getPW() {
-  return powers.twoHends >= 1 ? HAND_W * HAND_PX * 2 : HAND_W * HAND_PX;
+  return powers.twoHends >= 1 ? W * 0.55 : Math.round(W * 0.27);
 }
 
 // Flat list of all available power-ups with metadata
@@ -511,8 +609,8 @@ function checkMeterFull() {
     totalHoney = 0;
     showPicker(() => {
       pickerPending = false;
-      paused = false;
-      loop();   // resume game loop
+      lastTime = 0;
+      startCountdown(() => loop());
     });
   }
 }
@@ -630,18 +728,22 @@ const HAND_COLORS = [
 
 const HAND_SPRITE_H = HAND_H * HAND_PX;   // 28px total sprite height
 
-function drawHand(ox, oy, side) {
+function drawHand(ox, oy, side, targetW) {
   const grid = (side === 1) ? HAND_R : HAND_L;
-  const px = Math.round(ox);
-  const py = Math.round(oy);
+  const naturalW = HAND_W * HAND_PX;
+  const scaleX = targetW ? targetW / naturalW : 1;
+  ctx.save();
+  ctx.translate(Math.round(ox), Math.round(oy));
+  ctx.scale(scaleX, 1);
   for (let r = 0; r < HAND_H; r++) {
     for (let c = 0; c < HAND_W; c++) {
       const v = grid[r][c];
       if (!v) continue;
       ctx.fillStyle = HAND_COLORS[v];
-      ctx.fillRect(px + c * HAND_PX, py + r * HAND_PX, HAND_PX, HAND_PX);
+      ctx.fillRect(c * HAND_PX, r * HAND_PX, HAND_PX, HAND_PX);
     }
   }
+  ctx.restore();
 }
 
 // Paddle y is the TOP of the palm body.
@@ -652,16 +754,14 @@ function drawHand(ox, oy, side) {
 function drawPaddle(p) {
   const pw = getPW();
   const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
-  // Position sprite so palm base aligns with paddle collision zone
   const oy = PADDLE_Y - HAND_SPRITE_H + PH_COLL + sq;
 
   if (powers.twoHends >= 1) {
     const hw = pw / 2;
-    // Left hand: thumb on left (side -1), Right hand: thumb on right (side +1)
-    drawHand(p.x,      oy, -1);
-    drawHand(p.x + hw, oy,  1);
+    drawHand(p.x,      oy,  1, hw);  // left hand: thumb on left (outside)
+    drawHand(p.x + hw, oy, -1, hw);  // right hand: thumb on right (outside)
   } else {
-    drawHand(p.x, oy, 1);
+    drawHand(p.x, oy, 1, pw);
   }
   if (p.squish > 0) p.squish--;
 }
@@ -689,7 +789,7 @@ const BP = 2;  // 2 canvas px per sprite cell
 const BOX = BC*BP, BOY = BR*BP;                  // sprite bounding box: 20×18
 
 // Bee trail — stores recent positions per bee
-const TRAIL_LEN = 22;   // longer history = longer visible tail
+const TRAIL_LEN = 55;   // longer history = longer visible tail
 
 function pushTrail(b) {
   if (!b.trail) b.trail = [];
@@ -701,27 +801,25 @@ function pushTrail(b) {
 function drawTrail(b) {
   if (!b.trail || b.trail.length < 2) return;
   const n = b.trail.length;
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < n; i += 4) {
     const t = b.trail[i];
-    const frac  = (i + 1) / n;            // 0=oldest → 1=newest
-    const alpha = frac * frac * 0.72;      // quadratic, peaks at ~0.72 near bee
-    const sz    = Math.max(1, Math.round(1 + frac * 3)); // 1–4px
-    ctx.fillStyle = `rgba(255,180,0,${alpha.toFixed(2)})`;
-    ctx.fillRect(Math.round(t.x) - (sz>>1), Math.round(t.y) - (sz>>1), sz, sz);
-    // dotted midpoint for extra visibility on fast bees
-    if (i > 0 && i % 2 === 1) {
-      const prev = b.trail[i-1];
-      const mx = (t.x + prev.x) / 2, my = (t.y + prev.y) / 2;
-      ctx.fillStyle = `rgba(255,220,80,${(alpha * 0.55).toFixed(2)})`;
-      ctx.fillRect(Math.round(mx), Math.round(my), 1, 1);
-    }
+    const frac = (i + 1) / n;
+    const alpha = frac * frac * 0.55;
+    ctx.fillStyle = `rgba(180,180,180,${alpha.toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(t.x, t.y, 1.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
 function drawBee(b) {
   drawTrail(b);
-  const ox = Math.round(b.x) - BOX/2;
-  const oy = Math.round(b.y) - BOY/2;
+  const angle = Math.atan2(b.vy, b.vx) + Math.PI/2; // +90° so "up" = 0
+  ctx.save();
+  ctx.translate(Math.round(b.x), Math.round(b.y));
+  ctx.rotate(angle);
+  const ox = -BOX/2;
+  const oy = -BOY/2;
   for (let r = 0; r < BR; r++) {
     for (let c = 0; c < BC; c++) {
       const col = BEE_G[r][c];
@@ -730,6 +828,7 @@ function drawBee(b) {
       ctx.fillRect(ox + c*BP, oy + r*BP, BP, BP);
     }
   }
+  ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -772,9 +871,9 @@ function drawHex(h) {
 
   // Fill color
   if (h.flash > 0) {
-    ctx.fillStyle = h.queen ? '#e0a0ff' : h.honey ? '#ffffff' : '#fff';
-  } else if (h.queen) {
-    ctx.fillStyle = PAL.hexQueen[h.ci % PAL.hexQueen.length];
+    ctx.fillStyle = h.portal ? '#e0a0ff' : h.honey ? '#ffffff' : '#fff';
+  } else if (h.portal) {
+    ctx.fillStyle = PAL.hexPortal[h.ci % PAL.hexPortal.length];
   } else if (h.honey) {
     ctx.fillStyle = PAL.hexHoney[h.ci % PAL.hexHoney.length];
   } else if (h.wax) {
@@ -789,31 +888,33 @@ function drawHex(h) {
   ctx.fill();
 
   // Outline color
-  ctx.strokeStyle = h.queen  ? '#cc60ff'
+  ctx.strokeStyle = h.portal  ? '#cc60ff'
                   : h.honey  ? '#e8b000'
                   : h.wax    ? '#b0a070'
                   : h.brood  ? '#a86800'
                   : PAL.hexLine;
-  ctx.lineWidth = h.queen ? 2.5 : 1.5;
+  ctx.lineWidth = h.portal ? 2.5 : 1.5;
   ctx.stroke();
   if (h.flash > 0) return;
 
   // Inner accent / detail
   hexPath(hexPts(h.x, h.y, HEX_R * 0.52));
-  if (h.queen) {
-    // pulsing bright ring
-    const p = (Math.floor(tick / 10) % 2) ? 0.70 : 0.30;
+  if (h.portal) {
+    // pulsing ring — alternates between two phases for portal effect
+    const phase = (Math.floor(tick / 8) % 2);
+    const p = phase ? 0.80 : 0.25;
     ctx.strokeStyle = `rgba(220,140,255,${p})`;
     ctx.lineWidth = 2; ctx.stroke();
-    // crown dots
-    ctx.fillStyle = '#f0c0ff'; ctx.globalAlpha = 0.85;
-    for (const [dx, dy] of [[-5, -4], [0, -7], [5, -4]]) {
-      ctx.fillRect(h.x + dx - 1, h.y + dy - 1, 3, 3);
-    }
+    // channel badge — small number indicating which portal pair
+    ctx.fillStyle = '#f0c0ff'; ctx.globalAlpha = 0.90;
+    ctx.font = '5px "Press Start 2P",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(String((h.portalChannel ?? 0) + 1), h.x, h.y + 4);
+    ctx.textAlign = 'left';
     ctx.globalAlpha = 1;
-    // inner shimmer
-    ctx.fillStyle = 'rgba(200,100,255,0.18)';
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.30));
+    // inner shimmer — rotates between phases
+    ctx.fillStyle = phase ? 'rgba(200,100,255,0.22)' : 'rgba(140,50,220,0.12)';
+    hexPath(hexPts(h.x, h.y, HEX_R * 0.38));
     ctx.fill();
   } else if (h.honey) {
     // bright inner ring + drip dots
@@ -906,6 +1007,36 @@ function checkHex(b) {
       const nlen = Math.hypot(nx,ny)||1;
       nx /= nlen; ny /= nlen;
 
+// PORTAL CELL: indestructible teleporter
+      if (h.portal) {
+        if (b.tpCooldown > 0) {
+          // cooldown active — treat as solid wall, reflect normally
+          const dot = b.vx*nx + b.vy*ny;
+          if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
+          const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
+          b.x += nx*ov2; b.y += ny*ov2;
+          return {dead:false, h};
+        }
+        const dest = hexes.find(q => q.portal && q !== h && q.portalChannel === h.portalChannel);
+        if (dest) {
+          b.x = dest.x; b.y = dest.y;
+          b.tpCooldown = 22;
+          h.flash = 14; dest.flash = 14;
+          spawnParts(h.x,    h.y,    18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
+          spawnParts(dest.x, dest.y, 18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
+          broodMsgs.push({x:dest.x, y:dest.y-8, life:55, txt:'TELEPORT!'});
+          sfx.teleport();
+        } else {
+          // unpaired portal — just reflect
+          const dot = b.vx*nx + b.vy*ny;
+          if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
+          const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
+          b.x += nx*ov2; b.y += ny*ov2;
+          h.flash = 10;
+        }
+        return {dead:false, h};
+      }
+
       // reflect velocity
       const dot = b.vx*nx + b.vy*ny;
       if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
@@ -924,7 +1055,7 @@ function checkHex(b) {
         // WAX CELL: splash 1 damage to immediate neighbours on death
         if (h.wax) {
           for (const n of hexes) {
-            if (n.dead || n === h) continue;
+            if (n.dead || n === h || n.portal) continue; // portals are indestructible
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 2.2) {
               n.hp -= 1;
               n.flash = 8;
@@ -968,27 +1099,197 @@ function drawParts() {
 }
 
 // ═══════════════════════════════════════════════════════
-// BACKGROUND
+// BACKGROUND THEMES
 // ═══════════════════════════════════════════════════════
-function drawBG() {
-  ctx.fillStyle = PAL.bg; ctx.fillRect(0,0,W,H);
-  // scanlines
-  ctx.fillStyle = 'rgba(0,0,0,0.08)';
-  for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
-  // faint background honeycomb grid
+
+// Seeded pseudo-random so background details are stable per level
+function bgRand(seed) {
+  let s = seed;
+  return function() {
+    s = (s * 1664525 + 1013904223) & 0xffffffff;
+    return (s >>> 0) / 0xffffffff;
+  };
+}
+
+// Draw the background hex grid, calling detailFn(cx,cy,r,rand) per cell
+function drawBGGrid(bR, alpha, strokeCol, lineW, detailFn) {
+  const cS = bR*1.5, rS = bR*Math.sqrt(3), cb = H*PLAY_BOTTOM;
   ctx.save();
-  ctx.globalAlpha=0.038; ctx.strokeStyle='#b06800'; ctx.lineWidth=1;
-  const bR=20, cS=bR*1.5, rS=bR*Math.sqrt(3), cb=H*PLAY_BOTTOM;
   ctx.beginPath(); ctx.rect(0,0,W,cb); ctx.clip();
-  for (let c=-1;c<Math.ceil(W/cS)+2;c++)
-    for (let r=-1;r<Math.ceil(cb/rS)+2;r++) {
-      const bx=c*cS, by=r*rS+(c%2?rS/2:0);
-      const pp=hexPts(bx,by,bR);
+  const rand = bgRand(currentLevel * 7919);
+  for (let c=-1; c<Math.ceil(W/cS)+2; c++) {
+    for (let r=-1; r<Math.ceil(cb/rS)+2; r++) {
+      const bx = c*cS, by = r*rS + (c%2 ? rS/2 : 0);
+      const pp = hexPts(bx, by, bR);
+      ctx.globalAlpha = alpha;
+      ctx.strokeStyle = strokeCol; ctx.lineWidth = lineW;
       ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
       for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
       ctx.closePath(); ctx.stroke();
+      if (detailFn) detailFn(bx, by, bR, rand);
     }
+  }
   ctx.restore();
+}
+
+// ── THEME 1: Dusty Abandoned Hive (LV 1–10) ──────────
+// Pale, dusty hex grid. Some cells have wax residue fills.
+// Occasional crack marks. Faded honey drips on some cells.
+function drawBG_Abandoned() {
+  // Base — dark dusty brown
+  ctx.fillStyle = '#100a02'; ctx.fillRect(0,0,W,H);
+
+  // Subtle dust gradient overlay
+  const grad = ctx.createLinearGradient(0,0,0,H*PLAY_BOTTOM);
+  grad.addColorStop(0,   'rgba(30,18,4,0.0)');
+  grad.addColorStop(0.5, 'rgba(10,6,0,0.18)');
+  grad.addColorStop(1,   'rgba(0,0,0,0.32)');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H*PLAY_BOTTOM);
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+
+  const bR=22, cS=bR*1.5, rS=bR*Math.sqrt(3), cb=H*PLAY_BOTTOM;
+  const rand = bgRand(currentLevel * 3571);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,W,cb); ctx.clip();
+
+  for (let c=-1; c<Math.ceil(W/cS)+2; c++) {
+    for (let r=-1; r<Math.ceil(cb/rS)+2; r++) {
+      const bx = c*cS, by = r*rS + (c%2 ? rS/2 : 0);
+      const pp = hexPts(bx, by, bR);
+      const rv = rand();
+
+      // Occasional wax-residue fill
+      if (rv < 0.18) {
+        ctx.globalAlpha = 0.04 + rv * 0.10;
+        ctx.fillStyle = rv < 0.09 ? '#c8b878' : '#e8d8a0';
+        ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
+        for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
+        ctx.closePath(); ctx.fill();
+      }
+
+      // Hex outline — dusty, faint
+      ctx.globalAlpha = 0.055 + rand()*0.03;
+      ctx.strokeStyle = rv < 0.3 ? '#6a4800' : '#3a2800';
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
+      for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
+      ctx.closePath(); ctx.stroke();
+
+      // Crack marks on some cells
+      if (rand() < 0.12) {
+        ctx.globalAlpha = 0.07;
+        ctx.strokeStyle = '#2a1400'; ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.moveTo(bx, by);
+        ctx.lineTo(bx + (rand()-0.5)*14, by + (rand()-0.5)*14);
+        ctx.lineTo(bx + (rand()-0.5)*18, by + (rand()-0.5)*10);
+        ctx.stroke();
+      }
+
+      // Honey drip stains on a few cells
+      if (rand() < 0.07) {
+        ctx.globalAlpha = 0.06;
+        ctx.fillStyle = '#c87000';
+        ctx.beginPath();
+        ctx.arc(bx + (rand()-0.5)*8, by + bR*0.4, 2+rand()*3, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+// ── THEME 2: Hardened Honey Fortress (LV 11–20) ──────
+// Dark amber, crystallised. Thick outlined cells, some
+// filled with deep amber crystal. Sticky drip streaks.
+function drawBG_Hardened() {
+  // Base — deep dark amber
+  ctx.fillStyle = '#0c0700'; ctx.fillRect(0,0,W,H);
+
+  // Amber glow from top
+  const grad = ctx.createRadialGradient(W/2, 0, 20, W/2, H*0.3, W*0.9);
+  grad.addColorStop(0,   'rgba(80,40,0,0.22)');
+  grad.addColorStop(1,   'rgba(0,0,0,0.0)');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H*PLAY_BOTTOM);
+
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.09)';
+  for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+
+  const bR=20, cS=bR*1.5, rS=bR*Math.sqrt(3), cb=H*PLAY_BOTTOM;
+  const rand = bgRand(currentLevel * 6143);
+
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0,0,W,cb); ctx.clip();
+
+  for (let c=-1; c<Math.ceil(W/cS)+2; c++) {
+    for (let r=-1; r<Math.ceil(cb/rS)+2; r++) {
+      const bx = c*cS, by = r*rS + (c%2 ? rS/2 : 0);
+      const pp = hexPts(bx, by, bR);
+      const rv = rand();
+
+      // Crystallised honey fill — more cells filled than theme 1
+      if (rv < 0.30) {
+        const depth = 0.06 + rv * 0.14;
+        ctx.globalAlpha = depth;
+        ctx.fillStyle = rv < 0.10 ? '#7a3800'
+                      : rv < 0.20 ? '#5a2800'
+                                  : '#9a5200';
+        ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
+        for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
+        ctx.closePath(); ctx.fill();
+      }
+
+      // Inner hex outline — crystalline thick look
+      ctx.globalAlpha = 0.09 + rand()*0.05;
+      ctx.strokeStyle = rv < 0.4 ? '#8a5200' : '#4a2c00';
+      ctx.lineWidth = rv < 0.25 ? 1.4 : 0.8;
+      ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
+      for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
+      ctx.closePath(); ctx.stroke();
+
+      // Inner smaller hex on some — crystalline layering
+      if (rv < 0.20) {
+        const ip = hexPts(bx, by, bR*0.55);
+        ctx.globalAlpha = 0.06;
+        ctx.strokeStyle = '#c87800'; ctx.lineWidth = 0.7;
+        ctx.beginPath(); ctx.moveTo(ip[0][0],ip[0][1]);
+        for (let i=1;i<6;i++) ctx.lineTo(ip[i][0],ip[i][1]);
+        ctx.closePath(); ctx.stroke();
+      }
+
+      // Sticky drip streaks downward
+      if (rand() < 0.09) {
+        const dripLen = 8 + rand()*16;
+        ctx.globalAlpha = 0.07 + rand()*0.06;
+        ctx.strokeStyle = '#a06000'; ctx.lineWidth = 1 + rand();
+        ctx.beginPath();
+        ctx.moveTo(bx + (rand()-0.5)*6, by + bR*0.5);
+        ctx.bezierCurveTo(
+          bx + (rand()-0.5)*4, by + bR*0.5 + dripLen*0.4,
+          bx + (rand()-0.5)*4, by + bR*0.5 + dripLen*0.7,
+          bx + (rand()-0.5)*3, by + bR*0.5 + dripLen
+        );
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function drawBG() {
+  if      (currentLevel <= 10) drawBG_Abandoned();
+  else if (currentLevel <= 20) drawBG_Hardened();
+  else {
+    // Fallback for future themes — reuse hardened for now
+    drawBG_Hardened();
+  }
   // HUD divider
   ctx.fillStyle='#2e1600'; ctx.fillRect(0,HUD_Y-2,W,2);
 }
@@ -1126,18 +1427,12 @@ function getCanvasXY(clientX, clientY) {
 }
 
 function handleCanvasTap(cx, cy, e) {
-  // Pause zone
+  // Pause zone only
   if (!gameOver && !pickerPending &&
       cx >= PAUSE_TAP.x && cx <= PAUSE_TAP.x+PAUSE_TAP.w &&
       cy >= PAUSE_TAP.y && cy <= PAUSE_TAP.y+PAUSE_TAP.h) {
     if (e) e.preventDefault();
     paused = true; showPause(); return true;
-  }
-  // Dev zone
-  if (cx >= DEV_TAP.x && cx <= DEV_TAP.x+DEV_TAP.w &&
-      cy >= DEV_TAP.y && cy <= DEV_TAP.y+DEV_TAP.h) {
-    if (e) e.preventDefault();
-    showDevMenu(); return true;
   }
   return false;
 }
@@ -1239,16 +1534,16 @@ function buildGrid(lvl) {
       for (const [q,r] of queue) {
         const px=CX+HEX_R*1.5*q, py=CY+HEX_R*R3*(r+q*0.5);
         const roll=Math.random();
-        // Assign type via priority: queen (rare) > brood > honey > wax > thick > normal
-        const isQueen = roll < queen;
-        const isBrood = !isQueen && roll < queen+d.brood;
-        const isHoney = !isQueen && !isBrood && roll < queen+d.brood+honey;
-        const isWax   = !isQueen && !isBrood && !isHoney && roll < queen+d.brood+honey+wax;
-        const isThick = !isQueen && !isBrood && !isHoney && !isWax && roll < queen+d.brood+honey+wax+d.thick;
-        // HP: thick=2, wax=1 (fragile), all others=1
+        // Assign type via priority: portal (rare) > brood > honey > wax > thick > normal
+        const isPortal = roll < queen;
+        const isBrood = !isPortal && roll < queen+d.brood;
+        const isHoney = !isPortal && !isBrood && roll < queen+d.brood+honey;
+        const isWax   = !isPortal && !isBrood && !isHoney && roll < queen+d.brood+honey+wax;
+        const isThick = !isPortal && !isBrood && !isHoney && !isWax && roll < queen+d.brood+honey+wax+d.thick;
+        // HP: thick=2, all others=1 (portals are indestructible but still need hp field)
         const hp = isThick ? 2 : 1;
         hexes.push({x:px, y:py, dead:false, flash:0,
-          queen:isQueen, brood:isBrood, honey:isHoney, wax:isWax, thick:isThick,
+          portal:isPortal, brood:isBrood, honey:isHoney, wax:isWax, thick:isThick,
           hp, ci:Math.floor(Math.random()*5)});
         for (const [dq,dr] of DIRS) {
           const nk=key(q+dq,r+dr);
@@ -1261,7 +1556,20 @@ function buildGrid(lvl) {
   const out=[];
   for (const h of hexes)
     if (!out.some(f=>Math.hypot(f.x-h.x,f.y-h.y)<HEX_R*1.4)) out.push(h);
-  return out.filter(h=>h.y+HEX_R<H*PLAY_BOTTOM-4);
+  const clipped = out.filter(h=>h.y+HEX_R<H*PLAY_BOTTOM-4);
+
+  // Pair portal cells into channels of exactly 2.
+  // If odd number spawned, drop the last one (convert to normal).
+  const portals = clipped.filter(h => h.portal);
+  if (portals.length % 2 !== 0 && portals.length > 0) {
+    portals[portals.length - 1].portal = false; // demote to normal
+  }
+  const paired = clipped.filter(h => h.portal);
+  for (let i = 0; i < paired.length; i++) {
+    paired[i].portalChannel = Math.floor(i / 2);
+  }
+
+  return clipped;
 }
 
 let hexes=[];
@@ -1281,7 +1589,7 @@ function resetRun() {
   levelHoneyEarned = 0;
 }
 
-function mkBall(x,y,vx,vy,spd) { return {x,y,vx,vy,speed:spd??BASE_SPD,trail:[]}; }
+function mkBall(x,y,vx,vy,spd) { return {x,y,vx,vy,speed:spd??BASE_SPD,trail:[],tpCooldown:0}; }
 function startBall(xOff) {
   const vx=2.5*(Math.random()>0.5?1:-1);
   return mkBall(W/2+(xOff||0), H*PLAY_BOTTOM-65, vx, -BASE_SPD);
@@ -1336,9 +1644,9 @@ function update() {
     b.x+=b.vx*dt*60; b.y+=b.vy*dt*60;
 
     // walls
-    if (b.x-BALL_R<0)  {b.x=BALL_R;    b.vx= Math.abs(b.vx);  normSpd(b,b.speed); sfx.wall();}
-    if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  normSpd(b,b.speed); sfx.wall();}
-    if (b.y-BALL_R<0)  {b.y=BALL_R;    b.vy= Math.abs(b.vy);   normSpd(b,b.speed); sfx.wall();}
+    if (b.x-BALL_R<0)  {b.x=BALL_R;    b.vx= Math.abs(b.vx);  b.vx*=0.82; b.vy*=0.82; normSpd(b,b.speed); sfx.wall();}
+    if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  b.vx*=0.82; b.vy*=0.82; normSpd(b,b.speed); sfx.wall();}
+    if (b.y-BALL_R<0)  {b.y=BALL_R;    b.vy= Math.abs(b.vy);   b.vx*=0.82; b.vy*=0.82; normSpd(b,b.speed); sfx.wall();}
 
     // paddle
     if (b.vy>0 && b.y+BALL_R>=PADDLE_Y && b.y+BALL_R<=PADDLE_Y+PH_COLL+8
@@ -1356,6 +1664,7 @@ function update() {
     }
 
     // hex
+if (b.tpCooldown > 0) b.tpCooldown--;
     const hit=checkHex(b);
     if (hit) {
       const h=hit.h;
@@ -1363,20 +1672,7 @@ function update() {
         destroyed++;
         if (destroyed%4===0) b.speed=Math.min(b.speed+0.12, getMaxSpd());
 
-        if (h.queen) {
-          // QUEEN: 3 honey drops + huge swarm + dramatic particles
-          for (let d=0;d<3;d++) spawnDroplet(h.x+d*4-4, h.y);
-          sfx.queen(); spawnParts(h.x,h.y,32,['#cc60ff','#e080ff','#f0c0ff','#9020d0','#ffffff']);
-          broodMsgs.push({x:h.x,y:h.y-8,life:100,txt:'QUEEN RELEASED!'});
-          const n = 4 + Math.floor(Math.random()*3) + powers.swarmBonus; // 4-6 + bonus
-          for (let i=0;i<n;i++) {
-            const sp=((i/(n-1||1))-0.5)*2, a=sp*(70*Math.PI/180);
-            const jit=(Math.random()-0.5)*0.4;
-            const nb=mkBall(h.x+Math.cos(a+jit)*BALL_R*3, h.y+Math.sin(a+jit)*BALL_R*3-5,
-              b.speed*Math.sin(a+jit), -b.speed*Math.cos(a+jit), b.speed);
-            normSpd(nb,b.speed); newBees.push(nb);
-          }
-        } else if (h.brood) {
+        if (h.brood) {
           spawnDroplet(h.x, h.y);
           sfx.brood(); spawnParts(h.x,h.y,20,['#f5a010','#f5d040','#ffe080','#fff']);
           broodMsgs.push({x:h.x,y:h.y-8,life:80,txt:'BROOD RELEASED'});
@@ -1430,7 +1726,7 @@ function update() {
   for (const m of broodMsgs){m.y-=0.35;m.life--;}
   updateDroplets();
 
-  if (hexes.every(h=>h.dead)) {gameOver=true;touchX=null;render();setTimeout(showWin,400);return;}
+  if (hexes.every(h=>h.dead || h.portal)) {gameOver=true;touchX=null;render();setTimeout(showWin,400);return;}
   if (bees.length===0)        {gameOver=true;touchX=null;render();setTimeout(showLose,350);return;}
 }
 
@@ -1451,7 +1747,7 @@ function render() {
   for (const m of broodMsgs) {
     ctx.globalAlpha=Math.min(1,m.life/18);
     ctx.font='7px "Press Start 2P",monospace';
-    ctx.fillStyle = m.txt && m.txt.includes('QUEEN') ? '#e080ff'
+    ctx.fillStyle = m.txt && m.txt.includes('TELEPORT') ? '#e080ff'
                   : m.txt && m.txt.includes('HONEY') ? '#ffe050'
                   : '#f5d040';
     ctx.fillText(m.txt||'BROOD RELEASED',m.x,Math.round(m.y));
@@ -1459,24 +1755,12 @@ function render() {
   ctx.globalAlpha=1; ctx.textAlign='left';
 
   drawHUD();
-
-  // DEV tap icon — bottom-left corner
-  ctx.fillStyle = '#081a0c';
-  ctx.fillRect(0, H-20, 36, 20);
-  ctx.font = '5px "Press Start 2P",monospace';
-  ctx.fillStyle = '#1a5030';
-  ctx.textAlign = 'left';
-  ctx.fillText('DEV', 5, H-7);
-  ctx.textAlign = 'left';
 }
 
 // ═══════════════════════════════════════════════════════
 // RUN SUMMARY PANEL
 // ═══════════════════════════════════════════════════════
 const summaryPanel = document.getElementById('summary');
-const sumCanvas    = document.getElementById('sumCanvas');
-const sx_          = sumCanvas.getContext('2d');
-const SW = sumCanvas.width, SH = sumCanvas.height;
 
 const TAG_COL_MAP = {
   PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
@@ -1484,70 +1768,51 @@ const TAG_COL_MAP = {
 };
 
 function drawSummary() {
-  sx_.clearRect(0,0,SW,SH);
-  sx_.fillStyle='#0c0500'; sx_.fillRect(0,0,SW,SH);
+  const el = document.getElementById('sumContent');
+  const TAG_COL_CSS = {
+    PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
+    SWARM:'#80e060',  HONEY:'#f0a020'
+  };
 
-  const F7='7px "Press Start 2P",monospace';
-  const F6='6px "Press Start 2P",monospace';
-  const F5='5px "Press Start 2P",monospace';
+  let html = '';
 
-  let y=18;
+  // Honey row
+  html += `<div class="sum-row">
+    <span class="sum-label">HONEY EARNED</span>
+    <span class="sum-value">${levelHoneyEarned}</span>
+  </div>`;
 
-  // ── Honey earned row ──────────────────────────────
-  sx_.font=F6; sx_.textAlign='left'; sx_.fillStyle='#a07030';
-  sx_.fillText('HONEY EARNED', 10, y);
-  sx_.font=F7; sx_.textAlign='right'; sx_.fillStyle='#ffe050';
-  sx_.fillText(String(levelHoneyEarned), SW-10, y);
-  y+=14;
-  sx_.fillStyle='#2e1800'; sx_.fillRect(8,y,SW-16,1); y+=12;
-
-  // ── Upgrades section ──────────────────────────────
-  sx_.font=F6; sx_.textAlign='left'; sx_.fillStyle='#a07030';
-  sx_.fillText('ACTIVE UPGRADES', 10, y); y+=16;
-
+  // Upgrades
+  html += `<div class="sum-section-title">ACTIVE UPGRADES</div>`;
   if (upgradeSlots.length === 0) {
-    sx_.font=F5; sx_.fillStyle='#4a2e10';
-    sx_.fillText('NONE YET', 18, y); y+=14;
+    html += `<div class="sum-none">NONE YET</div>`;
   } else {
     for (const slot of upgradeSlots) {
-      const pu  = ALL_POWERUPS.find(p=>p.id===slot.id);
-      const col = TAG_COL_MAP[pu.tag] || '#f0c040';
-
-      // Hex icon
-      const hx=20, hy=y+2, hr=8;
-      sx_.beginPath();
-      for (let i=0;i<6;i++){
-        const a=(Math.PI/180)*60*i;
-        i===0?sx_.moveTo(hx+hr*Math.cos(a),hy+hr*Math.sin(a))
-             :sx_.lineTo(hx+hr*Math.cos(a),hy+hr*Math.sin(a));
-      }
-      sx_.closePath();
-      sx_.fillStyle='#180c00'; sx_.fill();
-      sx_.strokeStyle=col; sx_.lineWidth=1.5; sx_.stroke();
-
-      // Upgrade name
-      sx_.font=F6; sx_.textAlign='left'; sx_.fillStyle=col;
-      sx_.fillText(pu.name, 36, y+4);
-
-      // Stack badge
-      if (slot.stacks>1){
-        sx_.font=F6; sx_.textAlign='right'; sx_.fillStyle=col;
-        sx_.fillText('X'+slot.stacks, SW-10, y+4);
-      }
-
-      // Tag label
-      sx_.font=F5; sx_.textAlign='left';
-      sx_.fillStyle=col+'99';
-      sx_.fillText(pu.tag, 36, y+16);
-
-      y+=26;
-      sx_.fillStyle='#1e1000'; sx_.fillRect(8,y-3,SW-16,1);
+      const pu  = ALL_POWERUPS.find(p => p.id === slot.id);
+      const col = TAG_COL_CSS[pu.tag] || '#f0c040';
+      const stackBadge = slot.stacks > 1
+        ? `<span class="sum-upgrade-stack" style="color:${col}">X${slot.stacks}</span>`
+        : '';
+      // SVG hex icon
+      const hex = `<svg class="sum-upgrade-hex" viewBox="-12 -12 24 24">
+        <polygon points="${[0,1,2,3,4,5].map(i=>{
+          const a=i*Math.PI/3;
+          return `${(10*Math.cos(a)).toFixed(1)},${(10*Math.sin(a)).toFixed(1)}`;
+        }).join(' ')}" fill="#120900" stroke="${col}" stroke-width="1.5"/>
+      </svg>`;
+      html += `<div class="sum-upgrade">
+        ${hex}
+        <div class="sum-upgrade-info">
+          <div class="sum-upgrade-name" style="color:${col}">${pu.name}</div>
+          <div class="sum-upgrade-tag">${pu.tag}</div>
+        </div>
+        ${stackBadge}
+      </div>`;
     }
   }
 
-  // ── Bottom note ───────────────────────────────────
-  sx_.font=F5; sx_.textAlign='center'; sx_.fillStyle='#4a3010';
-  sx_.fillText('UPGRADES CARRY FORWARD', SW/2, SH-8);
+  html += `<div class="sum-footer">UPGRADES CARRY FORWARD</div>`;
+  el.innerHTML = html;
 }
 
 function showSummary() {
@@ -1573,149 +1838,105 @@ function showSummary() {
 
 function hideSummary() { summaryPanel.classList.remove('show'); }
 const pausePanel = document.getElementById('pause');
-const lc         = document.getElementById('legendCanvas');
-const lx         = lc.getContext('2d');
-const LW = lc.width, LH = lc.height;  // 300 × 245
 
-function drawLegend() {
-  lx.clearRect(0, 0, LW, LH);
-  lx.fillStyle = '#0a0400';
-  lx.fillRect(0, 0, LW, LH);
+// (no tabs)
 
-  const F6 = '6px "Press Start 2P",monospace';
-  const F5 = '5px "Press Start 2P",monospace';
-  const HR = 20;   // hex radius in legend
-
-  // 2 columns × 3 rows layout
-  // Col centres: 75, 225
-  // Row centres: 36, 122, 208
-  const COLS = [75, 225];
-  const ROWS_Y = [36, 122, 208];
-
-  const CELLS = [
-    {
-      label:'NORMAL', col:'#f5c030', outline:'#7a3d00', lw:1.5,
-      detail(cx,cy){ // inner ring
-        lHexPath(cx,cy,HR*0.52);
-        lx.strokeStyle='rgba(255,230,140,0.35)'; lx.lineWidth=1; lx.stroke();
-      },
-      hits:'1 HIT', honey:'1 HONEY', note:'STANDARD CELL'
-    },
-    {
-      label:'THICK', col:'#7a4800', outline:'#7a3d00', lw:1.5,
-      detail(cx,cy){
-        // crack marks
-        lx.strokeStyle='#2a1000'; lx.lineWidth=1.5;
-        lx.beginPath(); lx.moveTo(cx,cy); lx.lineTo(cx-7,cy-8); lx.lineTo(cx-11,cy-4); lx.stroke();
-        lx.beginPath(); lx.moveTo(cx,cy); lx.lineTo(cx+6,cy-6); lx.lineTo(cx+12,cy-10); lx.stroke();
-      },
-      hits:'2 HITS', honey:'2 HONEY', note:'SHOWS CRACKS AT 1 HP'
-    },
-    {
-      label:'BROOD', col:'#3a2408', outline:'#a86800', lw:1.5,
-      detail(cx,cy){
-        lHexPath(cx,cy,HR*0.52);
-        lx.strokeStyle='rgba(240,160,40,0.50)'; lx.lineWidth=1; lx.stroke();
-        lx.fillStyle='#f5a010'; lx.globalAlpha=0.70;
-        for (const [dx,dy] of [[-4,-3],[4,-3],[0,4]]) {
-          lx.beginPath(); lx.arc(cx+dx,cy+dy,2.5,0,Math.PI*2); lx.fill();
-        }
-        lx.globalAlpha=1;
-      },
-      hits:'1 HIT', honey:'1 HONEY', note:'RELEASES BEES'
-    },
-    {
-      label:'HONEY', col:'#ffe050', outline:'#e8b000', lw:1.5,
-      detail(cx,cy){
-        lHexPath(cx,cy,HR*0.52);
-        lx.strokeStyle='rgba(255,240,80,0.55)'; lx.lineWidth=1.5; lx.stroke();
-        lx.fillStyle='#ff9800'; lx.globalAlpha=0.80;
-        for (const [dx,dy] of [[-3,1],[3,1],[0,-4]]) {
-          lx.beginPath(); lx.arc(cx+dx,cy+dy,2.5,0,Math.PI*2); lx.fill();
-        }
-        lx.globalAlpha=1;
-      },
-      hits:'1 HIT', honey:'3 HONEY', note:'EXTRA HONEY DROP'
-    },
-    {
-      label:'WAX', col:'#e2d9b2', outline:'#b0a070', lw:1.5,
-      detail(cx,cy){
-        lHexPath(cx,cy,HR*0.52);
-        lx.strokeStyle='rgba(200,190,140,0.30)'; lx.lineWidth=1; lx.stroke();
-        lx.strokeStyle='rgba(180,170,120,0.28)'; lx.lineWidth=1;
-        lx.beginPath();
-        lx.moveTo(cx-HR*0.4,cy); lx.lineTo(cx+HR*0.4,cy);
-        lx.moveTo(cx,cy-HR*0.4); lx.lineTo(cx,cy+HR*0.4);
-        lx.stroke();
-      },
-      hits:'1 HIT', honey:'1 HONEY', note:'WEAKENS NEIGHBORS'
-    },
-    {
-      label:'QUEEN', col:'#9020d0', outline:'#cc60ff', lw:2.5,
-      detail(cx,cy){
-        lHexPath(cx,cy,HR*0.52);
-        lx.strokeStyle='rgba(220,140,255,0.75)'; lx.lineWidth=2; lx.stroke();
-        lx.fillStyle='#f0c0ff'; lx.globalAlpha=0.90;
-        for (const [dx,dy] of [[-5,-4],[0,-7],[5,-4]]) {
-          lx.fillRect(cx+dx-1,cy+dy-1,3,3);
-        }
-        lx.globalAlpha=1;
-      },
-      hits:'1 HIT', honey:'3 HONEY', note:'RELEASES LARGE SWARM'
-    },
-  ];
-
-  function lHexPath(cx,cy,r) {
-    lx.beginPath();
-    for (let i=0;i<6;i++){
-      const a=(Math.PI/180)*60*i;
-      i===0?lx.moveTo(cx+r*Math.cos(a),cy+r*Math.sin(a))
-           :lx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));
-    }
-    lx.closePath();
-  }
-
-  for (let i=0;i<CELLS.length;i++) {
-    const cell=CELLS[i];
-    const cx=COLS[i%2], cy=ROWS_Y[Math.floor(i/2)];
-
-    // Hex shape
-    lHexPath(cx,cy,HR);
-    lx.fillStyle=cell.col; lx.fill();
-    lx.strokeStyle=cell.outline; lx.lineWidth=cell.lw; lx.stroke();
-    cell.detail(cx,cy);
-
-    // Name
-    lx.font=F5; lx.textAlign='center';
-    lx.fillStyle=cell.col==='#e2d9b2'?'#c0b080':cell.col;
-    lx.fillText(cell.label, cx, cy+HR+12);
-
-    // Stats block to right of hex
-    const tx=cx+HR+6, ty=cy-14;
-    lx.font=F5; lx.textAlign='left';
-    lx.fillStyle='#5a3810'; lx.fillText(cell.hits,  tx, ty+8);
-    lx.fillStyle='#f5c030'; lx.fillText(cell.honey, tx, ty+20);
-    lx.fillStyle='#3a2808'; lx.fillText(cell.note,  cx-HR, cy+HR+23);
-    // note line — tiny, below label
-    lx.font='4px "Press Start 2P",monospace';
-    lx.fillStyle='#3a2808'; lx.textAlign='center';
-    lx.fillText(cell.note, cx, cy+HR+23);
-  }
-
-  // Row dividers
-  for (const ry of [82,168]) {
-    lx.fillStyle='#1e0e00'; lx.fillRect(8, ry, LW-16, 1);
-  }
-  // Col divider
-  lx.fillStyle='#1e0e00'; lx.fillRect(LW/2-1, 4, 1, LH-8);
-
-  // Footer note
-  lx.font=F5; lx.textAlign='center'; lx.fillStyle='#3a2008';
-  lx.fillText('FILL HONEY METER TO EARN A POWER-UP', LW/2, LH-6);
+function hexSVG(col, outlineCol, lw, size, detailSVG) {
+  const r = size / 2 - 1;
+  const pts = [0,1,2,3,4,5].map(i => {
+    const a = i * Math.PI / 3;
+    return `${(r * Math.cos(a)).toFixed(1)},${(r * Math.sin(a)).toFixed(1)}`;
+  }).join(' ');
+  return `<svg width="${size}" height="${size}" viewBox="${-size/2} ${-size/2} ${size} ${size}">
+    <polygon points="${pts}" fill="${col}" stroke="${outlineCol}" stroke-width="${lw}"/>
+    ${detailSVG || ''}
+  </svg>`;
 }
 
+function buildGuide() {
+  const TAG_C = { PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040', SWARM:'#80e060', HONEY:'#f0a020' };
+
+  // ── HEX CELLS tab ──────────────────────────────────
+  const CELLS = [
+    { name:'NORMAL',  col:'#f5c030', out:'#7a3d00', lw:1.5, hits:'1 HIT', honey:'1 HONEY', note:'STANDARD CELL',
+      svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,230,140,0.45)" stroke-width="1"/>` },
+    { name:'THICK',   col:'#7a4800', out:'#7a3d00', lw:1.5, hits:'2 HITS', honey:'2 HONEY', note:'CRACKS AT 1 HP',
+      svg:`<line x1="0" y1="0" x2="-5" y2="-6" stroke="#2a1000" stroke-width="1.2"/><line x1="0" y1="0" x2="5" y2="-5" stroke="#2a1000" stroke-width="1.2"/>` },
+    { name:'BROOD',   col:'#3a2408', out:'#a86800', lw:1.5, hits:'1 HIT', honey:'1 HONEY', note:'RELEASES BEES',
+      svg:`<circle cx="-4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="0" cy="4" r="2" fill="#f5a010" opacity="0.8"/>` },
+    { name:'HONEY',   col:'#ffe050', out:'#e8b000', lw:1.5, hits:'1 HIT', honey:'3 HONEY', note:'EXTRA HONEY',
+      svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,240,80,0.6)" stroke-width="1.5"/><circle cx="-3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="0" cy="-4" r="2" fill="#ff9800" opacity="0.9"/>` },
+    { name:'WAX',     col:'#e2d9b2', out:'#b0a070', lw:1.5, hits:'1 HIT', honey:'1 HONEY', note:'WEAKENS NEIGHBORS',
+      svg:`<line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(180,170,120,0.5)" stroke-width="1"/><line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(180,170,120,0.5)" stroke-width="1"/>` },
+    { name:'PORTAL',  col:'#9020d0', out:'#cc60ff', lw:2.0, hits:'IMMUNE', honey:'0 HONEY', note:'TELEPORTS THE BEE',
+      svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(220,140,255,0.8)" stroke-width="1.5"/><text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="6" fill="#f0c0ff">1</text>` },
+  ];
+
+  const cellsEl = document.getElementById('tab-cells');
+  cellsEl.innerHTML = CELLS.map(c => {
+    const nameCol = c.col === '#e2d9b2' ? '#c0b080' : c.col;
+    return `<div class="gc-row">
+      <div class="gc-hex">${hexSVG(c.col, c.out, c.lw, 36, c.svg)}</div>
+      <div class="gc-info">
+        <div class="gc-name" style="color:${nameCol}">${c.name}</div>
+        <div class="gc-note">${c.note}</div>
+        <div class="gc-stats">
+          <span class="gc-stat" style="color:#5a3810">${c.hits}</span>
+          <span class="gc-stat" style="color:#f5c030">${c.honey}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `<div style="font-size:0.28rem;color:#a07840;text-align:center;padding:8px 0">FILL HONEY JAR TO EARN AN UPGRADE</div>`;
+
+  // ── POWER-UPS tab ───────────────────────────────────
+  const powersEl = document.getElementById('tab-powers');
+  powersEl.innerHTML = ALL_POWERUPS.map(p => {
+    const col = TAG_C[p.tag] || '#f0c040';
+    const icon = hexSVG('#120900', col, 1.5, 28,
+      `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="${col}">${p.tag[0]}</text>`);
+    return `<div class="gp-row">
+      <div class="gp-icon">${icon}</div>
+      <div class="gp-info">
+        <div class="gp-name" style="color:${col}">${p.name}</div>
+        <div class="gp-desc">${p.desc}</div>
+        <div class="gp-tag" style="color:${col}99">${p.tag} · MAX ${p.max}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── UPGRADES tab ────────────────────────────────────
+  // Shows current run's active upgrades; if none yet, placeholder grid
+  const upgradesEl = document.getElementById('tab-upgrades');
+  function refreshUpgradesTab() {
+    if (upgradeSlots.length === 0) {
+      upgradesEl.innerHTML = `<div style="font-size:0.32rem;color:#a07840;text-align:center;padding:20px 0">NO UPGRADES YET<br><br><span style="font-size:0.26rem;color:#7a5828">EARN HONEY TO UNLOCK</span></div>`;
+      return;
+    }
+    upgradesEl.innerHTML = upgradeSlots.map(slot => {
+      const pu = ALL_POWERUPS.find(p => p.id === slot.id);
+      const col = TAG_C[pu.tag] || '#f0c040';
+      const icon = hexSVG('#120900', col, 1.5, 28,
+        `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="${col}">${pu.tag[0]}</text>`);
+      const badge = slot.stacks > 1 ? `<span style="color:${col}"> ×${slot.stacks}</span>` : '';
+      return `<div class="gu-row">
+        <div class="gu-icon">${icon}</div>
+        <div class="gu-info">
+          <div class="gu-name" style="color:${col}">${pu.name}${badge}</div>
+          <div class="gu-desc">${pu.desc}</div>
+        </div>
+      </div>`;
+    }).join('') + `<div style="font-size:0.27rem;color:#2e1800;text-align:center;padding:8px 0">UPGRADES CARRY FORWARD</div>`;
+  }
+  refreshUpgradesTab();
+  // Re-render upgrades tab each time pause opens
+  pausePanel._refreshUpgrades = refreshUpgradesTab;
+}
+
+buildGuide();
+
 function showPause() {
-  drawLegend();
+  if (pausePanel._refreshUpgrades) pausePanel._refreshUpgrades();
+  document.getElementById('guideBody').scrollTop = 0;
   pausePanel.classList.add('show');
 }
 function hidePause() { pausePanel.classList.remove('show'); }
@@ -1727,10 +1948,17 @@ function hidePause() { pausePanel.classList.remove('show'); }
   rb.textContent = 'RESUME';
   rb.onclick = () => {
     hidePause();
-    // If we paused mid-game, resume the loop
-    if (!gameOver && !pickerPending) { paused = false; loop(); }
+    if (!gameOver && !pickerPending) {
+      startCountdown(() => loop());
+    }
   };
   pausePanel.appendChild(rb);
+
+  const db = document.createElement('button');
+  db.className = 'ob';
+  db.textContent = 'DEV';
+  db.onclick = () => { hidePause(); showDevMenu(!gameOver && bees.length > 0); };
+  pausePanel.appendChild(db);
 })();
 const ov      = document.getElementById('ov');
 const ovTitle = document.getElementById('ovTitle');
@@ -1753,6 +1981,7 @@ function showMenu() {
   mkBtn('PLAY',     true,  ()=>{hideOv();resetRun();startLevel(1);});
   mkBtn('GUIDE',    false, ()=>{showPause();});
   mkBtn('SETTINGS', false, ()=>{});
+  mkBtn('DEV',      false, ()=>{showDevMenu();});
   showOv();
 }
 
@@ -1777,7 +2006,9 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (pausePanel.classList.contains('show')) {
       hidePause();
-      if (!gameOver && !pickerPending) { paused = false; loop(); }
+      if (!gameOver && !pickerPending) {
+        startCountdown(() => loop());
+      }
     } else if (!gameOver && !pickerPending && animId) {
       paused = true;
       showPause();
@@ -1791,6 +2022,7 @@ window.addEventListener('keydown', e => {
 const devPanel = document.getElementById('devmenu');
 const devBody  = document.getElementById('devBody');
 let devLvTarget = 1;
+let devMenuFromGame = false; // true when opened mid-game from pause screen
 
 function buildDevMenu() {
   devBody.innerHTML = '';
@@ -1838,17 +2070,45 @@ function buildDevMenu() {
   closeBtn.className = 'ob'; closeBtn.textContent = 'CLOSE';
   closeBtn.onclick = () => {
     hideDevMenu();
-    if (!gameOver && !pickerPending) { paused = false; loop(); }
+    if (devMenuFromGame && !gameOver && !pickerPending) {
+      startCountdown(() => loop());
+    }
+    // if opened from main menu, do nothing — showMenu() overlay is still visible
   };
   devBody.appendChild(closeBtn);
 }
 
-function showDevMenu() {
+function showDevMenu(fromGame = false) {
+  devMenuFromGame = fromGame;
   paused = true;
   buildDevMenu();
   devPanel.classList.add('show');
 }
 function hideDevMenu() { devPanel.classList.remove('show'); }
+
+function startCountdown(cb) {
+  paused = true;
+  let count = 3;
+  function tick() {
+    render();
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = '64px "Press Start 2P",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#f5c030';
+    ctx.fillText(String(count), W/2, H/2 + 20);
+    ctx.textAlign = 'left';
+    count--;
+    if (count >= 0) {
+      setTimeout(tick, 800);
+    } else {
+      paused = false;
+      lastTime = 0;
+      cb();
+    }
+  }
+  tick();
+}
 
 // ═══════════════════════════════════════════════════════
 // BOOT
