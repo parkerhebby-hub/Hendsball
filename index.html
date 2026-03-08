@@ -3,6 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0e0500">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HENDSBALL">
+<link rel="manifest" href="data:application/json,{
+  &quot;name&quot;:&quot;HENDSBALL&quot;,
+  &quot;short_name&quot;:&quot;HENDSBALL&quot;,
+  &quot;description&quot;:&quot;Bounce the bee. Clear the hive.&quot;,
+  &quot;start_url&quot;:&quot;.&quot;,
+  &quot;display&quot;:&quot;fullscreen&quot;,
+  &quot;orientation&quot;:&quot;portrait&quot;,
+  &quot;background_color&quot;:&quot;#0e0500&quot;,
+  &quot;theme_color&quot;:&quot;#0e0500&quot;,
+  &quot;icons&quot;:[{&quot;src&quot;:&quot;data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%230e0500'/><text x='256' y='320' font-size='300' text-anchor='middle' fill='%23f5c030'>🐝</text></svg>&quot;,&quot;sizes&quot;:&quot;512x512&quot;,&quot;type&quot;:&quot;image/svg+xml&quot;}]
+}">
 <title>HENDSBALL</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -154,7 +170,7 @@
   <div id="summary" class="panel">
     <div id="sumTitle">HIVE CLEARED</div>
     <div id="sumLv"></div>
-    <canvas id="sumCanvas" width="290" height="180"></canvas>
+    <canvas id="sumCanvas" width="290" height="210"></canvas>
   </div>
 
   <div id="pu" class="panel">
@@ -1341,36 +1357,36 @@ const TAG_COL_MAP = {
 
 function drawSummary() {
   sx_.clearRect(0,0,SW,SH);
-  sx_.fillStyle='#080300'; sx_.fillRect(0,0,SW,SH);
+  sx_.fillStyle='#0c0500'; sx_.fillRect(0,0,SW,SH);
 
+  const F7='7px "Press Start 2P",monospace';
   const F6='6px "Press Start 2P",monospace';
   const F5='5px "Press Start 2P",monospace';
-  const F4='4px "Press Start 2P",monospace';
 
-  let y=14;
+  let y=18;
 
   // ── Honey earned row ──────────────────────────────
-  sx_.font=F5; sx_.textAlign='left'; sx_.fillStyle='#5a3810';
+  sx_.font=F6; sx_.textAlign='left'; sx_.fillStyle='#a07030';
   sx_.fillText('HONEY EARNED', 10, y);
-  sx_.font=F6; sx_.textAlign='right'; sx_.fillStyle='#f5c030';
+  sx_.font=F7; sx_.textAlign='right'; sx_.fillStyle='#ffe050';
   sx_.fillText(String(levelHoneyEarned), SW-10, y);
-  y+=12;
-  sx_.fillStyle='#1e0e00'; sx_.fillRect(8,y,SW-16,1); y+=10;
+  y+=14;
+  sx_.fillStyle='#2e1800'; sx_.fillRect(8,y,SW-16,1); y+=12;
 
   // ── Upgrades section ──────────────────────────────
-  sx_.font=F5; sx_.textAlign='left'; sx_.fillStyle='#5a3810';
-  sx_.fillText('ACTIVE UPGRADES', 10, y); y+=14;
+  sx_.font=F6; sx_.textAlign='left'; sx_.fillStyle='#a07030';
+  sx_.fillText('ACTIVE UPGRADES', 10, y); y+=16;
 
   if (upgradeSlots.length === 0) {
-    sx_.font=F4; sx_.fillStyle='#2e1800';
-    sx_.fillText('NONE YET', 18, y); y+=12;
+    sx_.font=F5; sx_.fillStyle='#4a2e10';
+    sx_.fillText('NONE YET', 18, y); y+=14;
   } else {
     for (const slot of upgradeSlots) {
       const pu  = ALL_POWERUPS.find(p=>p.id===slot.id);
       const col = TAG_COL_MAP[pu.tag] || '#f0c040';
 
-      // Small hex icon
-      const hx=20, hy=y+1, hr=7;
+      // Hex icon
+      const hx=20, hy=y+2, hr=8;
       sx_.beginPath();
       for (let i=0;i<6;i++){
         const a=(Math.PI/180)*60*i;
@@ -1378,31 +1394,31 @@ function drawSummary() {
              :sx_.lineTo(hx+hr*Math.cos(a),hy+hr*Math.sin(a));
       }
       sx_.closePath();
-      sx_.fillStyle='#120900'; sx_.fill();
+      sx_.fillStyle='#180c00'; sx_.fill();
       sx_.strokeStyle=col; sx_.lineWidth=1.5; sx_.stroke();
 
       // Upgrade name
       sx_.font=F6; sx_.textAlign='left'; sx_.fillStyle=col;
-      sx_.fillText(pu.name, 34, y+5);
+      sx_.fillText(pu.name, 36, y+4);
 
       // Stack badge
       if (slot.stacks>1){
-        sx_.font=F5; sx_.textAlign='right'; sx_.fillStyle=col;
-        sx_.fillText('X'+slot.stacks, SW-10, y+5);
+        sx_.font=F6; sx_.textAlign='right'; sx_.fillStyle=col;
+        sx_.fillText('X'+slot.stacks, SW-10, y+4);
       }
 
       // Tag label
-      sx_.font=F4; sx_.textAlign='left';
-      sx_.fillStyle='#3a2010';
-      sx_.fillText(pu.tag, 34, y+14);
+      sx_.font=F5; sx_.textAlign='left';
+      sx_.fillStyle=col+'99';
+      sx_.fillText(pu.tag, 36, y+16);
 
-      y+=22;
-      sx_.fillStyle='#130800'; sx_.fillRect(8,y-2,SW-16,1);
+      y+=26;
+      sx_.fillStyle='#1e1000'; sx_.fillRect(8,y-3,SW-16,1);
     }
   }
 
   // ── Bottom note ───────────────────────────────────
-  sx_.font=F4; sx_.textAlign='center'; sx_.fillStyle='#2e1800';
+  sx_.font=F5; sx_.textAlign='center'; sx_.fillStyle='#4a3010';
   sx_.fillText('UPGRADES CARRY FORWARD', SW/2, SH-8);
 }
 
@@ -1645,6 +1661,20 @@ window.addEventListener('keydown', e => {
 // ═══════════════════════════════════════════════════════
 ctx.fillStyle=PAL.bg; ctx.fillRect(0,0,W,H);
 showMenu();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  const sw = `
+    self.addEventListener('install', e => e.waitUntil(
+      caches.open('hendsball-v1').then(c => c.addAll([location.href]))
+    ));
+    self.addEventListener('fetch', e => e.respondWith(
+      caches.match(e.request).then(r => r || fetch(e.request))
+    ));
+  `;
+  const blob = new Blob([sw], {type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob));
+}
 </script>
 </body>
 </html>
