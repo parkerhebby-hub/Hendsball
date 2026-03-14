@@ -7,9 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="HENDSBALL">
+<meta name="apple-mobile-web-app-title" content="HENDSBEE">
 <link rel="manifest" href="manifest.json">
-<title>HENDSBALL</title>
+<title>HENDSBEE</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -20,7 +20,7 @@
   }
 
   body {
-    background:#050200;
+    background:#0e0500;
     width:100%; height:100%;
     display:flex; align-items:center; justify-content:center;
     font-family:'Press Start 2P',monospace;
@@ -268,7 +268,7 @@
   <canvas id="c" width="360" height="680"></canvas>
 
   <div id="ov" class="panel">
-    <div id="ovTitle">HENDSBALL</div>
+    <div id="ovTitle">HENDSBEE</div>
     <div id="ovSub">BOUNCE THE BEE.<br>CLEAR THE HIVE.</div>
   </div>
 
@@ -313,23 +313,25 @@
 // ═══════════════════════════════════════════════════════
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
-const W = canvas.width;   // 360
-const H = canvas.height;  // 680
+const W = 360;
+const aspect = Math.max(1.5, Math.min(2.2, window.innerHeight / window.innerWidth));
+const H = Math.round(W * aspect);
+canvas.width  = W;
+canvas.height = H;
 
 // ── Full-screen scaling ──────────────────────────────
-// Keeps canvas at 360×680 internally; scales the wrapper
-// to fill the screen while preserving aspect ratio.
+// Dynamically sizes canvas to fill the screen aspect ratio,
+// then scales the wrapper to fit the viewport.
 const gw = document.getElementById('gw');
+gw.style.height = H + 'px';
 
 function scaleToFit() {
   const vw = window.innerWidth;
   const vh = window.innerHeight;
-  const scale = Math.min(vw / 360, vh / 680);
+  const scale = Math.min(vw / W, vh / H);
   gw.style.transform = `scale(${scale})`;
-  // Centre in viewport using margin offset so the border shadow isn't clipped
-  gw.style.marginLeft = `${(vw - 360) / 2}px`;
-  gw.style.marginTop  = `${(vh - 680) / 2}px`;
-  // Make body non-flex so our manual margin controls position
+  gw.style.marginLeft = `${(vw - W * scale) / 2}px`;
+  gw.style.marginTop  = `${(vh - H * scale) / 2}px`;
   document.body.style.display = 'block';
 }
 
@@ -337,7 +339,7 @@ scaleToFit();
 window.addEventListener('resize', scaleToFit);
 screen.orientation && screen.orientation.addEventListener('change', scaleToFit);
 
-const PLAY_BOTTOM = 0.795;               // fraction where play zone ends
+const PLAY_BOTTOM = 0.825;               // fraction where play zone ends
 const HUD_Y       = Math.round(H * PLAY_BOTTOM) + 2;   // ≈543
 const PADDLE_Y    = Math.round(H * PLAY_BOTTOM) - 14;  // ≈527
 
@@ -356,6 +358,54 @@ const PAL = {
   bg:       '#0e0500',
   honey:    '#f5c030',
 };
+
+// ═══════════════════════════════════════════════════════
+// CONFIG — all tunable gameplay values in one place
+// ═══════════════════════════════════════════════════════
+const CONFIG = {
+  // Physics
+  BASE_SPD:             3.6,
+  MAX_SPD:              9.0,
+  MIN_AXIS:             1.0,
+  BLEND_F:              0.15,   // 15% raw-centre blend in hex reflection
+  WALL_FRICTION:        0.82,
+  SPEED_GAIN_PER_HEX:   0.12,   // speed added per 4 hexes destroyed
+
+  // Bee
+  BEE_R:                5,      // collision radius (px)
+  TRAIL_LEN:            55,     // trail history length
+
+  // Hend (Paddle)
+  HEND_SPEED:           520,    // keyboard speed (px/sec)
+  HEND_COLL_H:          6,      // collision zone height (px)
+  HEND_TOUCH_FOLLOW:    0.38,   // touch smooth-follow factor
+  HEND_VEL_BOOST:       0.28,   // paddle-velocity transfer to bee
+  HEND_SPD_GAIN:        0.005,  // speed boost per unit of paddle velocity
+  HEND_ANGLE_SPREAD:    62,     // base deflection half-angle (degrees)
+
+  // Hex
+  HEX_R:                18,
+  HEX_COLL_RATIO:       0.90,   // effective collision = HEX_R * ratio
+  PORTAL_COOLDOWN:      22,     // frames before a bee can re-use a portal
+
+  // Honey Meter
+  METER_BASE:           30,     // base cap at LV1
+  METER_LEVEL_SCALE:    1.075,  // exponential per-level growth
+  METER_UPGRADE_SCALE:  1.20,   // +20% cap per upgrade picked
+  METER_FAST_RESET_RATE:0.08,   // fast-reset discount as fraction of base
+  METER_MIN_CAP:        20,     // absolute minimum meter cap
+
+  // Cell interactions
+  WAX_DAMAGE:           1,      // splash damage dealt to neighbours on wax death
+
+  // Brood spawn
+  BROOD_MIN_BEES:       2,      // minimum bees released from brood cell
+  BROOD_RAND_EXTRA:     2,      // random(0..RAND_EXTRA-1) added on top
+};
+
+// ── Derived constants (computed once from CONFIG) ─────
+const BALL_R     = CONFIG.BEE_R;                           // alias used in physics/rendering
+const HEX_COLL_R = CONFIG.HEX_R * CONFIG.HEX_COLL_RATIO;  // effective hex collision radius
 
 // ═══════════════════════════════════════════════════════
 // AUDIO — procedural SFX via Web Audio API
@@ -402,15 +452,14 @@ const sfx = {
 // ═══════════════════════════════════════════════════════
 // PHYSICS
 // ═══════════════════════════════════════════════════════
-const BASE_SPD = 3.6, MAX_SPD = 9.0, MIN_AXIS = 1.0;
-function getMaxSpd() { return Math.max(4.5, MAX_SPD - powers.speedDown * 0.5); }
+function getMaxSpd() { return Math.max(4.5, CONFIG.MAX_SPD - powers.speedDown * 0.5); }
 
 function normSpd(b, tgt) {
-  if (Math.abs(b.vx) < MIN_AXIS) b.vx = MIN_AXIS * Math.sign(b.vx || 1);
-  if (Math.abs(b.vy) < MIN_AXIS) b.vy = MIN_AXIS * Math.sign(b.vy || -1);
+  if (Math.abs(b.vx) < CONFIG.MIN_AXIS) b.vx = CONFIG.MIN_AXIS * Math.sign(b.vx || 1);
+  if (Math.abs(b.vy) < CONFIG.MIN_AXIS) b.vy = CONFIG.MIN_AXIS * Math.sign(b.vy || -1);
   const s = Math.hypot(b.vx, b.vy);
   if (!s) { b.vx = 0; b.vy = -tgt; return; }
-  const t = Math.max(BASE_SPD, Math.min(tgt, getMaxSpd()));
+  const t = Math.max(CONFIG.BASE_SPD, Math.min(tgt, getMaxSpd()));
   b.vx = b.vx / s * t;
   b.vy = b.vy / s * t;
 }
@@ -576,21 +625,22 @@ function hidePicker() { puPanel.classList.remove('show'); }
 // HONEY (fills meter; triggers power-up picker when full)
 // ═══════════════════════════════════════════════════════
 let totalHoney = 0;
-const METER_BASE = 30;   // base cap at LV1
 let droplets = [];
 
 function getMeterCap() {
   // Level scaling: LV1≈30, LV10≈61, LV20≈122
-  const levelScale = Math.pow(1.075, currentLevel - 1);
+  const levelScale = Math.pow(CONFIG.METER_LEVEL_SCALE, currentLevel - 1);
   // Upgrade scaling: each upgrade picked adds ~20% more on top
-  const upgradeScale = Math.pow(1.20, upgradeCount);
-  const base = Math.round(METER_BASE * levelScale * upgradeScale);
-  const discount = powers.fastReset * Math.max(2, Math.round(base * 0.08));
-  return Math.max(20, base - discount);
+  const upgradeScale = Math.pow(CONFIG.METER_UPGRADE_SCALE, upgradeCount);
+  const base = Math.round(CONFIG.METER_BASE * levelScale * upgradeScale);
+  const discount = powers.fastReset * Math.max(2, Math.round(base * CONFIG.METER_FAST_RESET_RATE));
+  return Math.max(CONFIG.METER_MIN_CAP, base - discount);
 }
 
-function spawnDroplet(fx, fy) {
-  droplets.push({ x:fx, y:fy, tx:JAR_CX, ty:JAR_BY + JAR_BH * 0.5, prog:0,
+function spawnDroplet(wx, wy) {
+  // Convert world Y → screen Y once at spawn; x is unchanged (no horizontal scroll)
+  const sy = wy - scrollY;
+  droplets.push({ x:wx, y:sy, tx:JAR_CX, ty:JAR_BY + JAR_BH * 0.5, prog:0,
                   spd:0.022 + Math.random()*0.018 });
 }
 
@@ -682,7 +732,7 @@ canvas.addEventListener('touchend', e => {
 //   Col  0–4  : thumb (extends left from palm, mid-height)
 //   Col  5–21 : 4 fingers + palm
 // ═══════════════════════════════════════════════════════
-const PH_COLL = 6, PSPD = 520; // px per second
+// PH_COLL and PSPD moved to CONFIG.HEND_COLL_H / CONFIG.HEND_SPEED
 let paddle;
 function mkPaddle() { return { x: W/2 - getPW()/2, squish:0, prevX: W/2 - getPW()/2 }; }
 
@@ -761,7 +811,7 @@ function drawHand(ox, oy, side, targetW) {
 function drawPaddle(p) {
   const pw = getPW();
   const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
-  const oy = PADDLE_Y - HAND_SPRITE_H + PH_COLL + sq;
+  const oy = PADDLE_Y - HAND_SPRITE_H + CONFIG.HEND_COLL_H + sq;
 
   if (powers.twoHends >= 1) {
     const hw = pw / 2;
@@ -777,7 +827,7 @@ function drawPaddle(p) {
 // BEE SPRITE — 10×9 grid, 1px per cell drawn at 2px scale
 // No face. Crisp amber body, black stripes, blue wings.
 // ═══════════════════════════════════════════════════════
-const BALL_R = 5;
+// BALL_R defined as alias of CONFIG.BEE_R in the CONFIG section above
 
 const _=null, B='#f0a010', S='#160800', WC='#88c0d8', K='#481e00';
 const BEE_G = [
@@ -796,12 +846,12 @@ const BP = 2;  // 2 canvas px per sprite cell
 const BOX = BC*BP, BOY = BR*BP;                  // sprite bounding box: 20×18
 
 // Bee trail — stores recent positions per bee
-const TRAIL_LEN = 55;   // longer history = longer visible tail
+// TRAIL_LEN moved to CONFIG.TRAIL_LEN
 
 function pushTrail(b) {
   if (!b.trail) b.trail = [];
   b.trail.push({x:b.x, y:b.y});
-  if (b.trail.length > TRAIL_LEN) b.trail.shift();
+  if (b.trail.length > CONFIG.TRAIL_LEN) b.trail.shift();
 }
 
 // Flight-path trail: square retro pixels, clearly visible, fading toward oldest.
@@ -839,10 +889,23 @@ function drawBee(b) {
 }
 
 // ═══════════════════════════════════════════════════════
+// CELL TYPES — data-driven registry
+// Add new cell types here without touching core systems.
+// ═══════════════════════════════════════════════════════
+const CELL_TYPES = {
+  NORMAL: { hp: 1, honey: 1, color: 'hexNorm',   label: 'Normal'  },
+  THICK:  { hp: 2, honey: 2, color: 'hexThick',  label: 'Thick'   },
+  HONEY:  { hp: 1, honey: 3, color: 'hexHoney',  label: 'Honey'   },
+  WAX:    { hp: 1, honey: 0, color: 'hexWax',    label: 'Wax',    splash: true },
+  BROOD:  { hp: 1, honey: 0, color: 'hexBrood',  label: 'Brood',  spawns: true },
+  PORTAL: { hp: Infinity, honey: 0, color: 'hexPortal', label: 'Portal', indestructible: true },
+};
+
+// ═══════════════════════════════════════════════════════
 // HEXAGONS — smaller radius for less crowding
 // ═══════════════════════════════════════════════════════
-const HEX_R      = 18;                  // down from 20
-const HEX_COLL_R = HEX_R * 0.90;
+const HEX_R      = CONFIG.HEX_R;        // alias — value lives in CONFIG
+// HEX_COLL_R defined as derived constant in CONFIG section above
 let tick = 0;
 
 function hexPts(cx, cy, r) {
@@ -878,35 +941,26 @@ function drawHex(h) {
 
   // Fill color
   if (h.flash > 0) {
-    ctx.fillStyle = h.portal ? '#e0a0ff' : h.honey ? '#ffffff' : '#fff';
-  } else if (h.portal) {
-    ctx.fillStyle = PAL.hexPortal[h.ci % PAL.hexPortal.length];
-  } else if (h.honey) {
-    ctx.fillStyle = PAL.hexHoney[h.ci % PAL.hexHoney.length];
-  } else if (h.wax) {
-    ctx.fillStyle = PAL.hexWax[h.ci % PAL.hexWax.length];
-  } else if (h.brood) {
-    ctx.fillStyle = PAL.hexBrood[h.ci % PAL.hexBrood.length];
-  } else if (h.thick) {
-    ctx.fillStyle = PAL.hexThick[h.ci % PAL.hexThick.length];
+    ctx.fillStyle = h.type === 'PORTAL' ? '#e0a0ff' : h.type === 'HONEY' ? '#ffffff' : '#fff';
   } else {
-    ctx.fillStyle = PAL.hexNorm[h.ci % PAL.hexNorm.length];
+    const cols = PAL[CELL_TYPES[h.type].color];
+    ctx.fillStyle = cols[h.ci % cols.length];
   }
   ctx.fill();
 
   // Outline color
-  ctx.strokeStyle = h.portal  ? '#cc60ff'
-                  : h.honey  ? '#e8b000'
-                  : h.wax    ? '#b0a070'
-                  : h.brood  ? '#a86800'
+  ctx.strokeStyle = h.type === 'PORTAL' ? '#cc60ff'
+                  : h.type === 'HONEY'  ? '#e8b000'
+                  : h.type === 'WAX'    ? '#b0a070'
+                  : h.type === 'BROOD'  ? '#a86800'
                   : PAL.hexLine;
-  ctx.lineWidth = h.portal ? 2.5 : 1.5;
+  ctx.lineWidth = h.type === 'PORTAL' ? 2.5 : 1.5;
   ctx.stroke();
   if (h.flash > 0) return;
 
   // Inner accent / detail
   hexPath(hexPts(h.x, h.y, HEX_R * 0.52));
-  if (h.portal) {
+  if (h.type === 'PORTAL') {
     // pulsing ring — alternates between two phases for portal effect
     const phase = (Math.floor(tick / 8) % 2);
     const p = phase ? 0.80 : 0.25;
@@ -923,7 +977,7 @@ function drawHex(h) {
     ctx.fillStyle = phase ? 'rgba(200,100,255,0.22)' : 'rgba(140,50,220,0.12)';
     hexPath(hexPts(h.x, h.y, HEX_R * 0.38));
     ctx.fill();
-  } else if (h.honey) {
+  } else if (h.type === 'HONEY') {
     // bright inner ring + drip dots
     ctx.strokeStyle = 'rgba(255,240,80,0.55)';
     ctx.lineWidth = 1.5; ctx.stroke();
@@ -933,7 +987,7 @@ function drawHex(h) {
       ctx.beginPath(); ctx.arc(h.x + dx, h.y + dy, 2.5, 0, Math.PI * 2); ctx.fill();
     }
     ctx.globalAlpha = 1;
-  } else if (h.wax) {
+  } else if (h.type === 'WAX') {
     // faint inner honeycomb pattern — just a dimmer ring
     ctx.strokeStyle = 'rgba(200,190,140,0.25)';
     ctx.lineWidth = 1; ctx.stroke();
@@ -943,18 +997,18 @@ function drawHex(h) {
     ctx.moveTo(h.x - HEX_R * 0.5, h.y); ctx.lineTo(h.x + HEX_R * 0.5, h.y);
     ctx.moveTo(h.x, h.y - HEX_R * 0.5); ctx.lineTo(h.x, h.y + HEX_R * 0.5);
     ctx.stroke();
-  } else if (h.brood) {
+  } else if (h.type === 'BROOD') {
     const p = (Math.floor(tick / 16) % 2) ? 0.16 : 0.46;
     ctx.strokeStyle = `rgba(240,160,40,${p})`;
     ctx.lineWidth = 1; ctx.stroke();
   } else {
-    ctx.strokeStyle = h.thick ? 'rgba(255,150,50,0.13)' : 'rgba(255,230,140,0.18)';
+    ctx.strokeStyle = h.type === 'THICK' ? 'rgba(255,150,50,0.13)' : 'rgba(255,230,140,0.18)';
     ctx.lineWidth = 1; ctx.stroke();
-    if (h.thick && h.hp === 1) drawCracks(h.x, h.y);
+    if (h.type === 'THICK' && h.hp === 1) drawCracks(h.x, h.y);
   }
 
   // Brood dots
-  if (h.brood) {
+  if (h.type === 'BROOD') {
     ctx.fillStyle = '#f5a010'; ctx.globalAlpha = 0.55;
     for (const [dx, dy] of [[-3, -2], [3, -2], [0, 3]]) {
       ctx.beginPath(); ctx.arc(h.x + dx, h.y + dy, 2, 0, Math.PI * 2); ctx.fill();
@@ -989,7 +1043,7 @@ for (let i=0;i<6;i++) {
   const a = (Math.PI/180)*(30 + 60*i);
   HEX_NORMALS.push([Math.cos(a), Math.sin(a)]);
 }
-const BLEND_F = 0.15;   // 15% raw-centre blend
+// BLEND_F moved to CONFIG.BLEND_F
 
 function checkHex(b) {
   for (const h of hexes) {
@@ -1009,13 +1063,13 @@ function checkHex(b) {
       }
 
       // blend: face normal + small fraction of raw centre direction
-      let nx = fnx*(1-BLEND_F) + cdx*BLEND_F;
-      let ny = fny*(1-BLEND_F) + cdy*BLEND_F;
+      let nx = fnx*(1-CONFIG.BLEND_F) + cdx*CONFIG.BLEND_F;
+      let ny = fny*(1-CONFIG.BLEND_F) + cdy*CONFIG.BLEND_F;
       const nlen = Math.hypot(nx,ny)||1;
       nx /= nlen; ny /= nlen;
 
 // PORTAL CELL: indestructible teleporter
-      if (h.portal) {
+      if (h.type === 'PORTAL') {
         if (b.tpCooldown > 0) {
           // cooldown active — treat as solid wall, reflect normally
           const dot = b.vx*nx + b.vy*ny;
@@ -1024,10 +1078,10 @@ function checkHex(b) {
           b.x += nx*ov2; b.y += ny*ov2;
           return {dead:false, h};
         }
-        const dest = hexes.find(q => q.portal && q !== h && q.portalChannel === h.portalChannel);
+        const dest = hexes.find(q => q.type === 'PORTAL' && q !== h && q.portalChannel === h.portalChannel);
         if (dest) {
           b.x = dest.x; b.y = dest.y;
-          b.tpCooldown = 22;
+          b.tpCooldown = CONFIG.PORTAL_COOLDOWN;
           h.flash = 14; dest.flash = 14;
           spawnParts(h.x,    h.y,    18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
           spawnParts(dest.x, dest.y, 18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
@@ -1053,18 +1107,18 @@ function checkHex(b) {
       b.x += nx*ov; b.y += ny*ov;
 
       // damage
-      const dmg = (powers.thickSting > 0 && h.thick) ? 1 + powers.thickSting : 1;
+      const dmg = (powers.thickSting > 0 && h.type === 'THICK') ? 1 + powers.thickSting : 1;
       h.hp -= dmg; h.flash = 10;
 
       if (h.hp <= 0) {
         h.dead = true;
 
         // WAX CELL: splash 1 damage to immediate neighbours on death
-        if (h.wax) {
+        if (h.type === 'WAX') {
           for (const n of hexes) {
-            if (n.dead || n === h || n.portal) continue; // portals are indestructible
+            if (n.dead || n === h || n.type === 'PORTAL') continue; // portals are indestructible
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 2.2) {
-              n.hp -= 1;
+              n.hp -= CONFIG.WAX_DAMAGE;
               n.flash = 8;
               if (n.hp <= 0) n.dead = true;
             }
@@ -1310,7 +1364,7 @@ function drawBG() {
 // Jar constants
 const JAR_CX  = W - 52;        // jar centre x
 const JAR_BW  = 54;            // max belly width
-const JAR_BH  = 90;            // body height
+const JAR_BH  = 75;            // body height
 const JAR_NW  = 24;            // neck width
 const JAR_NH  = 8;             // neck height
 const JAR_RW  = 32;            // rim width
@@ -1530,131 +1584,199 @@ canvas.addEventListener('click', e => {
 });
 
 // ═══════════════════════════════════════════════════════
-// LEVEL GENERATION
+// LEVEL GENERATION — Phase 3 (chunk-based procedural)
 // ═══════════════════════════════════════════════════════
-const EARLY_LEVELS = [
-  // LV1 — simple, no new types
-  [{cx:0.27,cy:0.13,rings:1,thick:0.14,brood:0.00,honey:0.00,wax:0.00,queen:0.00},
-   {cx:0.73,cy:0.14,rings:1,thick:0.14,brood:0.00,honey:0.00,wax:0.00,queen:0.00},
-   {cx:0.50,cy:0.28,rings:1,thick:0.16,brood:0.04,honey:0.00,wax:0.00,queen:0.00}],
-  // LV2 — honey cells introduced
-  [{cx:0.22,cy:0.12,rings:1,thick:0.18,brood:0.06,honey:0.10,wax:0.00,queen:0.00},
-   {cx:0.78,cy:0.13,rings:1,thick:0.18,brood:0.06,honey:0.10,wax:0.00,queen:0.00},
-   {cx:0.50,cy:0.25,rings:2,thick:0.18,brood:0.07,honey:0.12,wax:0.00,queen:0.00}],
-  // LV3 — wax cells appear
-  [{cx:0.18,cy:0.11,rings:2,thick:0.22,brood:0.08,honey:0.10,wax:0.08,queen:0.00},
-   {cx:0.82,cy:0.12,rings:2,thick:0.22,brood:0.08,honey:0.10,wax:0.08,queen:0.00},
-   {cx:0.38,cy:0.29,rings:1,thick:0.24,brood:0.09,honey:0.12,wax:0.10,queen:0.00},
-   {cx:0.62,cy:0.29,rings:1,thick:0.24,brood:0.09,honey:0.12,wax:0.10,queen:0.00}],
-  // LV4 — queen appears rarely
-  [{cx:0.18,cy:0.10,rings:2,thick:0.25,brood:0.10,honey:0.12,wax:0.10,queen:0.03},
-   {cx:0.82,cy:0.11,rings:2,thick:0.25,brood:0.10,honey:0.12,wax:0.10,queen:0.03},
-   {cx:0.50,cy:0.20,rings:2,thick:0.27,brood:0.10,honey:0.14,wax:0.12,queen:0.03},
-   {cx:0.30,cy:0.40,rings:1,thick:0.25,brood:0.10,honey:0.10,wax:0.08,queen:0.00},
-   {cx:0.70,cy:0.40,rings:1,thick:0.25,brood:0.10,honey:0.10,wax:0.08,queen:0.00}],
-  // LV5 — more of everything
-  [{cx:0.16,cy:0.10,rings:2,thick:0.27,brood:0.11,honey:0.14,wax:0.12,queen:0.04},
-   {cx:0.84,cy:0.10,rings:2,thick:0.27,brood:0.11,honey:0.14,wax:0.12,queen:0.04},
-   {cx:0.50,cy:0.19,rings:2,thick:0.29,brood:0.12,honey:0.16,wax:0.14,queen:0.05},
-   {cx:0.28,cy:0.38,rings:2,thick:0.27,brood:0.11,honey:0.12,wax:0.10,queen:0.03},
-   {cx:0.72,cy:0.38,rings:2,thick:0.27,brood:0.11,honey:0.12,wax:0.10,queen:0.03}],
-];
 
-function procLevel(lvl) {
-  const t      = lvl - EARLY_LEVELS.length;
-  const nC     = Math.min(11, 5 + Math.floor(t*0.6));
-  const maxR   = Math.min(3,  2 + Math.floor(t/4));
-  const thickB = Math.min(0.55, 0.27+t*0.025);
-  const broodB = Math.min(0.20, 0.11+t*0.008);
-  const honeyB = Math.min(0.25, 0.14+t*0.010);
-  const waxB   = Math.min(0.22, 0.12+t*0.010);
-  const queenB = Math.min(0.10, 0.04+t*0.006);
-  const cols   = Math.ceil(Math.sqrt(nC*1.6));
-  const rows   = Math.ceil(nC/cols);
-  const out=[]; let placed=0;
-  for (let row=0;row<rows&&placed<nC;row++) {
-    for (let col=0;col<cols&&placed<nC;col++) {
-      const gx=0.10+(col+0.5)/cols*0.80;
-      const gy=0.08+(row+0.5)/rows*0.60;
-      const seed=lvl*137+placed*31;
-      const jx=((seed*1664525+1013904223)%1000)/1000*0.12-0.06;
-      const jy=((seed*22695477+1)%1000)/1000*0.08-0.04;
-      const edgeness=Math.abs(gx-0.5)*2;
-      const rings=Math.max(1,maxR-(edgeness>0.7?1:0));
-      const tcN=((seed*7+3)%100)/100*0.10-0.05;
-      const bcN=((seed*11+7)%100)/100*0.06-0.03;
-      const hcN=((seed*13+5)%100)/100*0.08-0.04;
-      const wcN=((seed*17+9)%100)/100*0.06-0.03;
-      const qcN=((seed*19+11)%100)/100*0.04-0.02;
-      out.push({
-        cx:   Math.max(0.10,Math.min(0.90,gx+jx)),
-        cy:   Math.max(0.07,Math.min(0.66,gy+jy)),
-        rings,
-        thick: Math.max(0.10,Math.min(0.60,thickB+tcN)),
-        brood: Math.max(0.00,Math.min(0.20,broodB+bcN)),
-        honey: Math.max(0.00,Math.min(0.25,honeyB+hcN)),
-        wax:   Math.max(0.00,Math.min(0.22,waxB+wcN)),
-        queen: Math.max(0.00,Math.min(0.10,queenB+qcN)),
-      });
-      placed++;
+// ── Seeded PRNG ────────────────────────────────────────
+function seededRng(seed) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 0x100000000;
+  };
+}
+
+// ── Hive geometry & camera tuning ──────────────────────
+const HIVE_CONFIG = {
+  CHUNK_HEIGHT:    150,  // world px per vertical chunk (~5 hex rows)
+  MAX_CHUNKS:       10,  // hard cap on chunks per level (hits at LV25+)
+  HIVE_BOTTOM_GAP: 240,  // world px above PADDLE_Y where the hive floor sits
+  CAMERA_LEAD:     150,  // world px above topmost bee that camera targets
+  CAMERA_LERP:    0.06,  // smooth-follow factor (0=frozen, 1=instant)
+  CAMERA_MIN:     null,  // computed at level start; ≤0 when hive overflows screen
+  // LV1-3→2 chunks, LV4-6→3, LV7-9→4, LV10-12→5, LV13+→6
+  getChunkCount(lvl) {
+    return Math.min(this.MAX_CHUNKS, 2 + Math.floor((lvl - 1) / 3));
+  },
+};
+
+// ── Weighted spawn tables ───────────────────────────────
+// depth = (lvl-1) + chunkIndex — increases with both level and chunk depth.
+const DEPTH_TABLE = [
+  { fill:0.58, weights:{NORMAL:88,THICK: 8,HONEY:2,WAX:1,BROOD:1} }, // depth 0
+  { fill:0.62, weights:{NORMAL:80,THICK:12,HONEY:4,WAX:2,BROOD:2} }, // depth 1
+  { fill:0.66, weights:{NORMAL:72,THICK:15,HONEY:5,WAX:4,BROOD:3} }, // depth 2
+  { fill:0.70, weights:{NORMAL:64,THICK:18,HONEY:6,WAX:5,BROOD:5} }, // depth 3
+  { fill:0.74, weights:{NORMAL:56,THICK:21,HONEY:7,WAX:7,BROOD:7} }, // depth 4
+  { fill:0.78, weights:{NORMAL:48,THICK:24,HONEY:8,WAX:9,BROOD:8} }, // depth 5
+  { fill:0.82, weights:{NORMAL:40,THICK:26,HONEY:9,WAX:10,BROOD:11} }, // depth 6
+  { fill:0.88, weights:{NORMAL:32,THICK:28,HONEY:10,WAX:12,BROOD:13} }, // depth 7+
+];
+function getDepthEntry(depth) {
+  return DEPTH_TABLE[Math.min(Math.max(0, depth), DEPTH_TABLE.length - 1)];
+}
+
+// ── Hex position enumeration ────────────────────────────
+// Returns all {x,y} world positions covering the band [yTop, yBot].
+// Offset grid (flat-top, even-col stagger) — no overlaps by construction.
+function enumHexPositions(yTop, yBot) {
+  const rowH    = HEX_R * Math.sqrt(3);
+  const colW    = HEX_R * 1.5;
+  const numCols = Math.ceil(W / colW) + 1;
+  const out     = [];
+  for (let col = 0; col < numCols; col++) {
+    const px   = HEX_R + col * colW;
+    const yOff = (col % 2 === 1) ? rowH * 0.5 : 0;
+    const rMin = Math.floor((yTop - yOff) / rowH) - 1;
+    const rMax = Math.ceil ((yBot - yOff) / rowH) + 1;
+    for (let row = rMin; row <= rMax; row++) {
+      const py = yOff + row * rowH;
+      if (py > yTop && py <= yBot) out.push({ x: px, y: py });
     }
   }
   return out;
 }
 
-function buildGrid(lvl) {
-  const defs = lvl<=EARLY_LEVELS.length ? EARLY_LEVELS[lvl-1] : procLevel(lvl);
-  const hexes=[]; const R3=Math.sqrt(3);
-  for (const d of defs) {
-    const CX=d.cx*W, CY=d.cy*H;
-    const added=new Set(), key=(q,r)=>q+','+r;
-    const DIRS=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
-    const queue=[[0,0]]; added.add(key(0,0));
-    const honey = d.honey||0, wax = d.wax||0, queen = d.queen||0;
-    for (let ring=0;ring<=d.rings;ring++) {
-      const next=[];
-      for (const [q,r] of queue) {
-        const px=CX+HEX_R*1.5*q, py=CY+HEX_R*R3*(r+q*0.5);
-        const roll=Math.random();
-        // Assign type via priority: portal (rare) > brood > honey > wax > thick > normal
-        const isPortal = roll < queen;
-        const isBrood = !isPortal && roll < queen+d.brood;
-        const isHoney = !isPortal && !isBrood && roll < queen+d.brood+honey;
-        const isWax   = !isPortal && !isBrood && !isHoney && roll < queen+d.brood+honey+wax;
-        const isThick = !isPortal && !isBrood && !isHoney && !isWax && roll < queen+d.brood+honey+wax+d.thick;
-        // HP: thick=2, all others=1 (portals are indestructible but still need hp field)
-        const hp = isThick ? 2 : 1;
-        hexes.push({x:px, y:py, dead:false, flash:0,
-          portal:isPortal, brood:isBrood, honey:isHoney, wax:isWax, thick:isThick,
-          hp, ci:Math.floor(Math.random()*5)});
-        for (const [dq,dr] of DIRS) {
-          const nk=key(q+dq,r+dr);
-          if (!added.has(nk)){added.add(nk);next.push([q+dq,r+dr]);}
-        }
-      }
-      queue.splice(0,queue.length,...next);
-    }
+// ── Weighted type roll ───────────────────────────────────
+function weightedRoll(weights, rng) {
+  const total = Object.values(weights).reduce((a, b) => a + b, 0);
+  let roll = rng() * total;
+  for (const [type, w] of Object.entries(weights)) {
+    roll -= w;
+    if (roll < 0) return type;
   }
-  const out=[];
-  for (const h of hexes)
-    if (!out.some(f=>Math.hypot(f.x-h.x,f.y-h.y)<HEX_R*1.4)) out.push(h);
-  const clipped = out.filter(h=>h.y+HEX_R<H*PLAY_BOTTOM-4);
+  return 'NORMAL';
+}
 
-  // Pair portal cells into channels of exactly 2.
-  // If odd number spawned, drop the last one (convert to normal).
-  const portals = clipped.filter(h => h.portal);
+// ── Special structure stamps ─────────────────────────────
+const STRUCTURES = [
+  {
+    id: 'HONEY_DEPOSIT', minDepth: 1, weight: 15,
+    stamp(hexMap, rng) {
+      const vals = [...hexMap.values()];
+      if (vals.length === 0) return;
+      const seed  = vals[Math.floor(rng() * vals.length)];
+      const count = 3 + Math.floor(rng() * 3);
+      const near  = vals.filter(h => Math.hypot(h.x-seed.x, h.y-seed.y) < HEX_R*3.5)
+                        .slice(0, count);
+      for (const h of near) { h.type = 'HONEY'; h.hp = CELL_TYPES.HONEY.hp; }
+    },
+  },
+  {
+    id: 'BROOD_CHAMBER', minDepth: 2, weight: 10,
+    stamp(hexMap, rng) {
+      const vals = [...hexMap.values()];
+      if (vals.length === 0) return;
+      const h = vals[Math.floor(rng() * vals.length)];
+      h.type = 'BROOD'; h.hp = CELL_TYPES.BROOD.hp;
+    },
+  },
+  {
+    id: 'PORTAL_PAIR', minDepth: 3, weight: 8,
+    stamp(hexMap, rng) {
+      const entries = [...hexMap.values()].filter(h => h.type !== 'PORTAL');
+      if (entries.length < 2) return;
+      const i1 = Math.floor(rng() * entries.length);
+      let   i2 = Math.floor(rng() * entries.length);
+      if (i2 === i1) i2 = (i1 + 1) % entries.length;
+      entries[i1].type = 'PORTAL'; entries[i1].hp = CELL_TYPES.PORTAL.hp;
+      entries[i2].type = 'PORTAL'; entries[i2].hp = CELL_TYPES.PORTAL.hp;
+    },
+  },
+  // TODO: QUEEN_CHAMBER  — fortified center cluster, minDepth: 8
+  // TODO: SECRET_ROOM    — hollow cavity ringed by wax, minDepth: 5
+  // TODO: BOMB_CACHE     — dense cluster of explosive cells, minDepth: 6
+  // TODO: CHARGED_COLUMN — vertical line of charged cells, minDepth: 7
+];
+
+// ── Single-chunk generator ───────────────────────────────
+// chunkTop: world y of the chunk's upper edge (smaller number = visually higher)
+// chunk spans [chunkTop, chunkTop + CHUNK_HEIGHT]
+function spawnChunk(chunkTop, depth, seed) {
+  const rng    = seededRng(seed);
+  const entry  = getDepthEntry(depth);
+  const hexMap = new Map();
+  const chunkBot = chunkTop + HIVE_CONFIG.CHUNK_HEIGHT;
+
+  for (const { x, y } of enumHexPositions(chunkTop, chunkBot)) {
+    if (rng() > entry.fill) continue;
+    const type = weightedRoll(entry.weights, rng);
+    const key  = `${Math.round(x)},${Math.round(y)}`;
+    hexMap.set(key, { x, y, dead:false, flash:0,
+                      type, hp:CELL_TYPES[type].hp, ci:Math.floor(rng()*5) });
+  }
+
+  // Stamps
+  const eligible   = STRUCTURES.filter(s => s.minDepth <= depth);
+  const stampCount = eligible.length > 0 ? 1 + Math.floor(rng() * 2) : 0;
+  for (let si = 0; si < stampCount && si < eligible.length; si++) {
+    eligible[Math.floor(rng() * eligible.length)].stamp(hexMap, rng);
+  }
+
+  const newHexes = [...hexMap.values()];
+
+  // Pair portals within this chunk (globally unique channels)
+  const portals = newHexes.filter(h => h.type === 'PORTAL');
   if (portals.length % 2 !== 0 && portals.length > 0) {
-    portals[portals.length - 1].portal = false; // demote to normal
+    portals[portals.length - 1].type = 'NORMAL';
+    portals[portals.length - 1].hp   = CELL_TYPES.NORMAL.hp;
   }
-  const paired = clipped.filter(h => h.portal);
-  for (let i = 0; i < paired.length; i++) {
-    paired[i].portalChannel = Math.floor(i / 2);
+  const paired = newHexes.filter(h => h.type === 'PORTAL');
+  for (let i = 0; i < paired.length; i += 2) {
+    const ch = portalChannelCounter++;
+    if (paired[i])   paired[i].portalChannel   = ch;
+    if (paired[i+1]) paired[i+1].portalChannel = ch;
   }
 
-  return clipped;
+  return newHexes;
+}
+
+// ── Main grid builder ────────────────────────────────────
+// Pre-generates the first 4 chunks; streaming continues in update().
+function buildGrid(lvl) {
+  levelSeed            = lvl * 7919;
+  totalDepth           = 0;
+  portalChannelCounter = 0;
+
+  const hiveBottom = PADDLE_Y - HIVE_CONFIG.HIVE_BOTTOM_GAP;
+  const INIT_CHUNKS = 4;
+  const allHexes   = [];
+
+  for (let ci = 0; ci < INIT_CHUNKS; ci++) {
+    // chunk i spans from (hiveBottom - (ci+1)*H) to (hiveBottom - ci*H)
+    const chunkBot = hiveBottom - ci * HIVE_CONFIG.CHUNK_HEIGHT;
+    const chunkTop = chunkBot   -     HIVE_CONFIG.CHUNK_HEIGHT;
+    const depth    = (lvl - 1) + ci;
+    const seed     = levelSeed + ci * 1000003;
+    allHexes.push(...spawnChunk(chunkTop, depth, seed));
+    totalDepth = ci + 1;
+  }
+
+  // generatedTop = world y of the uppermost chunk's top edge
+  generatedTop = hiveBottom - INIT_CHUNKS * HIVE_CONFIG.CHUNK_HEIGHT;
+  HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
+
+  return allHexes;
 }
 
 let hexes=[];
+let scrollY       = 0;  // world y currently at screen top (0 = no scroll)
+let scrollYTarget = 0;  // smoothed camera target
+let generatedTop         = 0;   // world y of topmost generated chunk's top edge
+let totalDepth           = 0;   // total chunks generated this run
+let levelSeed            = 0;   // base seed for this level
+let portalChannelCounter = 0;   // unique portal channel IDs across streaming chunks
+let scrollYMin           = 0;   // highest (most negative) scroll reached — camera floor
 
 // ═══════════════════════════════════════════════════════
 // GAME STATE
@@ -1673,19 +1795,27 @@ function resetRun() {
   levelHoneyEarned = 0;
 }
 
-function mkBall(x,y,vx,vy,spd) { return {x,y,vx,vy,speed:spd??BASE_SPD,trail:[],tpCooldown:0}; }
-function startBall(xOff) {
+function mkBee(x,y,vx,vy,spd) {
+  return {x,y,vx,vy,speed:spd??CONFIG.BASE_SPD,trail:[],tpCooldown:0,
+    // powerup state stubs — no behavior yet, ready for Phase 2
+    sizeScale:    1.0,    // BEE-GER / BEE-BEE size modifier
+    phaseThrough: false,  // BEE-BOO phase flag
+    effectTimer:  0,      // duration counter for temporary effects
+  };
+}
+function startBee(xOff) {
   const vx=2.5*(Math.random()>0.5?1:-1);
-  return mkBall(W/2+(xOff||0), H*PLAY_BOTTOM-65, vx, -BASE_SPD);
+  return mkBee(W/2+(xOff||0), scrollY+PADDLE_Y-65, vx, -CONFIG.BASE_SPD);
 }
 
 function startLevel(lvl) {
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
+  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0;
   particles=[]; broodMsgs=[]; droplets=[]; touchX=null;
   paddle=mkPaddle();
-  bees=[startBall()];
-  hexes=buildGrid(lvl);
+  hexes=buildGrid(lvl);   // sets HIVE_CONFIG.CAMERA_MIN
+  bees=[startBee()];
   if (animId) cancelAnimationFrame(animId);
   loop();
 }
@@ -1712,14 +1842,45 @@ function update() {
   paddle.prevX = paddle.x;
   // keyboard paddle
   if (keys['ArrowLeft']||keys['a']||keys['A'])
-    paddle.x=Math.max(0,paddle.x-PSPD*dt);
+    paddle.x=Math.max(0,paddle.x-CONFIG.HEND_SPEED*dt);
   if (keys['ArrowRight']||keys['d']||keys['D'])
-    paddle.x=Math.min(W-pw,paddle.x+PSPD*dt);
+    paddle.x=Math.min(W-pw,paddle.x+CONFIG.HEND_SPEED*dt);
   // touch paddle — smooth follow
   if (touchX !== null) {
     const tgt=Math.max(0,Math.min(W-pw,touchX-pw/2));
-    paddle.x += (tgt-paddle.x)*0.38;
+    paddle.x += (tgt-paddle.x)*CONFIG.HEND_TOUCH_FOLLOW;
   }
+
+  // Camera: smooth-follow the topmost bee upward
+  // Can fall back down at most H/2 from the highest point reached this run
+  if (bees.length > 0) {
+    const topBeeY = bees.reduce((m, b) => Math.min(m, b.y), Infinity);
+    const rawTarget = topBeeY - HIVE_CONFIG.CAMERA_LEAD;
+    if (scrollY < scrollYMin) scrollYMin = scrollY;               // ratchet: track peak
+    const fallbackFloor = Math.min(0, scrollYMin + H * 0.5);      // max downward drift = H/2, never past 0
+    scrollYTarget = Math.max(HIVE_CONFIG.CAMERA_MIN ?? -Infinity, Math.min(fallbackFloor, rawTarget));
+    scrollY += (scrollYTarget - scrollY) * HIVE_CONFIG.CAMERA_LERP;
+  }
+
+  // Infinite chunk streaming: generate new chunks 2 chunk-heights ahead of camera top
+  const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
+  while (scrollY - generatedTop < LOOK_AHEAD) {
+    const chunkTop = generatedTop - HIVE_CONFIG.CHUNK_HEIGHT;
+    const depth    = (currentLevel - 1) + totalDepth;
+    const seed     = levelSeed + totalDepth * 1000003;
+    hexes.push(...spawnChunk(chunkTop, depth, seed));
+    generatedTop = chunkTop;
+    totalDepth++;
+    HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
+  }
+  // Cull hexes more than 2 chunks below the screen bottom (camera can never reach them)
+  const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
+  hexes = hexes.filter(h => h.y < cullY);
+
+  // World-space constants for this frame
+  // Ceiling is pegged just above the camera's max scroll — never appears on-screen
+  const hiveTopY     = (HIVE_CONFIG.CAMERA_MIN ?? scrollY - H) - BALL_R;
+  const paddleWorldY = scrollY + PADDLE_Y;
 
   const newBees=[];
 
@@ -1728,21 +1889,22 @@ function update() {
     b.x+=b.vx*dt*60; b.y+=b.vy*dt*60;
 
     // walls
-    if (b.x-BALL_R<0)  {b.x=BALL_R;    b.vx= Math.abs(b.vx);  b.vx*=0.82; b.vy*=0.82; normSpd(b,b.speed); sfx.wall();}
-    if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  b.vx*=0.82; b.vy*=0.82; normSpd(b,b.speed); sfx.wall();}
-    if (b.y-BALL_R<0)  {b.y=BALL_R;    b.vy= Math.abs(b.vy);   b.vx*=0.82; b.vy*=0.82; normSpd(b,b.speed); sfx.wall();}
+    const wf = CONFIG.WALL_FRICTION;
+    if (b.x-BALL_R<0)  {b.x=BALL_R;    b.vx= Math.abs(b.vx);  b.vx*=wf; b.vy*=wf; normSpd(b,b.speed); sfx.wall();}
+    if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  b.vx*=wf; b.vy*=wf; normSpd(b,b.speed); sfx.wall();}
+    if (b.y-BALL_R<hiveTopY) {b.y=hiveTopY+BALL_R; b.vy=Math.abs(b.vy); b.vx*=wf; b.vy*=wf; normSpd(b,b.speed); sfx.wall();}
 
-    // paddle
-    if (b.vy>0 && b.y+BALL_R>=PADDLE_Y && b.y+BALL_R<=PADDLE_Y+PH_COLL+8
+    // paddle (world-space Y)
+    if (b.vy>0 && b.y+BALL_R>=paddleWorldY && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+8
         && b.x>=paddle.x-4 && b.x<=paddle.x+pw+4) {
-      b.y=PADDLE_Y-BALL_R; paddle.squish=7;
+      b.y=paddleWorldY-BALL_R; paddle.squish=7;
       const rel=(b.x-(paddle.x+pw/2))/(pw/2);
-      const ang = rel * ((62 + powers.wideAngle * 5) * Math.PI/180);
+      const ang = rel * ((CONFIG.HEND_ANGLE_SPREAD + powers.wideAngle * 5) * Math.PI/180);
       b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
       // velocity boost from paddle movement
       const pv = dt > 0 ? (paddle.x - paddle.prevX) / dt : 0;
-      b.vx += pv * 0.28;
-      b.speed = Math.min(b.speed + Math.abs(pv) * 0.005, getMaxSpd());
+      b.vx += pv * CONFIG.HEND_VEL_BOOST;
+      b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
       sfx.paddle();
       normSpd(b,b.speed);
     }
@@ -1754,25 +1916,25 @@ if (b.tpCooldown > 0) b.tpCooldown--;
       const h=hit.h;
       if (hit.dead) {
         destroyed++;
-        if (destroyed%4===0) b.speed=Math.min(b.speed+0.12, getMaxSpd());
+        if (destroyed%4===0) b.speed=Math.min(b.speed+CONFIG.SPEED_GAIN_PER_HEX, getMaxSpd());
 
-        if (h.brood) {
+        if (h.type === 'BROOD') {
           sfx.brood(); spawnParts(h.x,h.y,20,['#f5a010','#f5d040','#ffe080','#fff']);
           broodMsgs.push({x:h.x,y:h.y-8,life:80,txt:'BROOD RELEASED'});
-          const n = 2 + Math.floor(Math.random()*2) + powers.swarmBonus;
+          const n = CONFIG.BROOD_MIN_BEES + Math.floor(Math.random()*CONFIG.BROOD_RAND_EXTRA) + powers.swarmBonus;
           for (let i=0;i<n;i++) {
             const sp=((i/(n-1||1))-0.5)*2, a=sp*(50*Math.PI/180);
-            const nb=mkBall(h.x+Math.cos(a)*BALL_R*2,h.y+Math.sin(a)*BALL_R*2-5,
+            const nb=mkBee(h.x+Math.cos(a)*BALL_R*2,h.y+Math.sin(a)*BALL_R*2-5,
               b.speed*Math.sin(a+(Math.random()-0.5)*0.3),
               -b.speed*Math.cos(a+(Math.random()-0.5)*0.3), b.speed);
             normSpd(nb,b.speed); newBees.push(nb);
           }
-        } else if (h.honey) {
+        } else if (h.type === 'HONEY') {
           // HONEY: 3 drops + bright golden particles
           for (let d=0;d<3;d++) spawnDroplet(h.x+(d-1)*6, h.y+(d===1?-4:0));
           sfx.honey(); spawnParts(h.x,h.y,16,['#ffe050','#ffd020','#ffb800','#fff8c0','#ff9800']);
           broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'HONEY!'});
-        } else if (h.wax) {
+        } else if (h.type === 'WAX') {
           // WAX: 0 honey + pale crumbly particles
           sfx.wax(); spawnParts(h.x,h.y,14,['#e8dfc0','#d8cf9e','#c8b870','#fff','#b0a060']);
           // splash particles on each killed neighbour
@@ -1781,7 +1943,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
               spawnParts(n.x,n.y,6,['#e8dfc0','#d8cf9e','#c8b870']);
             }
           }
-        } else if (h.thick) {
+        } else if (h.type === 'THICK') {
           spawnDroplet(h.x,h.y);
           spawnDroplet(h.x+4,h.y-4);
           sfx.thick(); spawnParts(h.x,h.y,12,PAL.hexThick);
@@ -1800,14 +1962,13 @@ if (b.tpCooldown > 0) b.tpCooldown--;
   }
 
   bees.push(...newBees);
-  bees=bees.filter(b=>b.y-BALL_R<H*PLAY_BOTTOM+4);
+  bees=bees.filter(b=>b.y-BALL_R<paddleWorldY+CONFIG.HEND_COLL_H+12);
 
   for (const h of hexes) if(h.flash>0) h.flash--;
   broodMsgs=broodMsgs.filter(m=>m.life>0);
   for (const m of broodMsgs){m.y-=0.35;m.life--;}
   updateDroplets();
 
-  if (hexes.every(h=>h.dead || h.portal)) {gameOver=true;touchX=null;render();setTimeout(showWin,400);return;}
   if (bees.length===0)        {gameOver=true;touchX=null;render();setTimeout(showLose,350);return;}
 }
 
@@ -1816,14 +1977,16 @@ if (b.tpCooldown > 0) b.tpCooldown--;
 // ═══════════════════════════════════════════════════════
 function render() {
   ctx.clearRect(0,0,W,H);
-  drawBG();
+  drawBG();                          // screen space — fixed backdrop
+
+  ctx.save();
+  ctx.translate(0, -scrollY);        // enter world space
+
   for (const h of hexes) drawHex(h);
   drawParts();
-  drawDroplets();
-  drawPaddle(paddle);
   for (const b of bees) drawBee(b);
 
-  // popups (brood/queen/honey messages)
+  // popups — world-space coords
   ctx.textAlign='center';
   for (const m of broodMsgs) {
     ctx.globalAlpha=Math.min(1,m.life/18);
@@ -1835,7 +1998,11 @@ function render() {
   }
   ctx.globalAlpha=1; ctx.textAlign='left';
 
-  drawHUD();
+  ctx.restore();                     // back to screen space
+
+  drawDroplets();                    // screen space — travels to HUD jar
+  drawPaddle(paddle);                // screen space — always at bottom
+  drawHUD();                         // screen space
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2056,7 +2223,7 @@ function showOv()  { ov.classList.add('show'); }
 function hideOv()  { ov.classList.remove('show'); }
 
 function showMenu() {
-  ovTitle.textContent='HENDSBALL';
+  ovTitle.textContent='HENDSBEE';
   ovSub.innerHTML='BOUNCE THE BEE.<br>CLEAR THE HIVE.';
   clearBtns();
   mkBtn('PLAY',     true,  ()=>{hideOv();resetRun();startLevel(1);});
