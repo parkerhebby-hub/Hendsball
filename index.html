@@ -398,6 +398,43 @@ const HEX_COLL_R = CONFIG.HEX_R * CONFIG.HEX_COLL_RATIO;  // effective hex colli
 const AC = new (window.AudioContext || window.webkitAudioContext)();
 function acResume() { if (AC.state === 'suspended') AC.resume(); }
 
+// iOS Safari requires AC.resume() inside a direct user gesture handler.
+// This one-shot listener ensures audio works on the very first tap.
+function _iosUnlock() {
+  acResume();
+  // Also prime the music Audio element so it can play later
+  if (music.el) { music.el.play().then(() => music.el.pause()).catch(()=>{}); }
+  document.removeEventListener('touchstart', _iosUnlock, true);
+  document.removeEventListener('click', _iosUnlock, true);
+}
+document.addEventListener('touchstart', _iosUnlock, true);
+document.addEventListener('click', _iosUnlock, true);
+
+// Safari <17.2 doesn't support ctx.filter. Detect once at boot.
+const _supportsCtxFilter = (() => {
+  const tc = document.createElement('canvas');
+  tc.width = tc.height = 1;
+  const tx = tc.getContext('2d');
+  tx.filter = 'blur(1px)';
+  return tx.filter === 'blur(1px)';
+})();
+
+// Blur helper: uses ctx.filter when supported, otherwise applies CSS filter
+// on the canvas element temporarily and re-draws (works on Safari).
+function applyBlur(amount) {
+  if (_supportsCtxFilter) {
+    ctx.filter = `blur(${amount.toFixed(1)}px)`;
+    ctx.drawImage(canvas, 0, 0);
+    ctx.filter = 'none';
+  } else {
+    // CSS filter fallback for Safari
+    canvas.style.filter = `blur(${amount}px)`;
+  }
+}
+function clearBlur() {
+  if (!_supportsCtxFilter) canvas.style.filter = 'none';
+}
+
 function _tone(freq, type, vol, dur, freqEnd) {
   acResume();
   const o = AC.createOscillator(), g = AC.createGain();
@@ -2409,7 +2446,7 @@ function startLevel(lvl) {
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
   scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0;
-  timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null;
+  timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null; clearBlur();
   particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; honeySurgeFills=0; touchX=null;
   paddle=mkPaddle();
   hexes=buildGrid(lvl);   // sets HIVE_CONFIG.CAMERA_MIN
@@ -2454,6 +2491,7 @@ function update() {
     if (timeScale >= 1) {
       timeScale = 1; blurAmount = 0;
       pickerTransition = null;
+      clearBlur();
     }
   }
 
@@ -2733,9 +2771,7 @@ function render() {
   // ── Picker transition: fullscreen blur + darken ──
   if (blurAmount > 0.1) {
     ctx.save();
-    ctx.filter = `blur(${blurAmount.toFixed(1)}px)`;
-    ctx.drawImage(canvas, 0, 0);
-    ctx.filter = 'none';
+    applyBlur(blurAmount);
     ctx.fillStyle = `rgba(0,0,0,${(blurAmount * 0.04).toFixed(2)})`;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
@@ -2749,9 +2785,14 @@ function render() {
   ctx.beginPath();
   ctx.rect(0, HUD_Y - 2, W, H - HUD_Y + 2);
   ctx.clip();
-  if (typeof ctx.filter !== 'undefined') ctx.filter = 'blur(4px)';
-  ctx.drawImage(canvas, 0, 0);       // re-draw current frame blurred into clipped region
-  ctx.filter = 'none';
+  if (_supportsCtxFilter) {
+    ctx.filter = 'blur(4px)';
+    ctx.drawImage(canvas, 0, 0);       // re-draw current frame blurred into clipped region
+    ctx.filter = 'none';
+  } else {
+    // Safari fallback: draw without blur, the dark overlay still looks OK
+    ctx.drawImage(canvas, 0, 0);
+  }
   ctx.fillStyle = 'rgba(10, 6, 2, 0.75)';
   ctx.fillRect(0, HUD_Y - 2, W, H - HUD_Y + 2);
   ctx.restore();
@@ -3040,12 +3081,11 @@ function showLose() {
   music.play(); music.muffle();
   // Blur the frozen game frame behind the overlay
   ctx.save();
-  ctx.filter = 'blur(6px)';
-  ctx.drawImage(canvas, 0, 0);
-  ctx.filter = 'none';
+  applyBlur(6);
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
+  clearBlur();
   ovTitle.textContent='PLAY AGAIN';
   ovSub.innerHTML='HIVE DEPTH '+hiveDepthMax;
   clearBtns();
