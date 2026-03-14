@@ -32,7 +32,7 @@
     position:relative; width:360px; height:680px; overflow:hidden;
     border:3px solid #d07800; outline:2px solid #4a2000;
     box-shadow:5px 5px 0 #280e00;
-    transform-origin: center center;
+    transform-origin: 0 0;
     flex-shrink:0;
   }
 
@@ -332,6 +332,11 @@ function scaleToFit() {
   gw.style.transform = `scale(${scale})`;
   gw.style.marginLeft = `${(vw - W * scale) / 2}px`;
   gw.style.marginTop  = `${(vh - H * scale) / 2}px`;
+  // Hide decorative frame when game fills the viewport (mobile)
+  const fills = (W * scale >= vw - 2) && (H * scale >= vh - 2);
+  gw.style.borderColor  = fills ? 'transparent' : '';
+  gw.style.outlineColor = fills ? 'transparent' : '';
+  gw.style.boxShadow    = fills ? 'none' : '';
   document.body.style.display = 'block';
 }
 
