@@ -52,6 +52,7 @@
   .panel.show { opacity:1; pointer-events:all; }
 
   #ov { background:transparent; }
+  #settingsPanel { background:rgba(14,5,0,0.92); }
 
   #ovTitle {
     font-size:1.1rem; color:#f0a020;
@@ -103,7 +104,7 @@
   .puCard:active { transform:translate(2px,2px); box-shadow:1px 1px 0 #200a00; }
   .puName { font-size:0.60rem; color:#f0c020; margin-bottom:6px; }
   .puDesc { font-size:0.40rem; color:#7a5022; line-height:1.8; }
-  .puTag  { font-size:0.36rem; color:#4a7a20; margin-top:5px; letter-spacing:1px; }
+  /* puTag removed — category labels no longer shown */
 
   /* ── run summary ──────────────────────── */
   #summary {
@@ -129,8 +130,8 @@
     background:rgba(4,1,0,0.97);
     padding:10px 0 0 0;
     align-items:center;
-    justify-content:flex-start;
   }
+  #pauseBtns .ob { margin-left:auto; margin-right:auto; }
   #pauseTitle {
     font-size:0.75rem; color:#f0a020;
     text-shadow:2px 2px 0 #6a3000;
@@ -142,48 +143,48 @@
     padding:0 12px 8px 12px; box-sizing:border-box;
   }
   .gsec-title {
-    font-size:0.40rem; color:#f0a020; letter-spacing:2px;
-    padding:10px 0 6px 0; text-align:left;
+    font-size:0.55rem; color:#f0a020; letter-spacing:2px;
+    padding:8px 0 4px 0; text-align:left;
   }
   .gsec-divider {
-    height:1px; background:#3a1e00; margin:10px 0;
+    height:1px; background:#3a1e00; margin:6px 0;
   }
 
   /* Hex cell grid (2-column) */
   #tab-cells {
-    display:grid; grid-template-columns:1fr 1fr; gap:0 8px;
+    display:grid; grid-template-columns:1fr 1fr; gap:0 4px;
   }
   .gc-row {
-    display:flex; align-items:center; gap:6px;
-    padding:5px 0; border-bottom:1px solid #221000;
+    display:flex; align-items:center; gap:5px;
+    padding:3px 0; border-bottom:1px solid #221000;
   }
   .gc-hex { flex-shrink:0; }
   .gc-info { flex:1; min-width:0; }
-  .gc-name { font-size:0.38rem; letter-spacing:0.3px; margin-bottom:2px; }
-  .gc-note { font-size:0.27rem; color:#a07840; letter-spacing:0.2px; margin-bottom:2px; }
+  .gc-name { font-size:0.50rem; letter-spacing:0.3px; margin-bottom:1px; }
+  .gc-note { font-size:0.42rem; color:#c09050; letter-spacing:0.2px; margin-bottom:2px; }
   .gc-stats { display:flex; gap:5px; }
-  .gc-stat  { font-size:0.27rem; letter-spacing:0.2px; white-space:nowrap; }
+  .gc-stat  { font-size:0.44rem; letter-spacing:0.3px; white-space:nowrap; }
 
   /* Power-up rows */
   .gp-row {
-    display:flex; align-items:center; gap:10px;
-    padding:7px 0; border-bottom:1px solid #221000;
+    display:flex; align-items:center; gap:8px;
+    padding:4px 0; border-bottom:1px solid #221000;
   }
-  .gp-icon { width:28px; height:28px; flex-shrink:0; }
+  .gp-icon { width:32px; height:32px; flex-shrink:0; }
   .gp-info { flex:1; }
-  .gp-name { font-size:0.40rem; letter-spacing:0.5px; margin-bottom:3px; }
-  .gp-desc { font-size:0.32rem; color:#a07840; letter-spacing:0.3px; }
-  .gp-tag  { font-size:0.24rem; margin-top:1px; }
+  .gp-name { font-size:0.55rem; letter-spacing:0.5px; margin-bottom:2px; }
+  .gp-desc { font-size:0.42rem; color:#c09050; letter-spacing:0.3px; }
+  .gp-tag  { font-size:0.32rem; margin-top:1px; }
 
   /* Upgrade rows */
   .gu-row {
-    display:flex; align-items:center; gap:10px;
-    padding:7px 0; border-bottom:1px solid #221000;
+    display:flex; align-items:center; gap:8px;
+    padding:4px 0; border-bottom:1px solid #221000;
   }
-  .gu-icon { width:28px; height:28px; flex-shrink:0; }
+  .gu-icon { width:32px; height:32px; flex-shrink:0; }
   .gu-info { flex:1; }
-  .gu-name { font-size:0.40rem; letter-spacing:0.5px; margin-bottom:3px; }
-  .gu-desc { font-size:0.32rem; color:#a07840; letter-spacing:0.3px; }
+  .gu-name { font-size:0.55rem; letter-spacing:0.5px; margin-bottom:2px; }
+  .gu-desc { font-size:0.42rem; color:#c09050; letter-spacing:0.3px; }
 
 
   #sumContent {
@@ -264,6 +265,20 @@
     </div>
   </div>
 
+  <div id="settingsPanel" class="panel">
+    <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.65rem;letter-spacing:2px;margin-bottom:18px;">SETTINGS</div>
+    <div style="width:80%;max-width:280px;">
+      <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">MUSIC</label>
+      <input type="range" id="sliderMusic" min="0" max="100" value="50" style="width:100%;accent-color:#f0a020;margin-bottom:16px;">
+      <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">SFX</label>
+      <input type="range" id="sliderSfx" min="0" max="100" value="100" style="width:100%;accent-color:#f0a020;margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">SCREEN SHAKE</label>
+        <button id="toggleShake" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
+      </div>
+    </div>
+  </div>
+
   <div id="summary" class="panel">
     <div id="sumTitle">HIVE CLEARED</div>
     <div id="sumLv"></div>
@@ -271,7 +286,7 @@
   </div>
 
   <div id="pu" class="panel">
-    <div id="puTitle">HONEY FULL</div>
+    <div id="puTitle">HONEY JAR FULL</div>
     <div id="puSub">CHOOSE AN UPGRADE</div>
     <div id="puCards"></div>
   </div>
@@ -366,7 +381,7 @@ const CONFIG = {
   HEND_TOUCH_FOLLOW:    0.38,   // touch smooth-follow factor
   HEND_VEL_BOOST:       0.28,   // paddle-velocity transfer to bee
   HEND_SPD_GAIN:        0.005,  // speed boost per unit of paddle velocity
-  HEND_ANGLE_SPREAD:    62,     // base deflection half-angle (degrees)
+  HEND_ANGLE_SPREAD:    45,     // base deflection half-angle (degrees)
 
   // Hex
   HEX_R:                18,
@@ -384,8 +399,8 @@ const CONFIG = {
   WAX_DAMAGE:           1,      // splash damage dealt to neighbours on wax death
 
   // Brood spawn
-  BROOD_MIN_BEES:       2,      // minimum bees released from brood cell
-  BROOD_RAND_EXTRA:     2,      // random(0..RAND_EXTRA-1) added on top
+  BROOD_MIN_BEES:       1,      // minimum bees released from brood cell
+  BROOD_RAND_EXTRA:     1,      // random(0..RAND_EXTRA-1) added on top
 };
 
 // ── Derived constants (computed once from CONFIG) ─────
@@ -401,14 +416,25 @@ function acResume() { if (AC.state === 'suspended') AC.resume(); }
 // iOS Safari requires AC.resume() inside a direct user gesture handler.
 function _iosUnlock() {
   acResume();
-  if (music.el) { music.el.play().then(() => music.el.pause()).catch(()=>{}); }
+  // Only do the play-pause unlock trick if music isn't already playing
+  if (music.el && !music.playing) { music.el.play().then(() => { if (!music.playing) music.el.pause(); }).catch(()=>{}); }
   document.removeEventListener('touchstart', _iosUnlock, true);
   document.removeEventListener('click', _iosUnlock, true);
 }
 document.addEventListener('touchstart', _iosUnlock, true);
 document.addEventListener('click', _iosUnlock, true);
 
+let sfxVolume = parseFloat(localStorage.getItem('hendsbee_sfx') || '1');
+let musicVolume = parseFloat(localStorage.getItem('hendsbee_music') || '0.5');
+let screenShakeEnabled = localStorage.getItem('hendsbee_shake') !== 'false'; // default ON
+let shakeTimer = 0, shakeMag = 0;
+function triggerShake(mag, frames) {
+  if (!screenShakeEnabled) return;
+  shakeMag = mag; shakeTimer = frames;
+}
+
 function _tone(freq, type, vol, dur, freqEnd) {
+  vol *= sfxVolume;
   acResume();
   const o = AC.createOscillator(), g = AC.createGain();
   o.connect(g); g.connect(AC.destination);
@@ -420,6 +446,7 @@ function _tone(freq, type, vol, dur, freqEnd) {
   o.start(); o.stop(AC.currentTime + dur);
 }
 function _noise(vol, dur) {
+  vol *= sfxVolume;
   acResume();
   const buf = AC.createBuffer(1, Math.ceil(AC.sampleRate * dur), AC.sampleRate);
   const d = buf.getChannelData(0);
@@ -476,7 +503,7 @@ const music = {
     this.filter.frequency.value = 22000;  // wide open = no muffle
     this.filter.Q.value = 0.7;
     this.gain = AC.createGain();
-    this.gain.gain.value = 0.5;
+    this.gain.gain.value = musicVolume;
     this.source.connect(this.filter);
     this.filter.connect(this.gain);
     this.gain.connect(AC.destination);
@@ -568,7 +595,17 @@ function loadHendImage() {
     const id = x.getImageData(0, 0, crop.w, crop.h);
     const d = id.data;
     for (let i = 0; i < d.length; i += 4) {
-      if (d[i] > 230 && d[i+1] > 230 && d[i+2] > 230) d[i+3] = 0;
+      const r = d[i], g = d[i+1], b = d[i+2];
+      const brightness = (r + g + b) / 3;
+      const saturation = Math.max(r, g, b) - Math.min(r, g, b);
+      if (brightness > 210 && saturation < 50) {
+        // Hard strip very bright unsaturated pixels
+        d[i+3] = 0;
+      } else if (brightness > 180 && saturation < 40) {
+        // Soft fade for semi-bright fringe pixels
+        const t = (brightness - 180) / 30; // 0..1
+        d[i+3] = Math.round(d[i+3] * (1 - t));
+      }
     }
     x.putImageData(id, 0, 0);
     hendCanvas = c;
@@ -753,8 +790,9 @@ const ALL_POWERUPS = [
     id: 'beefyBees',
     name: 'BEEFY BEES',
     short: 'BEEFY',
-    desc: 'BEES DEAL +1 DAMAGE\nPER STACK.',
+    desc: 'BEES DEAL +1 DAMAGE PER STACK.',
     tag:  'DAMAGE',
+    color: '#ff6030', outline: '#a03010',
     max:  6,
     apply() { powers.beefyBees++; }
   },
@@ -762,8 +800,9 @@ const ALL_POWERUPS = [
     id: 'queenBlessing',
     name: "QUEEN'S BLESSING",
     short: 'QUEEN',
-    desc: 'HONEY CELLS SPAWN\nMORE FREQUENTLY.',
+    desc: 'HONEY CELLS SPAWN MORE FREQUENTLY.',
     tag:  'HONEY',
+    color: '#ffe050', outline: '#a08020',
     max:  6,
     apply() { powers.queenBlessing++; }
   },
@@ -771,8 +810,9 @@ const ALL_POWERUPS = [
     id: 'swarmInstinct',
     name: 'SWARM INSTINCT',
     short: 'HOME',
-    desc: 'BEES CURVE TOWARD\nNEARBY CELLS.',
+    desc: 'BEES CURVE TOWARD NEARBY CELLS.',
     tag:  'SWARM',
+    color: '#f5a020', outline: '#8a5010',
     max:  6,
     apply() { powers.swarmInstinct++; }
   },
@@ -780,8 +820,9 @@ const ALL_POWERUPS = [
     id: 'waxBreaker',
     name: 'WAX BREAKER',
     short: 'WAX',
-    desc: 'EXTRA DAMAGE TO\nREINFORCED CELLS.',
+    desc: 'EXTRA DAMAGE TO REINFORCED CELLS.',
     tag:  'DAMAGE',
+    color: '#7a4800', outline: '#4a2800',
     max:  6,
     apply() { powers.waxBreaker++; }
   },
@@ -789,8 +830,9 @@ const ALL_POWERUPS = [
     id: 'royalFury',
     name: 'ROYAL FURY',
     short: 'FURY',
-    desc: 'EXTRA DAMAGE TO\nROYAL, ANCIENT & TITAN.',
+    desc: 'EXTRA DAMAGE TO ROYAL, ANCIENT & TITAN.',
     tag:  'DAMAGE',
+    color: '#a060d0', outline: '#603080',
     max:  6,
     apply() { powers.royalFury++; }
   },
@@ -798,8 +840,9 @@ const ALL_POWERUPS = [
     id: 'broodFrenzy',
     name: 'BROOD FRENZY',
     short: 'BROOD',
-    desc: 'BROOD CELLS SPAWN\nEXTRA BEES.',
+    desc: 'BROOD CELLS SPAWN EXTRA BEES.',
     tag:  'SWARM',
+    color: '#f5a010', outline: '#8a5808',
     max:  6,
     apply() { powers.broodFrenzy++; }
   },
@@ -807,8 +850,9 @@ const ALL_POWERUPS = [
     id: 'twoHends',
     name: 'TWO HENDS',
     short: '2H',
-    desc: 'DOUBLE-WIDE PADDLE\nWITH TWO HANDS.',
+    desc: 'DOUBLE-WIDE PADDLE WITH TWO HANDS.',
     tag:  'PADDLE',
+    color: '#c09060', outline: '#6a4830',
     max:  1,
     apply() { powers.twoHends++; }
   },
@@ -834,7 +878,7 @@ let powerupDrops = [];      // falling pickup entities
 
 function spawnPowerupDrop(wx, wy) {
   const type = TEMP_POWERUPS[Math.floor(Math.random() * TEMP_POWERUPS.length)];
-  powerupDrops.push({ x: wx, y: wy, vy: -1.5, type, flash: 0 });
+  powerupDrops.push({ x: wx, y: wy, vy: -0.5, type, flash: 0 });
 }
 
 function deactivatePowerup() {
@@ -842,10 +886,17 @@ function deactivatePowerup() {
   honeySurgeFills = 0;
 }
 
+// Per-bee powerup IDs (applied on paddle bounce, limited to 6 bees)
+const PER_BEE_POWERUPS = new Set(['beeGer','beeHemoth','booBee','beeR','beeF']);
+
 function activatePowerup(type, px, py) {
   sfx.powerup();
-  if (type.duration > 0) {
-    // Timed — replace any existing
+  if (type.duration > 0 && PER_BEE_POWERUPS.has(type.id)) {
+    // Per-bee timed — store as pending, applied on next 6 paddle bounces
+    pendingPowerup = type;
+    powerupBeesRemaining = 6;
+  } else if (type.duration > 0) {
+    // Global timed (honeySurge) — replace any existing
     activePowerup = { id: type.id, name: type.name, color: type.color, ticksLeft: type.duration };
   } else if (type.duration === -1) {
     // Stored (HEND OF GOD)
@@ -887,7 +938,7 @@ function activatePowerup(type, px, py) {
             for (let i = 0; i < drops; i++) spawnDroplet(h.x, h.y);
           }
         }
-        broodMsgs.push({ x: bestH.x, y: bestH.y - 12, life: 80, txt: 'DIVINE!' });
+        /* text removed: DIVINE! */
       }
       break;
     }
@@ -900,11 +951,11 @@ function activatePowerup(type, px, py) {
         h.type = 'BOMB'; h.hp = CELL_TYPES.BOMB.hp; h.flash = 12;
         spawnParts(h.x, h.y, 6, ['#800040', '#400020', '#200010']);
       }
-      broodMsgs.push({ x: px || W / 2, y: (py || scrollY + H / 2) - 12, life: 70, txt: 'CORRUPTED!' });
+      /* text removed: CORRUPTED! */
       break;
     }
   }
-  broodMsgs.push({ x: px || W / 2, y: (py || scrollY + H / 2) - 20, life: 70, txt: type.name + '!' });
+  /* text removed: powerup name */
 }
 
 // ─── Upgrade slot tracking ────────────────────────────
@@ -957,10 +1008,16 @@ function showPicker(onDone) {
   for (const pu of choices) {
     const card = document.createElement('button');
     card.className = 'puCard';
+    const hexSvg = `<svg width="38" height="38" viewBox="-15 -15 30 30" style="flex-shrink:0">` +
+      `<polygon points="14,0 7,12.1 -7,12.1 -14,0 -7,-12.1 7,-12.1" fill="${pu.color||'#f5c030'}" stroke="${pu.outline||'#7a3d00'}" stroke-width="1.5"/>` +
+      `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="#000">${pu.short?.[0]||''}</text></svg>`;
     card.innerHTML =
+      `<div style="display:flex;align-items:center;gap:10px;">` +
+      hexSvg +
+      `<div style="flex:1;min-width:0;">` +
       `<div class="puName">${pu.name}</div>` +
-      `<div class="puDesc">${pu.desc.replace(/\n/g,'<br>')}</div>` +
-      `<div class="puTag">${pu.tag}</div>`;
+      `<div class="puDesc">${pu.desc.replace(/\n/g,' ')}</div>` +
+      `</div></div>`;
     card.onclick = () => {
       pu.apply();
       recordUpgrade(pu.id);
@@ -1044,10 +1101,20 @@ function checkMeterFull() {
 }
 
 function drawDroplets() {
-  ctx.fillStyle = '#f5d040';
   for (const d of droplets) {
-    const sz = Math.max(2, Math.round(3 * (1 - d.prog * 0.5)));
-    ctx.fillRect(Math.round(d.x)-1, Math.round(d.y)-1, sz, sz);
+    const r = Math.max(1.5, 2.5 * (1 - d.prog * 0.45));
+    const dx = Math.round(d.x), dy = Math.round(d.y);
+    // glow
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#ffe060';
+    ctx.beginPath(); ctx.arc(dx, dy, r + 1.5, 0, Math.PI * 2); ctx.fill();
+    // body
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#f5c020';
+    ctx.beginPath(); ctx.arc(dx, dy, r, 0, Math.PI * 2); ctx.fill();
+    // bright centre
+    ctx.fillStyle = '#ffe870';
+    ctx.beginPath(); ctx.arc(dx - r*0.2, dy - r*0.25, r*0.45, 0, Math.PI * 2); ctx.fill();
   }
 }
 
@@ -1165,6 +1232,8 @@ function drawHand(ox, oy, side, targetW) {
     const dw = targetW || (HAND_W * HAND_PX);
     const dh = Math.round(dw / hendAspect);
     ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     if (side !== 1) {
       // Flip for left hand
       ctx.translate(Math.round(ox) + dw, Math.round(oy));
@@ -1287,11 +1356,11 @@ function drawBee(b) {
   const angle = Math.atan2(b.vy, b.vx) + Math.PI/2;
   // Powerup-based size scaling
   let scale = b.sizeScale || 1;
-  if (activePowerup?.id === 'beeGer') scale *= 1.5;
-  if (activePowerup?.id === 'beeHemoth') scale *= 3;
+  if (b.powerupId === 'beeGer') scale *= 1.5;
+  if (b.powerupId === 'beeHemoth') scale *= 3;
 
   // BOO-BEE transparency
-  if (activePowerup?.id === 'booBee') ctx.globalAlpha = 0.5;
+  if (b.powerupId === 'booBee') ctx.globalAlpha = 0.5;
 
   ctx.save();
   ctx.translate(Math.round(b.x), Math.round(b.y));
@@ -1300,7 +1369,7 @@ function drawBee(b) {
 
   // Use PNG bee frames if loaded and not using special sprite
   const usePNG = beeFrames.length === 3 && beeFrames[0] &&
-                 activePowerup?.id !== 'beeF' && activePowerup?.id !== 'beeR';
+                 b.powerupId !== 'beeF' && b.powerupId !== 'beeR';
   if (usePNG) {
     const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / BEE_FLAP_SPEED) % beeFrameSeq.length];
     const img = beeFrames[frameIdx];
@@ -1311,13 +1380,13 @@ function drawBee(b) {
     const ox = -BOX/2;
     const oy = -BOY/2;
     // Choose sprite: COW_G for BEE-F, else BEE_G
-    const grid = (activePowerup?.id === 'beeF') ? COW_G : BEE_G;
+    const grid = (b.powerupId === 'beeF') ? COW_G : BEE_G;
     for (let r = 0; r < BR; r++) {
       for (let c = 0; c < BC; c++) {
         let col = grid[r][c];
         if (!col) continue;
         // BEE-R green tint
-        if (activePowerup?.id === 'beeR' && col !== '#160800') col = '#40c060';
+        if (b.powerupId === 'beeR' && col !== '#160800') col = '#40c060';
         ctx.fillStyle = col;
         ctx.fillRect(ox + c*BP, oy + r*BP, BP, BP);
       }
@@ -1327,7 +1396,7 @@ function drawBee(b) {
   ctx.globalAlpha = 1;
 
   // BEE-R burp bubbles
-  if (activePowerup?.id === 'beeR' && tick % 20 < 1) {
+  if (b.powerupId === 'beeR' && tick % 20 < 1) {
     for (let i = 0; i < 2; i++) {
       particles.push({
         x: b.x + (Math.random()-0.5)*8,
@@ -1652,7 +1721,7 @@ function checkHex(b) {
       }
 
       // Phase-through check (BOO-BEE or BEE-HEMOTH)
-      const phasing = activePowerup && (activePowerup.id === 'booBee' || activePowerup.id === 'beeHemoth');
+      const phasing = b.powerupId === 'booBee' || b.powerupId === 'beeHemoth';
       if (!phasing) {
         // reflect velocity
         const dot = b.vx*nx + b.vy*ny;
@@ -1667,8 +1736,8 @@ function checkHex(b) {
       let dmg = 1 + powers.beefyBees;
       if (h.type === 'THICK') dmg += powers.waxBreaker;
       if (h.type === 'ROYAL' || h.type === 'ANCIENT' || h.type === 'TITAN') dmg += powers.royalFury;
-      if (activePowerup?.id === 'beeGer') dmg *= 2;
-      if (activePowerup?.id === 'beeHemoth') dmg = 5;
+      if (b.powerupId === 'beeGer') dmg *= 2;
+      if (b.powerupId === 'beeHemoth') dmg = 5;
       h.hp -= dmg; h.flash = 10;
 
       if (h.hp <= 0) {
@@ -1733,188 +1802,210 @@ function bgRand(seed) {
   };
 }
 
-// Draw the background hex grid, calling detailFn(cx,cy,r,rand) per cell
-function drawBGGrid(bR, alpha, strokeCol, lineW, detailFn) {
-  const cS = bR*1.5, rS = bR*Math.sqrt(3), cb = H*PLAY_BOTTOM;
-  const pOff = ((scrollY * 0.15) % rS + rS) % rS;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0,0,W,cb); ctx.clip();
-  const rand = bgRand(currentLevel * 7919);
-  for (let c=-1; c<Math.ceil(W/cS)+2; c++) {
-    for (let r=-2; r<Math.ceil(cb/rS)+3; r++) {
-      const bx = c*cS, by = r*rS + (c%2 ? rS/2 : 0) + pOff;
-      const pp = hexPts(bx, by, bR);
-      ctx.globalAlpha = alpha;
-      ctx.strokeStyle = strokeCol; ctx.lineWidth = lineW;
-      ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
-      for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
-      ctx.closePath(); ctx.stroke();
-      if (detailFn) detailFn(bx, by, bR, rand);
-    }
-  }
-  ctx.restore();
+// ── Height-band background theme system ──────────────────
+// Backgrounds evolve as the player climbs upward through the hive.
+// Themes blend smoothly based on camera scrollY position.
+const BG_THEMES = [
+  { name:'Old Hive Base',
+    scrollStart: 0,
+    topCol:[43,28,10],   botCol:[74,46,15],     // #2b1c0a → #4a2e0f
+    gridCol:[42,24,0],   accentCol:[58,32,0],
+    fillChance:0.18,     fillCol:[200,184,120],
+    gridAlpha:0.10,
+    particleCol:[80,50,20], particleAlpha:0.25, particleRate:0.20 },
+  { name:'Active Comb',
+    scrollStart: -1500,
+    topCol:[92,59,18],   botCol:[140,90,24],     // #5c3b12 → #8c5a18
+    gridCol:[58,34,0],   accentCol:[90,56,0],
+    fillChance:0.28,     fillCol:[154,82,0],
+    gridAlpha:0.12,
+    particleCol:[200,160,40], particleAlpha:0.2, particleRate:0.25 },
+  { name:'Royal Chambers',
+    scrollStart: -3000,
+    topCol:[163,106,28], botCol:[212,154,44],    // #a36a1c → #d49a2c
+    gridCol:[120,80,20], accentCol:[180,120,40],
+    fillChance:0.24,     fillCol:[220,160,60],
+    gridAlpha:0.15,
+    particleCol:[220,180,60], particleAlpha:0.18, particleRate:0.35 },
+  { name:'Ancient Depths',
+    scrollStart: -5000,
+    topCol:[59,30,63],   botCol:[106,44,122],    // #3b1e3f → #6a2c7a
+    gridCol:[60,30,70],  accentCol:[100,50,120],
+    fillChance:0.20,     fillCol:[140,80,180],
+    gridAlpha:0.18,
+    particleCol:[140,100,200], particleAlpha:0.15, particleRate:0.45 },
+];
+const BG_TRANSITION = 400; // px of smooth blend between themes
+
+// Parallax layer definitions
+const BG_LAYERS = [
+  { r:100, speed:0.05, aMul:0.18, seed:3571 },  // far — very large, faint
+  { r:60,  speed:0.15, aMul:0.25, seed:6143 },  // mid — medium depth
+  { r:35,  speed:0.35, aMul:0.35, seed:9281 },  // near — smaller, more visible
+];
+
+// Ambient particles
+const BG_PARTICLE_MAX = 90;
+const bgParticles = [];
+
+function lerpCol(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0]-a[0]) * t),
+    Math.round(a[1] + (b[1]-a[1]) * t),
+    Math.round(a[2] + (b[2]-a[2]) * t)
+  ];
 }
 
-// ── THEME 1: Dusty Abandoned Hive (LV 1–10) ──────────
-// Pale, dusty hex grid. Some cells have wax residue fills.
-// Occasional crack marks. Faded honey drips on some cells.
-function drawBG_Abandoned() {
-  // Base — dark dusty brown
-  ctx.fillStyle = '#100a02'; ctx.fillRect(0,0,W,H);
-
-  // Subtle dust gradient overlay
-  const grad = ctx.createLinearGradient(0,0,0,H*PLAY_BOTTOM);
-  grad.addColorStop(0,   'rgba(30,18,4,0.0)');
-  grad.addColorStop(0.5, 'rgba(10,6,0,0.18)');
-  grad.addColorStop(1,   'rgba(0,0,0,0.32)');
-  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H*PLAY_BOTTOM);
-
-  // Scanlines
-  ctx.fillStyle = 'rgba(0,0,0,0.07)';
-  for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
-
-  const bR=22, cS=bR*1.5, rS=bR*Math.sqrt(3), cb=H*PLAY_BOTTOM;
-  const rand = bgRand(currentLevel * 3571);
-  const pOff = ((scrollY * 0.15) % rS + rS) % rS;  // parallax offset, wrapping
-
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0,0,W,cb); ctx.clip();
-
-  for (let c=-1; c<Math.ceil(W/cS)+2; c++) {
-    for (let r=-2; r<Math.ceil(cb/rS)+3; r++) {
-      const bx = c*cS, by = r*rS + (c%2 ? rS/2 : 0) + pOff;
-      const pp = hexPts(bx, by, bR);
-      const rv = rand();
-
-      // Occasional wax-residue fill
-      if (rv < 0.18) {
-        ctx.globalAlpha = 0.04 + rv * 0.10;
-        ctx.fillStyle = rv < 0.09 ? '#c8b878' : '#e8d8a0';
-        ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
-        for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
-        ctx.closePath(); ctx.fill();
+function getBGBlend(camY) {
+  // Find which theme band the camera is in
+  for (let i = BG_THEMES.length - 1; i >= 0; i--) {
+    const th = BG_THEMES[i];
+    if (camY <= th.scrollStart) {
+      // Fully in this theme or blending with previous
+      if (i === 0) return { a: th, b: th, t: 0 };
+      const prev = BG_THEMES[i - 1];
+      const blendStart = th.scrollStart + BG_TRANSITION;
+      if (camY >= blendStart) {
+        // In transition zone between prev and th
+        const t = (blendStart - camY) / BG_TRANSITION;
+        return { a: prev, b: th, t: Math.max(0, Math.min(1, t)) };
       }
-
-      // Hex outline — dusty, faint
-      ctx.globalAlpha = 0.055 + rand()*0.03;
-      ctx.strokeStyle = rv < 0.3 ? '#6a4800' : '#3a2800';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
-      for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
-      ctx.closePath(); ctx.stroke();
-
-      // Crack marks on some cells
-      if (rand() < 0.12) {
-        ctx.globalAlpha = 0.07;
-        ctx.strokeStyle = '#2a1400'; ctx.lineWidth = 0.8;
-        ctx.beginPath();
-        ctx.moveTo(bx, by);
-        ctx.lineTo(bx + (rand()-0.5)*14, by + (rand()-0.5)*14);
-        ctx.lineTo(bx + (rand()-0.5)*18, by + (rand()-0.5)*10);
-        ctx.stroke();
-      }
-
-      // Honey drip stains on a few cells
-      if (rand() < 0.07) {
-        ctx.globalAlpha = 0.06;
-        ctx.fillStyle = '#c87000';
-        ctx.beginPath();
-        ctx.arc(bx + (rand()-0.5)*8, by + bR*0.4, 2+rand()*3, 0, Math.PI*2);
-        ctx.fill();
-      }
+      return { a: th, b: th, t: 0 };
     }
   }
-  ctx.restore();
-  ctx.globalAlpha = 1;
+  return { a: BG_THEMES[0], b: BG_THEMES[0], t: 0 };
 }
 
-// ── THEME 2: Hardened Honey Fortress (LV 11–20) ──────
-// Dark amber, crystallised. Thick outlined cells, some
-// filled with deep amber crystal. Sticky drip streaks.
-function drawBG_Hardened() {
-  // Base — deep dark amber
-  ctx.fillStyle = '#0c0700'; ctx.fillRect(0,0,W,H);
+function drawBGBase(blend) {
+  const { a, b, t } = blend;
+  const tc = lerpCol(a.topCol, b.topCol, t);
+  const bc = lerpCol(a.botCol, b.botCol, t);
+  const cb = H * PLAY_BOTTOM;
 
-  // Amber glow from top
-  const grad = ctx.createRadialGradient(W/2, 0, 20, W/2, H*0.3, W*0.9);
-  grad.addColorStop(0,   'rgba(80,40,0,0.22)');
-  grad.addColorStop(1,   'rgba(0,0,0,0.0)');
-  ctx.fillStyle = grad; ctx.fillRect(0,0,W,H*PLAY_BOTTOM);
+  // Solid base fill
+  ctx.fillStyle = `rgb(${tc[0]},${tc[1]},${tc[2]})`;
+  ctx.fillRect(0, 0, W, H);
 
-  // Scanlines
-  ctx.fillStyle = 'rgba(0,0,0,0.09)';
-  for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+  // Gradient overlay
+  const grad = ctx.createLinearGradient(0, 0, 0, cb);
+  grad.addColorStop(0,   `rgba(${tc[0]},${tc[1]},${tc[2]},0.0)`);
+  grad.addColorStop(0.5, `rgba(${Math.round((tc[0]+bc[0])/2)},${Math.round((tc[1]+bc[1])/2)},${Math.round((tc[2]+bc[2])/2)},0.25)`);
+  grad.addColorStop(1,   `rgba(${bc[0]},${bc[1]},${bc[2]},0.4)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, cb);
+}
 
-  const bR=20, cS=bR*1.5, rS=bR*Math.sqrt(3), cb=H*PLAY_BOTTOM;
-  const rand = bgRand(currentLevel * 6143);
-  const pOff = ((scrollY * 0.15) % rS + rS) % rS;  // parallax offset, wrapping
+function drawBGLayers(blend) {
+  const { a, b, t } = blend;
+  const cb = H * PLAY_BOTTOM;
+  const baseAlpha = a.gridAlpha + (b.gridAlpha - a.gridAlpha) * t;
+  const gc = lerpCol(a.gridCol, b.gridCol, t);
+  const ac = lerpCol(a.accentCol, b.accentCol, t);
+  const fc = lerpCol(a.fillCol, b.fillCol, t);
+  const fillChance = a.fillChance + (b.fillChance - a.fillChance) * t;
 
   ctx.save();
-  ctx.beginPath(); ctx.rect(0,0,W,cb); ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 0, W, cb); ctx.clip();
 
-  for (let c=-1; c<Math.ceil(W/cS)+2; c++) {
-    for (let r=-2; r<Math.ceil(cb/rS)+3; r++) {
-      const bx = c*cS, by = r*rS + (c%2 ? rS/2 : 0) + pOff;
-      const pp = hexPts(bx, by, bR);
-      const rv = rand();
+  for (const layer of BG_LAYERS) {
+    const bR = layer.r;
+    const cS = bR * 1.5;
+    const rS = bR * Math.sqrt(3);
+    const pOff = ((scrollY * layer.speed) % rS + rS) % rS;
+    const alpha = baseAlpha * layer.aMul;
+    const rand = bgRand(currentLevel * layer.seed);
 
-      // Crystallised honey fill — more cells filled than theme 1
-      if (rv < 0.30) {
-        const depth = 0.06 + rv * 0.14;
-        ctx.globalAlpha = depth;
-        ctx.fillStyle = rv < 0.10 ? '#7a3800'
-                      : rv < 0.20 ? '#5a2800'
-                                  : '#9a5200';
-        ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
-        for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
-        ctx.closePath(); ctx.fill();
-      }
+    for (let c = -1; c < Math.ceil(W / cS) + 2; c++) {
+      for (let r = -2; r < Math.ceil(cb / rS) + 3; r++) {
+        const bx = c * cS;
+        const by = r * rS + (c % 2 ? rS / 2 : 0) + pOff;
+        const rv = rand();
 
-      // Inner hex outline — crystalline thick look
-      ctx.globalAlpha = 0.09 + rand()*0.05;
-      ctx.strokeStyle = rv < 0.4 ? '#8a5200' : '#4a2c00';
-      ctx.lineWidth = rv < 0.25 ? 1.4 : 0.8;
-      ctx.beginPath(); ctx.moveTo(pp[0][0],pp[0][1]);
-      for (let i=1;i<6;i++) ctx.lineTo(pp[i][0],pp[i][1]);
-      ctx.closePath(); ctx.stroke();
+        // Occasional accent fill
+        if (rv < fillChance * layer.aMul) {
+          ctx.globalAlpha = alpha * (0.4 + rv);
+          ctx.fillStyle = `rgb(${fc[0]},${fc[1]},${fc[2]})`;
+          const pp = hexPts(bx, by, bR);
+          ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
+          for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
+          ctx.closePath(); ctx.fill();
+        }
 
-      // Inner smaller hex on some — crystalline layering
-      if (rv < 0.20) {
-        const ip = hexPts(bx, by, bR*0.55);
-        ctx.globalAlpha = 0.06;
-        ctx.strokeStyle = '#c87800'; ctx.lineWidth = 0.7;
-        ctx.beginPath(); ctx.moveTo(ip[0][0],ip[0][1]);
-        for (let i=1;i<6;i++) ctx.lineTo(ip[i][0],ip[i][1]);
+        // Hex outline
+        ctx.globalAlpha = alpha + rand() * 0.02;
+        ctx.strokeStyle = `rgb(${gc[0]},${gc[1]},${gc[2]})`;
+        ctx.lineWidth = layer.aMul > 0.8 ? 0.9 : 0.6;
+        const pp2 = hexPts(bx, by, bR);
+        ctx.beginPath(); ctx.moveTo(pp2[0][0], pp2[0][1]);
+        for (let i = 1; i < 6; i++) ctx.lineTo(pp2[i][0], pp2[i][1]);
         ctx.closePath(); ctx.stroke();
-      }
 
-      // Sticky drip streaks downward
-      if (rand() < 0.09) {
-        const dripLen = 8 + rand()*16;
-        ctx.globalAlpha = 0.07 + rand()*0.06;
-        ctx.strokeStyle = '#a06000'; ctx.lineWidth = 1 + rand();
-        ctx.beginPath();
-        ctx.moveTo(bx + (rand()-0.5)*6, by + bR*0.5);
-        ctx.bezierCurveTo(
-          bx + (rand()-0.5)*4, by + bR*0.5 + dripLen*0.4,
-          bx + (rand()-0.5)*4, by + bR*0.5 + dripLen*0.7,
-          bx + (rand()-0.5)*3, by + bR*0.5 + dripLen
-        );
-        ctx.stroke();
+        // Near layer gets extra detail: inner hex on some cells
+        if (layer.aMul > 0.9 && rv < 0.15) {
+          const ip = hexPts(bx, by, bR * 0.55);
+          ctx.globalAlpha = alpha * 0.5;
+          ctx.strokeStyle = `rgb(${ac[0]},${ac[1]},${ac[2]})`;
+          ctx.lineWidth = 0.6;
+          ctx.beginPath(); ctx.moveTo(ip[0][0], ip[0][1]);
+          for (let i = 1; i < 6; i++) ctx.lineTo(ip[i][0], ip[i][1]);
+          ctx.closePath(); ctx.stroke();
+        }
+
+        // Consume remaining RNG values for consistency
+        rand(); rand();
       }
     }
   }
   ctx.restore();
+}
+
+function drawBGParticles(blend) {
+  const { a, b, t } = blend;
+  const pc = lerpCol(a.particleCol, b.particleCol, t);
+  const pa = a.particleAlpha + (b.particleAlpha - a.particleAlpha) * t;
+  const rate = a.particleRate + (b.particleRate - a.particleRate) * t;
+  const cb = H * PLAY_BOTTOM;
+
+  // Spawn new particles
+  if (bgParticles.length < BG_PARTICLE_MAX && Math.random() < rate) {
+    bgParticles.push({
+      x: Math.random() * W,
+      y: cb + Math.random() * 20,
+      size: 1 + Math.random() * 2,
+      speed: 0.15 + Math.random() * 0.35,
+      alpha: 0.08 + Math.random() * pa,
+      drift: (Math.random() - 0.5) * 0.3
+    });
+  }
+
+  // Update and draw
+  for (let i = bgParticles.length - 1; i >= 0; i--) {
+    const p = bgParticles[i];
+    p.y -= p.speed;
+    p.x += p.drift;
+    // Remove if off screen
+    if (p.y < -5 || p.x < -5 || p.x > W + 5) {
+      bgParticles.splice(i, 1);
+      continue;
+    }
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = `rgb(${pc[0]},${pc[1]},${pc[2]})`;
+    ctx.fillRect(Math.round(p.x), Math.round(p.y), p.size, p.size);
+  }
   ctx.globalAlpha = 1;
+}
+
+function drawBGScanlines() {
+  ctx.fillStyle = 'rgba(0,0,0,0.07)';
+  for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
 }
 
 function drawBG() {
-  if      (currentLevel <= 10) drawBG_Abandoned();
-  else if (currentLevel <= 20) drawBG_Hardened();
-  else {
-    // Fallback for future themes — reuse hardened for now
-    drawBG_Hardened();
-  }
+  const blend = getBGBlend(scrollY);
+  drawBGBase(blend);
+  drawBGLayers(blend);
+  drawBGParticles(blend);
+  drawBGScanlines();
   // HUD divider drawn later after blur overlay in render()
 }
 
@@ -1925,13 +2016,13 @@ function drawBG() {
 // Powerup slots are hex-shaped outlines.
 // ═══════════════════════════════════════════════════════
 // Jar constants
-const JAR_CX  = W - 52;        // jar centre x
-const JAR_BW  = 54;            // max belly width
-const JAR_BH  = 75;            // body height
-const JAR_NW  = 24;            // neck width
-const JAR_NH  = 8;             // neck height
-const JAR_RW  = 32;            // rim width
-const JAR_RH  = 5;             // rim height
+const JAR_CX  = W - 48;        // jar centre x
+const JAR_BW  = 62;            // max belly width
+const JAR_BH  = 95;            // body height
+const JAR_NW  = 28;            // neck width
+const JAR_NH  = 10;            // neck height
+const JAR_RW  = 36;            // rim width
+const JAR_RH  = 7;             // rim height
 const JAR_NY  = HUD_Y + 14;   // neck top y
 const JAR_RY  = JAR_NY - JAR_RH; // rim top y
 const JAR_BY  = JAR_NY + JAR_NH; // body top y
@@ -1940,11 +2031,11 @@ const JAR_BX  = JAR_CX - JAR_BW / 2;
 const JAR_NX  = JAR_CX - JAR_NW / 2;
 const JAR_RX  = JAR_CX - JAR_RW / 2;
 // Upgrade slot constants — 6 tessellated flat-top hexes
-const SLOT_R   = 15;
-const SLOT_SPC = SLOT_R * 1.5;               // horizontal center-to-center (22.5)
-const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols (~13)
-const SLOT_Y   = HUD_Y + 80;                 // base row center y
-const SLOT0_X  = 26;
+const SLOT_R   = 22;
+const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center (~35.6)
+const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols (~19)
+const SLOT_Y   = HUD_Y + 78;                 // base row center y
+const SLOT0_X  = 30;
 
 function drawHexOutline(cx, cy, r) {
   const pts = hexPts(cx, cy, r);
@@ -1979,48 +2070,88 @@ function drawHUD() {
   const fill = Math.min(1, totalHoney / getMeterCap());
   const bodyB = JAR_BY + JAR_BH;
 
-  if (honeyPotEmpty && honeyPotFill) {
-    // Sprite-based honey pot
-    const sprSz = honeyPotEmpty.width;               // 1024
-    const drawH = JAR_BH + JAR_NH + JAR_RH + 8;     // total jar height on screen
-    const drawW = drawH;                              // keep square aspect
-    const drawX = JAR_CX - drawW / 2;
-    const drawY = JAR_RY - 4;
+  // ── Procedural honey jar ──
+  {
+    const bx = JAR_BX, by = JAR_BY, bw = JAR_BW, bh = JAR_BH;
+    const cr = 8; // corner radius for body
 
-    // 1) Draw empty jar as background (shows glass interior color)
-    ctx.drawImage(honeyPotEmpty, drawX, drawY, drawW, drawH);
-
-    // 2) Draw honey fill on top, clipped to fill height
-    if (fill > 0) {
-      const fillRange = honeyFillBot - honeyFillTop;
-      const fillH = Math.floor(fillRange * fill);
-      const srcY = honeyFillBot - fillH;
-      const scale = drawH / sprSz;
-      const screenFillY = drawY + srcY * scale;
-      const screenFillH = fillH * scale;
-      ctx.save();
+    // Helper: rounded rect path
+    function jarBodyPath() {
       ctx.beginPath();
-      ctx.rect(drawX, screenFillY, drawW, screenFillH + 1);
+      ctx.moveTo(bx + cr, by);
+      ctx.lineTo(bx + bw - cr, by);
+      ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + cr);
+      ctx.lineTo(bx + bw, by + bh - cr);
+      ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - cr, by + bh);
+      ctx.lineTo(bx + cr, by + bh);
+      ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - cr);
+      ctx.lineTo(bx, by + cr);
+      ctx.quadraticCurveTo(bx, by, bx + cr, by);
+      ctx.closePath();
+    }
+
+    // 1) Jar body — dark amber glass
+    jarBodyPath();
+    ctx.fillStyle = 'rgba(60,35,10,0.7)';
+    ctx.fill();
+    ctx.strokeStyle = '#6a3800'; ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // 2) Honey fill — golden gradient from bottom up
+    if (fill > 0) {
+      const fh = Math.floor(bh * fill);
+      const fillTop = by + bh - fh;
+      ctx.save();
+      jarBodyPath();
       ctx.clip();
-      ctx.drawImage(honeyPotFill, drawX, drawY, drawW, drawH);
-      ctx.fillStyle = 'rgba(255,240,120,0.35)';
-      ctx.fillRect(drawX, screenFillY, drawW, 1);
+      const grad = ctx.createLinearGradient(0, by + bh, 0, fillTop);
+      grad.addColorStop(0, '#c87800');
+      grad.addColorStop(0.5, '#f5a020');
+      grad.addColorStop(1, '#ffe060');
+      ctx.fillStyle = grad;
+      ctx.fillRect(bx, fillTop, bw, fh);
+      // Surface highlight line
+      ctx.fillStyle = 'rgba(255,240,120,0.6)';
+      ctx.fillRect(bx + 3, fillTop, bw - 6, 1.5);
       ctx.restore();
     }
 
-    // 3) Draw empty jar again on top (glass walls + lid overlay the honey)
-    ctx.drawImage(honeyPotEmpty, drawX, drawY, drawW, drawH);
-  } else {
-    // Fallback: simple procedural pot if sprites didn't load
-    ctx.fillStyle = '#1a1008';
-    ctx.fillRect(JAR_BX, JAR_BY, JAR_BW, JAR_BH);
-    if (fill > 0) {
-      const fh = Math.floor(JAR_BH * fill);
-      ctx.fillStyle = '#f5c030';
-      ctx.fillRect(JAR_BX, bodyB - fh, JAR_BW, fh);
-    }
-    ctx.strokeStyle = '#7a3800'; ctx.lineWidth = 1.5;
-    ctx.strokeRect(JAR_BX, JAR_BY, JAR_BW, JAR_BH);
+    // 3) Subtle inner glow on glass
+    jarBodyPath();
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = 'rgba(120,80,30,0.08)';
+    ctx.fillRect(bx + bw * 0.6, by, bw * 0.25, bh);
+    ctx.restore();
+
+    // 4) Neck — connects body to lid
+    const nx = JAR_NX, ny = JAR_NY, nw = JAR_NW, nh = JAR_NH;
+    ctx.fillStyle = 'rgba(60,35,10,0.7)';
+    ctx.fillRect(nx, ny, nw, nh);
+    ctx.strokeStyle = '#6a3800'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(nx, ny, nw, nh);
+
+    // 5) Lid / rim — golden cap
+    const rx = JAR_RX, ry = JAR_RY, rw = JAR_RW, rh = JAR_RH;
+    const lidGrad = ctx.createLinearGradient(0, ry, 0, ry + rh);
+    lidGrad.addColorStop(0, '#d4a030');
+    lidGrad.addColorStop(0.5, '#f0c040');
+    lidGrad.addColorStop(1, '#a07020');
+    ctx.fillStyle = lidGrad;
+    ctx.beginPath();
+    ctx.moveTo(rx + 2, ry + rh);
+    ctx.lineTo(rx, ry + 2);
+    ctx.quadraticCurveTo(rx, ry, rx + 2, ry);
+    ctx.lineTo(rx + rw - 2, ry);
+    ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + 2);
+    ctx.lineTo(rx + rw - 2, ry + rh);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#6a3800'; ctx.lineWidth = 1;
+    ctx.stroke();
+    // Lid highlight
+    ctx.fillStyle = 'rgba(255,230,160,0.35)';
+    ctx.fillRect(rx + 4, ry + 1, rw - 8, 1.5);
   }
 
   // ── Upgrade slots ─────────────────────────────────────
@@ -2062,14 +2193,14 @@ function drawHUD() {
     ctx.strokeStyle = col+'30'; ctx.lineWidth=1; ctx.stroke();
 
     // Abbreviation label
-    ctx.font = F5; ctx.textAlign='center'; ctx.fillStyle=col;
-    ctx.fillText(pu.short, cx, cy + 3);
+    ctx.font = F7; ctx.textAlign='center'; ctx.fillStyle=col;
+    ctx.fillText(pu.short, cx, cy + 4);
 
     // Stack badge
     if (slot.stacks > 1) {
       const bx = cx + SLOT_R*0.72, by = cy - SLOT_R*0.60;
       ctx.fillStyle = col;
-      ctx.fillRect(bx-7, by-7, 14, 9);
+      ctx.fillRect(bx-8, by-8, 16, 11);
       ctx.fillStyle = '#000';
       ctx.font = F5;
       ctx.fillText('X'+slot.stacks, bx, by);
@@ -2130,7 +2261,7 @@ const HIVE_CONFIG = {
   HIVE_BOTTOM_GAP: 240,  // world px above PADDLE_Y where the hive floor sits
   CAMERA_LEAD:     150,  // world px above topmost bee that camera targets
   CAMERA_LERP:    0.06,  // smooth-follow factor (0=frozen, 1=instant)
-  CAMERA_FALLBACK: 0.25, // max downward drift as fraction of H from highest point
+  CAMERA_FALLBACK: 0.04, // max downward drift as fraction of H from highest point
   CAMERA_MIN:     null,  // computed at level start; ≤0 when hive overflows screen
   // LV1-3→2 chunks, LV4-6→3, LV7-9→4, LV10-12→5, LV13+→6
   getChunkCount(lvl) {
@@ -2141,22 +2272,26 @@ const HIVE_CONFIG = {
 // ── Weighted spawn tables ───────────────────────────────
 // depth = (lvl-1) + chunkIndex — increases with both level and chunk depth.
 const DEPTH_TABLE = [
-  { fill:0.58, weights:{NORMAL:92,THICK:8} },                                                                                         // 0  (no specials)
-  { fill:0.60, weights:{NORMAL:86,THICK:10,HONEY:1,WAX:2,HEAVY:1} },                                                                   // 1  (no brood yet)
-  { fill:0.62, weights:{NORMAL:78,THICK:12,HONEY:2,WAX:3,BROOD:1,HEAVY:3} },                                                           // 2  (brood enters at 1)
-  { fill:0.65, weights:{NORMAL:72,THICK:13,HONEY:3,WAX:3,BROOD:2,HEAVY:4,CHARGED:2} },                                                 // 3
-  { fill:0.68, weights:{NORMAL:66,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:5,CHARGED:3,BOMB:2} },                                          // 4
-  { fill:0.70, weights:{NORMAL:58,THICK:14,HONEY:5,WAX:5,BROOD:3,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4} },                                  // 5
-  { fill:0.73, weights:{NORMAL:48,THICK:14,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:5,UNBREAKABLE:2} },                    // 6
-  { fill:0.76, weights:{NORMAL:42,THICK:14,HONEY:7,WAX:7,BROOD:5,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:5,UNBREAKABLE:3} },                    // 7
-  { fill:0.78, weights:{NORMAL:36,THICK:13,HONEY:7,WAX:7,BROOD:6,HEAVY:5,CHARGED:4,BOMB:4,ROYAL:5,UNBREAKABLE:3,ANCIENT:4} },          // 8
-  { fill:0.80, weights:{NORMAL:30,THICK:12,HONEY:8,WAX:8,BROOD:6,HEAVY:5,CHARGED:4,BOMB:4,ROYAL:5,UNBREAKABLE:4,ANCIENT:6} },          // 9
-  { fill:0.82, weights:{NORMAL:26,THICK:11,HONEY:8,WAX:8,BROOD:7,HEAVY:5,CHARGED:4,BOMB:5,ROYAL:5,UNBREAKABLE:4,ANCIENT:7} },          // 10
-  { fill:0.84, weights:{NORMAL:22,THICK:10,HONEY:8,WAX:8,BROOD:7,HEAVY:5,CHARGED:4,BOMB:5,ROYAL:5,UNBREAKABLE:4,ANCIENT:8,TITAN:4} },  // 11
-  { fill:0.86, weights:{NORMAL:18,THICK:9,HONEY:8,WAX:9,BROOD:7,HEAVY:5,CHARGED:5,BOMB:5,ROYAL:5,UNBREAKABLE:5,ANCIENT:8,TITAN:6} },   // 12
-  { fill:0.87, weights:{NORMAL:15,THICK:8,HONEY:8,WAX:9,BROOD:8,HEAVY:5,CHARGED:5,BOMB:6,ROYAL:6,UNBREAKABLE:5,ANCIENT:8,TITAN:7} },   // 13
-  { fill:0.88, weights:{NORMAL:12,THICK:7,HONEY:8,WAX:10,BROOD:8,HEAVY:5,CHARGED:5,BOMB:6,ROYAL:6,UNBREAKABLE:5,ANCIENT:9,TITAN:9} },  // 14
-  { fill:0.90, weights:{NORMAL:10,THICK:6,HONEY:8,WAX:10,BROOD:8,HEAVY:5,CHARGED:5,BOMB:7,ROYAL:6,UNBREAKABLE:6,ANCIENT:10,TITAN:10}}, // 15+
+  { fill:0.55, weights:{NORMAL:92,THICK:8} },                                                                                                              // 0  (no specials)
+  { fill:0.57, weights:{NORMAL:88,THICK:10,HONEY:1,WAX:1} },                                                                                               // 1  first specials
+  { fill:0.59, weights:{NORMAL:84,THICK:12,HONEY:2,WAX:2,HEAVY:1} },                                                                                       // 2  heavy enters
+  { fill:0.60, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,BROOD:1,HEAVY:2} },                                                                               // 3  brood enters
+  { fill:0.62, weights:{NORMAL:76,THICK:14,HONEY:3,WAX:3,BROOD:1,HEAVY:3,CHARGED:1} },                                                                     // 4  charged enters
+  { fill:0.63, weights:{NORMAL:72,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,CHARGED:2,BOMB:1} },                                                              // 5  bomb enters
+  { fill:0.65, weights:{NORMAL:68,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,CHARGED:2,BOMB:2,ROYAL:1} },                                                      // 6  royal enters
+  { fill:0.66, weights:{NORMAL:64,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:2,BOMB:2,ROYAL:2} },                                                      // 7
+  { fill:0.67, weights:{NORMAL:60,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:2,BOMB:2,ROYAL:3,UNBREAKABLE:1} },                                        // 8  unbreakable enters
+  { fill:0.68, weights:{NORMAL:56,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:3,BOMB:3,ROYAL:3,UNBREAKABLE:2} },                                        // 9
+  { fill:0.69, weights:{NORMAL:52,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:3,BOMB:3,ROYAL:3,UNBREAKABLE:2,ANCIENT:2} },                              // 10 ancient enters
+  { fill:0.70, weights:{NORMAL:50,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:3,UNBREAKABLE:3,ANCIENT:3} },                              // 11
+  { fill:0.71, weights:{NORMAL:48,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:3,TITAN:1} },                      // 12 titan enters
+  { fill:0.72, weights:{NORMAL:46,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:2} },                      // 13
+  { fill:0.73, weights:{NORMAL:44,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 14
+  { fill:0.74, weights:{NORMAL:43,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 15
+  { fill:0.75, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:3} },                      // 16
+  { fill:0.76, weights:{NORMAL:41,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 17
+  { fill:0.77, weights:{NORMAL:40,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 18
+  { fill:0.78, weights:{NORMAL:40,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 19+ cap
 ];
 function getDepthEntry(depth) {
   return DEPTH_TABLE[Math.min(Math.max(0, depth), DEPTH_TABLE.length - 1)];
@@ -2233,7 +2368,7 @@ const STRUCTURES = [
       const p1 = candidates[i1];
       p1.type = 'PORTAL'; p1.hp = CELL_TYPES.PORTAL.hp;
       // Pick second portal: must also be 3+ cells from p1
-      const valid2 = candidates.filter(h => h !== p1 && hexDist(h, p1) >= MIN_PORTAL_DIST);
+      const valid2 = candidates.filter(h => h !== p1 && hexDist(h, p1) >= MIN_PORTAL_DIST && hexDist(h, p1) <= MAX_PORTAL_DIST);
       if (valid2.length === 0) { p1.type = 'NORMAL'; p1.hp = CELL_TYPES.NORMAL.hp; return; }
       const p2 = valid2[Math.floor(rng() * valid2.length)];
       p2.type = 'PORTAL'; p2.hp = CELL_TYPES.PORTAL.hp;
@@ -2260,6 +2395,58 @@ const STRUCTURES = [
       for (const h of column) { h.type = 'CHARGED'; h.hp = CELL_TYPES.CHARGED.hp; }
     },
   },
+  {
+    id: 'WAX_WALL', minDepth: 5, weight: 10,
+    stamp(hexMap, rng) {
+      // Mixed wall: UNBREAKABLE core + WAX flanks, with HONEY behind
+      const vals = [...hexMap.values()];
+      if (vals.length < 6) return;
+      const seeds = vals.filter(h => !isNearEdge(h.x) && !SPECIAL_TYPES.has(h.type) && h.type !== 'UNBREAKABLE');
+      if (seeds.length === 0) return;
+      const seed = seeds[Math.floor(rng() * seeds.length)];
+      // Random wall direction
+      const angle = rng() * Math.PI;
+      const spacing = HEX_R * Math.sqrt(3);
+      const count = 3 + Math.floor(rng() * 3); // 3-5 cells
+      const wallCells = [seed];
+      for (let i = 1; i < count; i++) {
+        const tx = seed.x + Math.cos(angle) * spacing * i;
+        const ty = seed.y + Math.sin(angle) * spacing * i;
+        let best = null, bestD = spacing * 0.8;
+        for (const h of vals) {
+          if (wallCells.includes(h) || SPECIAL_TYPES.has(h.type) || h.type === 'UNBREAKABLE') continue;
+          if (isEdgeCell(h.x)) continue;
+          const d = Math.hypot(h.x - tx, h.y - ty);
+          if (d < bestD) { bestD = d; best = h; }
+        }
+        if (best) wallCells.push(best);
+      }
+      if (wallCells.length < 3) return; // need at least 3 for a real wall
+      // Core = UNBREAKABLE, flanks = WAX
+      for (let i = 0; i < wallCells.length; i++) {
+        const wc = wallCells[i];
+        if (i > 0 && i < wallCells.length - 1) {
+          wc.type = 'UNBREAKABLE'; wc.hp = CELL_TYPES.UNBREAKABLE.hp;
+        } else {
+          wc.type = 'WAX'; wc.hp = CELL_TYPES.WAX.hp;
+        }
+      }
+      // Place 1-2 HONEY cells behind the wall (perpendicular)
+      const perpX = Math.cos(angle + Math.PI/2) * spacing;
+      const perpY = Math.sin(angle + Math.PI/2) * spacing;
+      const mid = wallCells[Math.floor(wallCells.length / 2)];
+      for (let s = 0; s < 2; s++) {
+        const hx = mid.x + perpX * (s + 1), hy = mid.y + perpY * (s + 1);
+        let best = null, bestD = spacing * 0.8;
+        for (const h of vals) {
+          if (wallCells.includes(h) || SPECIAL_TYPES.has(h.type) || h.type === 'UNBREAKABLE' || h.type === 'HONEY') continue;
+          const d = Math.hypot(h.x - hx, h.y - hy);
+          if (d < bestD) { bestD = d; best = h; }
+        }
+        if (best) { best.type = 'HONEY'; best.hp = CELL_TYPES.HONEY.hp; }
+      }
+    },
+  },
   // TODO: QUEEN_CHAMBER  — fortified center cluster, minDepth: 8
   // TODO: SECRET_ROOM    — hollow cavity ringed by wax, minDepth: 5
 ];
@@ -2270,9 +2457,10 @@ function isEdgeCell(x) { return x < EDGE_MARGIN || x > W - EDGE_MARGIN; }
 function isNearEdge(x) { return x < EDGE_MARGIN + HEX_R * 1.5 || x > W - EDGE_MARGIN - HEX_R * 1.5; }
 
 function hexDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
-const MIN_PORTAL_DIST  = HEX_R * Math.sqrt(3) * 3;  // 3 cell spaces
+const MIN_PORTAL_DIST  = HEX_R * Math.sqrt(3) * 4;  // 4 cell spaces
+const MAX_PORTAL_DIST  = HEX_R * Math.sqrt(3) * 8;  // 8 cell spaces max
 const MIN_SPECIAL_DIST = HEX_R * Math.sqrt(3) * 1.5; // 1.5 cell spaces between different specials
-const SPECIAL_TYPES = new Set(['PORTAL','BROOD','HONEY','CHARGED','BOMB']);
+const SPECIAL_TYPES = new Set(['PORTAL','BROOD','HONEY','CHARGED','BOMB','UNBREAKABLE']);
 
 // Check if a hex has minimum distance from all same-type cells in the map
 function hasMinDist(hex, type, hexMap, minDist) {
@@ -2405,20 +2593,26 @@ function resetRun() {
   upgradeSlots = []; levelHoneyEarned = 0; upgradeCount = 0;
   levelHoneyEarned = 0;
   activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
-  powerupDrops = [];
+  powerupDrops = []; pendingPowerup = null; powerupBeesRemaining = 0;
 }
 
 function mkBee(x,y,vx,vy,spd) {
   return {x,y,vx,vy,speed:spd??CONFIG.BASE_SPD,trail:[],tpCooldown:0,
-    // powerup state stubs — no behavior yet, ready for Phase 2
     sizeScale:    1.0,    // BEE-GER / BEE-BEE size modifier
     phaseThrough: false,  // BEE-BOO phase flag
     effectTimer:  0,      // duration counter for temporary effects
+    powerupId:    null,   // per-bee powerup id (e.g. 'beeGer')
+    powerupColor: null,   // per-bee powerup color for HUD
+    powerupTimer: 0,      // ticks remaining for this bee's powerup
   };
 }
+let pendingPowerup = null;    // powerup type waiting to be applied via paddle bounce
+let powerupBeesRemaining = 0; // how many more bees can receive the pending powerup
 function startBee(xOff) {
-  const vx=2.5*(Math.random()>0.5?1:-1);
-  return mkBee(W/2+(xOff||0), scrollY+PADDLE_Y-65, vx, -CONFIG.BASE_SPD);
+  const ang = (Math.random() * 120 - 60) * Math.PI / 180;
+  const vx = CONFIG.BASE_SPD * Math.sin(ang);
+  const vy = -CONFIG.BASE_SPD * Math.cos(ang);
+  return mkBee(W/2+(xOff||0), scrollY+PADDLE_Y-65, vx, vy);
 }
 
 function startLevel(lvl) {
@@ -2500,8 +2694,13 @@ function update() {
     const topBeeY = bees.reduce((m, b) => Math.min(m, b.y), Infinity);
     const rawTarget = topBeeY - HIVE_CONFIG.CAMERA_LEAD;
     if (scrollY < scrollYMin) scrollYMin = scrollY;               // ratchet: track peak
-    // Track hive depth high-water mark (only goes up, never down)
-    const depthNow = Math.floor(Math.abs(Math.min(topBeeY, 0)) / (CONFIG.HEX_R * Math.sqrt(3)));
+    // Track hive depth: count hex cell rows from the bottom-most row upward
+    const rowH = CONFIG.HEX_R * Math.sqrt(3);
+    const hiveBottom = PADDLE_Y - HIVE_CONFIG.HIVE_BOTTOM_GAP;
+    // Bottom-most hex row Y = largest multiple of rowH ≤ hiveBottom
+    const firstRowY = Math.floor(hiveBottom / rowH) * rowH;
+    // Depth = how many rows above the first row the bee has reached
+    const depthNow = Math.max(0, Math.ceil((firstRowY - topBeeY) / rowH));
     if (depthNow > hiveDepthMax) hiveDepthMax = depthNow;
     const fallbackFloor = Math.min(0, scrollYMin + H * HIVE_CONFIG.CAMERA_FALLBACK);
     scrollYTarget = Math.max(HIVE_CONFIG.CAMERA_MIN ?? -Infinity, Math.min(fallbackFloor, rawTarget));
@@ -2532,9 +2731,9 @@ function update() {
 
   for (const b of bees) {
     pushTrail(b);
-    const spdMul = (activePowerup?.id === 'beeR') ? 0.5 : 1;
+    const spdMul = (b.powerupId === 'beeR') ? 0.5 : 1;
     b.x+=b.vx*dt*60*spdMul; b.y+=b.vy*dt*60*spdMul;
-    if (activePowerup?.id === 'beeR') b.x += Math.sin(tick * 0.15 + b.y * 0.05) * 1.2;
+    if (b.powerupId === 'beeR') b.x += Math.sin(tick * 0.15 + b.y * 0.05) * 1.2;
 
     // Swarm Instinct: homing toward nearest cell
     if (powers.swarmInstinct > 0) {
@@ -2561,9 +2760,9 @@ function update() {
     if (b.y-BALL_R<hiveTopY) {b.y=hiveTopY+BALL_R; b.vy=Math.abs(b.vy); b.vx*=wf; b.vy*=wf; normSpd(b,b.speed); sfx.wall();}
 
     // paddle (world-space Y)
-    if (b.vy>0 && b.y+BALL_R>=paddleWorldY && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+8
+    if (b.vy>0 && b.y+BALL_R>=paddleWorldY-4 && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+8
         && b.x>=paddle.x-4 && b.x<=paddle.x+pw+4) {
-      b.y=paddleWorldY-BALL_R; paddle.squish=7;
+      b.y=paddleWorldY-4-BALL_R; paddle.squish=7;
       const rel=(b.x-(paddle.x+pw/2))/(pw/2);
       const ang = rel * (CONFIG.HEND_ANGLE_SPREAD * Math.PI/180);
       b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
@@ -2573,6 +2772,14 @@ function update() {
       b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
       sfx.paddle();
       normSpd(b,b.speed);
+      // Apply pending per-bee powerup on paddle bounce
+      if (pendingPowerup && powerupBeesRemaining > 0) {
+        b.powerupId = pendingPowerup.id;
+        b.powerupColor = pendingPowerup.color;
+        b.powerupTimer = pendingPowerup.duration;
+        powerupBeesRemaining--;
+        if (powerupBeesRemaining <= 0) pendingPowerup = null;
+      }
     }
 
     // hex
@@ -2586,7 +2793,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
 
         if (h.type === 'BROOD') {
           sfx.brood(); spawnParts(h.x,h.y,20,['#f5a010','#f5d040','#ffe080','#fff']);
-          broodMsgs.push({x:h.x,y:h.y-8,life:80,txt:'BROOD RELEASED'});
+          /* text removed: BROOD RELEASED */
           const n = CONFIG.BROOD_MIN_BEES + Math.floor(Math.random()*CONFIG.BROOD_RAND_EXTRA) + powers.broodFrenzy;
           for (let i=0;i<n;i++) {
             const sp=((i/(n-1||1))-0.5)*2, a=sp*(50*Math.PI/180);
@@ -2599,7 +2806,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
           // HONEY: 6 drops + bright golden particles
           for (let d=0;d<6;d++) spawnDroplet(h.x+((d%3)-1)*6, h.y+((d%3)===1?-4:0));
           sfx.honey(); spawnParts(h.x,h.y,16,['#ffe050','#ffd020','#ffb800','#fff8c0','#ff9800']);
-          broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'HONEY!'});
+          /* text removed: HONEY! */
         } else if (h.type === 'WAX') {
           // WAX: 0 honey + pale crumbly particles
           sfx.wax(); spawnParts(h.x,h.y,14,['#e8dfc0','#d8cf9e','#c8b870','#fff','#b0a060']);
@@ -2618,21 +2825,23 @@ if (b.tpCooldown > 0) b.tpCooldown--;
         } else if (h.type === 'ROYAL') {
           spawnDroplet(h.x,h.y);
           sfx.thick(); spawnParts(h.x,h.y,16,PAL.hexRoyal);
-          broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'ROYAL!'});
+          /* text removed: ROYAL! */
         } else if (h.type === 'ANCIENT') {
           spawnDroplet(h.x,h.y);
           sfx.thick(); spawnParts(h.x,h.y,18,PAL.hexAncient);
-          broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'ANCIENT!'});
+          /* text removed: ANCIENT! */
         } else if (h.type === 'TITAN') {
           spawnDroplet(h.x,h.y);
           sfx.thick(); spawnParts(h.x,h.y,24,PAL.hexTitan);
-          broodMsgs.push({x:h.x,y:h.y-8,life:80,txt:'TITAN FELL!'});
+          triggerShake(4, 8);
+          /* text removed: TITAN FELL! */
         } else if (h.type === 'CHARGED') {
           sfx.honey(); spawnParts(h.x,h.y,12,PAL.hexCharged);
           spawnPowerupDrop(h.x, h.y);
         } else if (h.type === 'BOMB') {
           sfx.bomb(); spawnParts(h.x,h.y,28,PAL.hexBomb);
-          broodMsgs.push({x:h.x,y:h.y-8,life:55,txt:'BOOM!'});
+          triggerShake(6, 12);
+          /* text removed: BOOM! */
           // Explosion: 2 damage, wider radius than WAX
           for (const n of hexes) {
             if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE') continue;
@@ -2666,11 +2875,11 @@ if (b.tpCooldown > 0) b.tpCooldown--;
   // ── Powerup drops: gravity, paddle catch, off-screen removal ──
   const pw2 = getPW();
   for (const d of powerupDrops) {
-    d.vy += 0.08;
+    d.vy += 0.02;
     d.y += d.vy;
     d.flash++;
     // Paddle collision (world-space)
-    if (d.vy > 0 && d.y >= paddleWorldY - 6 && d.y <= paddleWorldY + CONFIG.HEND_COLL_H + 10
+    if (d.vy > 0 && d.y >= paddleWorldY - 10 && d.y <= paddleWorldY + CONFIG.HEND_COLL_H + 10
         && d.x >= paddle.x - 6 && d.x <= paddle.x + pw2 + 6) {
       activatePowerup(d.type, d.x, d.y);
       d.caught = true;
@@ -2680,10 +2889,17 @@ if (b.tpCooldown > 0) b.tpCooldown--;
   }
   powerupDrops = powerupDrops.filter(d => !d.caught);
 
-  // ── Tick down active powerup ──
+  // ── Tick down active powerup (global, e.g. honeySurge) ──
   if (activePowerup && activePowerup.ticksLeft > 0) {
     activePowerup.ticksLeft--;
     if (activePowerup.ticksLeft <= 0) deactivatePowerup();
+  }
+  // ── Tick down per-bee powerup timers ──
+  for (const b of bees) {
+    if (b.powerupTimer > 0) {
+      b.powerupTimer--;
+      if (b.powerupTimer <= 0) { b.powerupId = null; b.powerupColor = null; }
+    }
   }
 
   // ── HEND OF GOD rescue ──
@@ -2691,7 +2907,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
     hasHendOfGod = false;
     bees.push(startBee(0));
     broodMsgs.push({ x: W / 2, y: scrollY + PADDLE_Y - 40, life: 80, txt: 'SAVED!' });
-  } else if (bees.length===0) {gameOver=true;touchX=null;render();setTimeout(showLose,350);return;}
+  } else if (bees.length===0) {gameOver=true;touchX=null;triggerShake(4,10);render();setTimeout(showLose,350);return;}
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2699,6 +2915,14 @@ if (b.tpCooldown > 0) b.tpCooldown--;
 // ═══════════════════════════════════════════════════════
 function render() {
   ctx.clearRect(0,0,W,H);
+  // Screen shake offset
+  let sx = 0, sy = 0;
+  if (shakeTimer > 0) {
+    sx = (Math.random() - 0.5) * shakeMag * 2;
+    sy = (Math.random() - 0.5) * shakeMag * 2;
+    shakeTimer--; shakeMag *= 0.9;
+    ctx.save(); ctx.translate(sx, sy);
+  }
   drawBG();                          // screen space — fixed backdrop
 
   ctx.save();
@@ -2718,16 +2942,16 @@ function render() {
   // ── Powerup drops (world space) ──
   for (const d of powerupDrops) {
     const pulse = 0.85 + 0.15 * Math.sin(d.flash * 0.12);
-    const r = 10 * pulse;
+    const r = 20 * pulse;
     ctx.globalAlpha = 0.3;
     ctx.fillStyle = d.type.color;
-    ctx.beginPath(); ctx.arc(d.x, d.y, r + 4, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(d.x, d.y, r + 6, 0, Math.PI * 2); ctx.fill();
     ctx.globalAlpha = 1;
     hexPath(hexPts(d.x, d.y, r));
     ctx.fillStyle = d.type.color; ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
     ctx.fillStyle = '#000';
-    ctx.font = 'bold 8px "Press Start 2P",monospace';
+    ctx.font = 'bold 12px "Press Start 2P",monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(d.type.name[0], d.x, d.y + 1);
     ctx.textBaseline = 'alphabetic';
@@ -2749,9 +2973,10 @@ function render() {
 
   // ── Picker transition: fullscreen blur + darken ──
   if (blurAmount > 0.1) {
+    const bp = 16;
     ctx.save();
     ctx.filter = `blur(${blurAmount.toFixed(1)}px)`;
-    ctx.drawImage(canvas, 0, 0);
+    ctx.drawImage(canvas, -bp, -bp, W + bp * 2, H + bp * 2);
     ctx.filter = 'none';
     ctx.fillStyle = `rgba(0,0,0,${(blurAmount * 0.04).toFixed(2)})`;
     ctx.fillRect(0, 0, W, H);
@@ -2779,7 +3004,7 @@ function render() {
 
   drawHUD();                         // screen space
 
-  // ── Active powerup HUD timer ──
+  // ── Active powerup HUD timer (global, e.g. honeySurge) ──
   if (activePowerup) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = 4;
     const frac = activePowerup.ticksLeft / (TEMP_POWERUPS.find(t => t.id === activePowerup.id)?.duration || 600);
@@ -2795,6 +3020,21 @@ function render() {
     ctx.fillText(activePowerup.name, W / 2, by + bh + 9);
     ctx.textAlign = 'left';
   }
+  // ── Pending per-bee powerup indicator ──
+  if (pendingPowerup && powerupBeesRemaining > 0) {
+    const bw = 120, bh = 8, bx = (W - bw) / 2, by = activePowerup ? 22 : 4;
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 14);
+    ctx.fillStyle = pendingPowerup.color;
+    ctx.fillRect(bx, by, bw * (powerupBeesRemaining / 6), bh);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+    ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = pendingPowerup.color;
+    ctx.font = '5px "Press Start 2P",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(pendingPowerup.name + ' x' + powerupBeesRemaining, W / 2, by + bh + 9);
+    ctx.textAlign = 'left';
+  }
   // ── HEND OF GOD stored indicator ──
   if (hasHendOfGod) {
     ctx.fillStyle = '#ffffff';
@@ -2807,6 +3047,9 @@ function render() {
     ctx.globalAlpha = 1;
     ctx.textAlign = 'left';
   }
+
+  // Close screen shake transform
+  if (sx !== 0 || sy !== 0) ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2947,7 +3190,7 @@ function buildGuide() {
         <div class="gc-name" style="color:${nameCol}">${c.name}</div>
         <div class="gc-note">${c.note}</div>
         <div class="gc-stats">
-          <span class="gc-stat" style="color:#5a3810">${c.hits}</span>
+          <span class="gc-stat" style="color:#c8a060">${c.hits}</span>
           <span class="gc-stat" style="color:#f5c030">${c.honey}</span>
         </div>
       </div>
@@ -2990,7 +3233,7 @@ function buildGuide() {
           <div class="gu-desc">${desc}</div>
         </div>
       </div>`;
-    }).join('') + `<div style="font-size:0.27rem;color:#2e1800;text-align:center;padding:8px 0">UPGRADES STACK UP TO ×${ALL_POWERUPS[0].max}</div>`;
+    }).join('');
   }
   refreshUpgradesTab();
   // Re-render upgrades tab each time pause opens
@@ -2999,16 +3242,34 @@ function buildGuide() {
 
 buildGuide();
 
-function showPause() {
+function showPause(showGuide) {
   music.play(); music.muffle();
   if (pausePanel._refreshUpgrades) pausePanel._refreshUpgrades();
-  document.getElementById('guideBody').scrollTop = 0;
+  const gb = document.getElementById('guideBody');
+  const pb = document.getElementById('pauseBtns');
+  const bb = document.getElementById('guideBackBtn');
+  if (showGuide) {
+    gb.style.display = '';
+    gb.scrollTop = 0;
+    if (pb) pb.style.display = 'none';
+    if (bb) bb.style.display = '';
+    pausePanel.style.justifyContent = 'flex-start';
+  } else {
+    gb.style.display = 'none';
+    if (pb) pb.style.display = '';
+    if (bb) bb.style.display = 'none';
+    pausePanel.style.justifyContent = 'center';
+  }
   pausePanel.classList.add('show');
 }
 function hidePause() { pausePanel.classList.remove('show'); }
 
-// Add a RESUME button to the pause panel (built once)
+// Add pause menu buttons (RESUME, GUIDE, SETTINGS) wrapped in a container
 ;(function() {
+  const container = document.createElement('div');
+  container.id = 'pauseBtns';
+  container.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;';
+
   const rb = document.createElement('button');
   rb.className = 'ob pr';
   rb.textContent = 'RESUME';
@@ -3019,8 +3280,32 @@ function hidePause() { pausePanel.classList.remove('show'); }
       startCountdown(() => loop());
     }
   };
-  pausePanel.appendChild(rb);
+  container.appendChild(rb);
 
+  const gb = document.createElement('button');
+  gb.className = 'ob';
+  gb.textContent = 'GUIDE';
+  gb.onclick = () => { showPause(true); };
+  container.appendChild(gb);
+
+  const sb = document.createElement('button');
+  sb.className = 'ob';
+  sb.textContent = 'SETTINGS';
+  sb.onclick = () => { hidePause(); showSettings('pause'); };
+  container.appendChild(sb);
+
+  pausePanel.appendChild(container);
+
+  // BACK button at top of pause panel (below title), only visible in guide view
+  const guideBack = document.createElement('button');
+  guideBack.className = 'ob';
+  guideBack.id = 'guideBackBtn';
+  guideBack.textContent = 'BACK';
+  guideBack.style.cssText = 'margin:8px auto 8px auto;display:none;';
+  guideBack.onclick = () => { showPause(false); };
+  // Insert after pauseTitle, before guideBody
+  const pauseTitle = document.getElementById('pauseTitle');
+  pauseTitle.parentNode.insertBefore(guideBack, pauseTitle.nextSibling);
 })();
 const ov      = document.getElementById('ov');
 const ovTitle = document.getElementById('ovTitle');
@@ -3045,7 +3330,8 @@ function showMenu() {
   ovSub.innerHTML='';
   clearBtns();
   mkBtn('PLAY',     true,  ()=>{hideOv(); menuBGActive=false; resetRun();startLevel(1);});
-  mkBtn('GUIDE',    false, ()=>{showPause();});
+  mkBtn('GUIDE',    false, ()=>{showPause(true);});
+  mkBtn('SETTINGS', false, ()=>{hideOv(); showSettings('menu');});
   showOv();
   // Start animated hive background
   menuBGActive = true;
@@ -3053,12 +3339,60 @@ function showMenu() {
   requestAnimationFrame(menuBGLoop);
 }
 
+// ── Settings panel ──────────────────────────────────────
+let _settingsReturnTo = 'menu';
+const settingsPanel = document.getElementById('settingsPanel');
+const sliderMusic = document.getElementById('sliderMusic');
+const sliderSfx   = document.getElementById('sliderSfx');
+
+sliderMusic.value = Math.round(musicVolume * 100);
+sliderSfx.value   = Math.round(sfxVolume * 100);
+
+sliderMusic.addEventListener('input', () => {
+  musicVolume = sliderMusic.value / 100;
+  if (music.gain) music.gain.gain.value = musicVolume;
+  localStorage.setItem('hendsbee_music', musicVolume);
+});
+sliderSfx.addEventListener('input', () => {
+  sfxVolume = sliderSfx.value / 100;
+  localStorage.setItem('hendsbee_sfx', sfxVolume);
+});
+
+const toggleShakeBtn = document.getElementById('toggleShake');
+toggleShakeBtn.textContent = screenShakeEnabled ? 'ON' : 'OFF';
+toggleShakeBtn.addEventListener('click', () => {
+  screenShakeEnabled = !screenShakeEnabled;
+  toggleShakeBtn.textContent = screenShakeEnabled ? 'ON' : 'OFF';
+  localStorage.setItem('hendsbee_shake', screenShakeEnabled);
+});
+
+function showSettings(returnTo) {
+  _settingsReturnTo = returnTo || 'menu';
+  settingsPanel.classList.add('show');
+}
+function hideSettings() { settingsPanel.classList.remove('show'); }
+
+;(function() {
+  const bb = document.createElement('button');
+  bb.className = 'ob';
+  bb.textContent = 'BACK';
+  bb.style.marginTop = '8px';
+  bb.onclick = () => {
+    hideSettings();
+    if (_settingsReturnTo === 'pause') showPause();
+    else showOv(); // return to menu overlay
+  };
+  settingsPanel.appendChild(bb);
+})();
+
 function showLose() {
   music.play(); music.muffle();
   // Blur the frozen game frame behind the overlay
+  // Draw scaled up so edges blur evenly (blur kernel has content beyond viewport)
+  const bp = 16; // blur padding — extend beyond edges
   ctx.save();
   ctx.filter = 'blur(6px)';
-  ctx.drawImage(canvas, 0, 0);
+  ctx.drawImage(canvas, -bp, -bp, W + bp * 2, H + bp * 2);
   ctx.filter = 'none';
   ctx.fillStyle = 'rgba(0,0,0,0.3)';
   ctx.fillRect(0, 0, W, H);
@@ -3066,9 +3400,9 @@ function showLose() {
   ovTitle.textContent='PLAY AGAIN';
   ovSub.innerHTML='HIVE DEPTH '+hiveDepthMax;
   clearBtns();
-  mkBtn('PLAY AGAIN',   true,  ()=>{hideOv();startLevel(currentLevel);});
+  mkBtn('PLAY AGAIN',   true,  ()=>{hideOv();resetRun();startLevel(1);});
   mkBtn('QUIT TO MENU', false, ()=>{hideOv();showMenu();});
-  mkBtn('GUIDE',        false, ()=>{showPause();});
+  mkBtn('GUIDE',        false, ()=>{showPause(true);});
   showOv();
 }
 
