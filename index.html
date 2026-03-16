@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0e0500">
+<meta name="theme-color" content="#080300">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -20,7 +20,7 @@
   }
 
   body {
-    background:#0e0500;
+    background:#080300;
     width:100%; height:100%;
     display:flex; align-items:center; justify-content:center;
     font-family:'Press Start 2P',monospace;
@@ -38,7 +38,7 @@
 
   canvas {
     display:block; width:100%; height:100%;
-    background:#0e0500; image-rendering:pixelated;
+    background:#080300; image-rendering:pixelated;
     touch-action:none;
   }
 
@@ -52,7 +52,7 @@
   .panel.show { opacity:1; pointer-events:all; }
 
   #ov { background:transparent; }
-  #settingsPanel { background:rgba(14,5,0,0.92); }
+  #settingsPanel { background:#0e0500; }
 
   #ovTitle {
     font-size:1.1rem; color:#f0a020;
@@ -127,7 +127,7 @@
 
   /* ── pause / guide ──────────────────── */
   #pause {
-    background:rgba(4,1,0,0.97);
+    background:#040100;
     padding:10px 0 0 0;
     align-items:center;
   }
@@ -152,39 +152,46 @@
 
   /* Hex cell grid (2-column) */
   #tab-cells {
-    display:grid; grid-template-columns:1fr 1fr; gap:0 4px;
+    display:grid; grid-template-columns:1fr 1fr; gap:0 6px;
   }
   .gc-row {
     display:flex; align-items:center; gap:5px;
-    padding:3px 0; border-bottom:1px solid #221000;
+    padding:4px 2px;
   }
   .gc-hex { flex-shrink:0; }
   .gc-info { flex:1; min-width:0; }
   .gc-name { font-size:0.50rem; letter-spacing:0.3px; margin-bottom:1px; }
-  .gc-note { font-size:0.42rem; color:#c09050; letter-spacing:0.2px; margin-bottom:2px; }
-  .gc-stats { display:flex; gap:5px; }
-  .gc-stat  { font-size:0.44rem; letter-spacing:0.3px; white-space:nowrap; }
+  .gc-note { font-size:0.36rem; color:#907040; letter-spacing:0.2px; margin-bottom:2px; }
+  .gc-stats { font-size:0.38rem; color:#c8a060; letter-spacing:0.3px; white-space:nowrap; }
+  .gc-queen-row {
+    grid-column: 1 / -1;
+    display:flex; align-items:center; gap:8px;
+    padding:6px 4px; margin-top:4px;
+    border-top:1px solid #2e1800;
+  }
 
   /* Power-up rows */
   .gp-row {
     display:flex; align-items:center; gap:8px;
-    padding:4px 0; border-bottom:1px solid #221000;
+    padding:4px 4px; border-bottom:1px solid #221000;
   }
   .gp-icon { width:32px; height:32px; flex-shrink:0; }
   .gp-info { flex:1; }
   .gp-name { font-size:0.55rem; letter-spacing:0.5px; margin-bottom:2px; }
-  .gp-desc { font-size:0.42rem; color:#c09050; letter-spacing:0.3px; }
+  .gp-desc { font-size:0.38rem; color:#c09050; letter-spacing:0.3px; line-height:1.5; }
   .gp-tag  { font-size:0.32rem; margin-top:1px; }
+  .gp-preview { width:40px; height:40px; flex-shrink:0; image-rendering:pixelated; }
 
   /* Upgrade rows */
   .gu-row {
     display:flex; align-items:center; gap:8px;
-    padding:4px 0; border-bottom:1px solid #221000;
+    padding:4px 4px; border-bottom:1px solid #221000;
   }
   .gu-icon { width:32px; height:32px; flex-shrink:0; }
   .gu-info { flex:1; }
   .gu-name { font-size:0.55rem; letter-spacing:0.5px; margin-bottom:2px; }
   .gu-desc { font-size:0.42rem; color:#c09050; letter-spacing:0.3px; }
+  .gu-count { font-size:0.6rem; letter-spacing:0.5px; flex-shrink:0; text-align:right; min-width:40px; align-self:center; padding-right:4px; }
 
 
   #sumContent {
@@ -276,6 +283,11 @@
         <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">SCREEN SHAKE</label>
         <button id="toggleShake" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
       </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">2 HEND MODE</label>
+        <button id="toggleSplitHend" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">OFF</button>
+      </div>
+      <div id="splitHendNote" style="font-family:'Press Start 2P',monospace;color:#806030;font-size:0.28rem;margin-top:-4px;margin-bottom:10px;text-align:center;">SPLIT PADDLE · 2-FINGER TOUCH</div>
     </div>
   </div>
 
@@ -340,24 +352,41 @@ const PADDLE_Y    = Math.round(H * PLAY_BOTTOM) - 14;  // ≈527
 // PALETTE
 // ═══════════════════════════════════════════════════════
 const PAL = {
-  hexNorm:  ['#ffd060','#f5c030','#e8a010','#f0b428','#c87800'],
-  hexThick: ['#8b5a00','#7a4800','#6b3a00'],
+  hexNorm:  ['#e8a020','#d48a10','#c07808','#b06800','#a05a00'], // deep amber
+  hexThick: ['#6a4200','#583200','#482800'],                     // deep bronze
   hexBrood: ['#2e1c04','#3a2408','#46300c'],
-  hexHoney: ['#ffe050','#ffd020','#ffea80','#ffe860','#ffc800'], // bright saturated gold
-  hexWax:   ['#e8dfc0','#d8cf9e','#cfc28a','#e2d9b2'],          // pale waxy cream
+  hexHoney: ['#ffc830','#ffb820','#ffd040','#ffaa10','#ff9800'], // warm gold
+  hexWax:   ['#e0d8b0','#d0c890','#c4b87a','#dcd0a0'],          // warm waxy cream
   hexPortal: ['#9020d0','#7810b0','#b030f0','#6808a0'],          // vivid royal purple
-  hexHeavy:       ['#8a6830','#7a5820','#6a4810','#5a3808'],    // dark bronze
+  hexHeavy:       ['#7a5820','#6a4810','#5a3808','#4a2800'],    // darker bronze
   hexRoyal:       ['#d4af37','#c09830','#a88020','#906810'],    // rich gold
   hexAncient:     ['#4a6050','#3a5040','#2a4030','#1a3020'],    // dark moss
   hexTitan:       ['#3a3a50','#2a2a40','#1a1a30','#101020'],    // dark steel
   hexCharged:     ['#50d0ff','#30b0e0','#2090c0','#1070a0'],    // electric blue
   hexBomb:        ['#ff4020','#e03010','#c02000','#a01000'],     // fiery red
   hexUnbreakable: ['#505050','#404040','#303030','#202020'],     // grey stone
-  hexLine:  '#7a3d00',
+  hexRoyalGuard:  ['#6a2fa0','#582090','#481880','#381070'],     // rich purple
+  hexQueen:       ['#c02070','#a01858','#d03088','#901048'],      // deep magenta
+  hexLine:  '#4a2200',       // darker outlines for contrast
   hexCrack: '#2a1000',
-  bg:       '#0e0500',
+  hexHighlight: '#ffe880',   // inner gradient highlight
+  bg:       '#080300',       // near-black cave background
   honey:    '#f5c030',
 };
+
+// Color helpers for gradient fills
+function lightenCol(hex, amt) {
+  const r = Math.min(255, parseInt(hex.slice(1,3),16) + amt);
+  const g = Math.min(255, parseInt(hex.slice(3,5),16) + amt);
+  const b = Math.min(255, parseInt(hex.slice(5,7),16) + amt);
+  return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
+function darkenCol(hex, amt) {
+  const r = Math.max(0, parseInt(hex.slice(1,3),16) - amt);
+  const g = Math.max(0, parseInt(hex.slice(3,5),16) - amt);
+  const b = Math.max(0, parseInt(hex.slice(5,7),16) - amt);
+  return '#' + ((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
+}
 
 // ═══════════════════════════════════════════════════════
 // CONFIG — all tunable gameplay values in one place
@@ -376,7 +405,7 @@ const CONFIG = {
   TRAIL_LEN:            55,     // trail history length
 
   // Hend (Paddle)
-  HEND_SPEED:           520,    // keyboard speed (px/sec)
+  HEND_SPEED:           1200,   // keyboard speed (px/sec)
   HEND_COLL_H:          6,      // collision zone height (px)
   HEND_TOUCH_FOLLOW:    0.38,   // touch smooth-follow factor
   HEND_VEL_BOOST:       0.28,   // paddle-velocity transfer to bee
@@ -433,7 +462,331 @@ function triggerShake(mag, frames) {
   shakeMag = mag; shakeTimer = frames;
 }
 
+// ═══════════════════════════════════════════════════════════
+// ── SaveManager — Centralized Save/Load System ───────────
+// ═══════════════════════════════════════════════════════════
+
+const SAVE_KEYS = { META: 'hendsbee_meta', RUN: 'hendsbee_run' };
+const SAVE_VERSION = { META: 1, RUN: 1 };
+const AUTOSAVE_INTERVAL_MS = 15000; // 15 seconds debounce
+
+// JSON replacer/reviver for Infinity (not valid JSON)
+function saveReplacer(k, v) {
+  if (v === Infinity) return '__INF__';
+  if (v === -Infinity) return '__NINF__';
+  return v;
+}
+function saveReviver(k, v) {
+  if (v === '__INF__') return Infinity;
+  if (v === '__NINF__') return -Infinity;
+  return v;
+}
+
+const SaveManager = {
+  _lastAutoSave: 0,
+
+  // ── META (permanent progression) ───────────────────────
+  _defaultMeta() {
+    return {
+      _v: SAVE_VERSION.META,
+      bestDepth: 0,
+      bestLevel: 0,
+      totalLifetimeHoney: 0,
+      runsCompleted: 0,
+      savedAt: 0
+      // future: unlocked cosmetics, achievements
+    };
+  },
+
+  saveMeta() {
+    try {
+      const meta = this.loadMeta();
+      if (typeof hiveDepthMax !== 'undefined') {
+        meta.bestDepth = Math.max(meta.bestDepth, hiveDepthMax || 0);
+      }
+      if (typeof currentLevel !== 'undefined') {
+        meta.bestLevel = Math.max(meta.bestLevel, currentLevel || 0);
+      }
+      if (typeof totalHoney !== 'undefined') {
+        meta.totalLifetimeHoney = Math.max(meta.totalLifetimeHoney,
+          meta.totalLifetimeHoney + 0); // updated on game-over path
+      }
+      meta.savedAt = Date.now();
+      meta._v = SAVE_VERSION.META;
+      localStorage.setItem(SAVE_KEYS.META, JSON.stringify(meta));
+    } catch (e) { console.warn('[SaveManager] saveMeta failed:', e); }
+  },
+
+  loadMeta() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEYS.META);
+      if (!raw) return this._defaultMeta();
+      const data = JSON.parse(raw);
+      if (!data || typeof data._v !== 'number') return this._defaultMeta();
+      if (data._v > SAVE_VERSION.META) return this._defaultMeta(); // future version
+      if (data._v < SAVE_VERSION.META) this._migrateMeta(data, data._v);
+      // Fill missing fields with defaults
+      const def = this._defaultMeta();
+      for (const k in def) {
+        if (!(k in data)) data[k] = def[k];
+      }
+      return data;
+    } catch (e) {
+      console.warn('[SaveManager] loadMeta failed:', e);
+      return this._defaultMeta();
+    }
+  },
+
+  _migrateMeta(data, fromV) {
+    // Future migrations go here:
+    // if (fromV < 2) { data.newField = default; data._v = 2; }
+    return data;
+  },
+
+  // ── RUN (active game state) ────────────────────────────
+  saveRun() {
+    // Don't save if game is over, on menu, or game hasn't started
+    if (typeof gameOver !== 'undefined' && gameOver) return;
+    if (typeof menuBGActive !== 'undefined' && menuBGActive) return;
+    if (typeof hexes === 'undefined' || !hexes || hexes.length === 0) return;
+    if (typeof bees === 'undefined' || !bees || bees.length === 0) return;
+
+    try {
+      const data = {
+        _v: SAVE_VERSION.RUN,
+        savedAt: Date.now(),
+        // Core progress
+        currentLevel, destroyed, levelHoneyEarned, upgradeCount, totalHoney,
+        // Camera & generation
+        scrollY, scrollYTarget, scrollYMin, generatedTop, totalDepth,
+        levelSeed, portalChannelCounter, lastChargedY, hiveDepthMax,
+        // Paddle
+        paddleX: paddle.x,
+        paddle2X: paddle2 ? paddle2.x : W * 0.6,
+        // Bees
+        bees: bees.map(b => ({
+          x: b.x, y: b.y, vx: b.vx, vy: b.vy, speed: b.speed,
+          tpCooldown: b.tpCooldown, sizeScale: b.sizeScale,
+          phaseThrough: b.phaseThrough, effectTimer: b.effectTimer,
+          powerupId: b.powerupId, powerupColor: b.powerupColor,
+          powerupTimer: b.powerupTimer
+        })),
+        // Hexes — skip dead cells to save space
+        hexes: hexes.filter(h => !h.dead).map(h => {
+          const o = { x: h.x, y: h.y, type: h.type, hp: h.hp,
+                      dead: false, flash: 0, ci: h.ci };
+          if (h.portalChannel != null) o.portalChannel = h.portalChannel;
+          if (h.bossGateId != null) o.bossGateId = h.bossGateId;
+          return o;
+        }),
+        // Powers
+        powers: { ...powers },
+        // Powerups
+        activePowerup: activePowerup ? { ...activePowerup } : null,
+        hasHendOfGod,
+        honeySurgeFills,
+        pendingPowerupId: pendingPowerup ? pendingPowerup.id : null,
+        powerupBeesRemaining,
+        upgradeSlots: upgradeSlots.map(s => ({ ...s })),
+        powerupDrops: powerupDrops.map(d => ({
+          x: d.x, y: d.y, vy: d.vy, typeId: d.type.id, flash: d.flash
+        })),
+        // Timing
+        tick,
+        // Boss gates
+        bossGates: bossGates.map(g => ({
+          hp: g.hp, maxHp: g.maxHp, gateY: g.gateY, dead: g.dead
+        }))
+      };
+      localStorage.setItem(SAVE_KEYS.RUN, JSON.stringify(data, saveReplacer));
+      this._lastAutoSave = Date.now();
+    } catch (e) { console.warn('[SaveManager] saveRun failed:', e); }
+
+    // Also update meta bests
+    this.saveMeta();
+  },
+
+  loadRun() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEYS.RUN);
+      if (!raw) return null;
+      const data = JSON.parse(raw, saveReviver);
+      if (!data || typeof data._v !== 'number') return null;
+      if (data._v > SAVE_VERSION.RUN) return null; // future version — don't delete
+      if (data._v < SAVE_VERSION.RUN) this._migrateRun(data, data._v);
+      // Basic sanity checks
+      if (!Array.isArray(data.bees) || !Array.isArray(data.hexes)) return null;
+      if (data.bees.length === 0) return null;
+      return data;
+    } catch (e) {
+      console.warn('[SaveManager] loadRun failed:', e);
+      return null;
+    }
+  },
+
+  _migrateRun(data, fromV) {
+    // Future migrations go here:
+    // if (fromV < 2) { data.newField = default; data._v = 2; }
+    return data;
+  },
+
+  restoreRun() {
+    const data = this.loadRun();
+    if (!data) return false;
+
+    try {
+      // Core progress
+      currentLevel       = data.currentLevel     ?? 1;
+      destroyed          = data.destroyed         ?? 0;
+      levelHoneyEarned   = data.levelHoneyEarned  ?? 0;
+      upgradeCount       = data.upgradeCount      ?? 0;
+      totalHoney         = data.totalHoney        ?? 0;
+
+      // Camera & generation
+      scrollY              = data.scrollY              ?? 0;
+      scrollYTarget        = data.scrollYTarget        ?? 0;
+      scrollYMin           = data.scrollYMin           ?? 0;
+      generatedTop         = data.generatedTop         ?? 0;
+      totalDepth           = data.totalDepth           ?? 0;
+      levelSeed            = data.levelSeed            ?? 7919;
+      portalChannelCounter = data.portalChannelCounter ?? 0;
+      lastChargedY         = data.lastChargedY         ?? Infinity;
+      hiveDepthMax         = data.hiveDepthMax         ?? 0;
+      tick                 = data.tick                 ?? 0;
+
+      // Paddle
+      paddle = { x: data.paddleX ?? W / 2, squish: 0, prevX: data.paddleX ?? W / 2 };
+      paddle2 = { x: data.paddle2X ?? W * 0.6, squish: 0, prevX: data.paddle2X ?? W * 0.6 };
+
+      // Bees — reconstruct via mkBee then overlay saved fields
+      bees = (data.bees || []).map(b => {
+        const bee = mkBee(b.x, b.y, b.vx, b.vy, b.speed);
+        bee.tpCooldown   = b.tpCooldown   ?? 0;
+        bee.sizeScale    = b.sizeScale    ?? 1;
+        bee.phaseThrough = b.phaseThrough ?? false;
+        bee.effectTimer  = b.effectTimer  ?? 0;
+        bee.powerupId    = b.powerupId    ?? null;
+        bee.powerupColor = b.powerupColor ?? null;
+        bee.powerupTimer = b.powerupTimer ?? 0;
+        return bee;
+      });
+
+      // Hexes — plain objects
+      hexes = (data.hexes || []).map(h => {
+        const hex = { x: h.x, y: h.y, type: h.type, hp: h.hp,
+                      dead: h.dead ?? false, flash: h.flash ?? 0, ci: h.ci ?? 0 };
+        if (h.portalChannel != null) hex.portalChannel = h.portalChannel;
+        if (h.bossGateId != null) hex.bossGateId = h.bossGateId;
+        return hex;
+      });
+
+      // Boss gates — restore and re-link cells
+      bossGates = (data.bossGates || []).map((g, i) => ({
+        guardCells: hexes.filter(h => h.bossGateId === i && h.type === 'ROYAL_GUARD'),
+        queenCells: hexes.filter(h => h.bossGateId === i && h.type === 'QUEEN'),
+        hp: g.hp, maxHp: g.maxHp, gateY: g.gateY, dead: g.dead
+      }));
+
+      // Powers
+      if (data.powers) {
+        Object.keys(powers).forEach(k => {
+          powers[k] = data.powers[k] ?? 0;
+        });
+      }
+
+      // Powerups
+      activePowerup        = data.activePowerup        ?? null;
+      hasHendOfGod         = data.hasHendOfGod         ?? false;
+      honeySurgeFills      = data.honeySurgeFills      ?? 0;
+      powerupBeesRemaining = data.powerupBeesRemaining ?? 0;
+      upgradeSlots         = data.upgradeSlots         ?? [];
+
+      // Restore pendingPowerup by id lookup
+      pendingPowerup = data.pendingPowerupId
+        ? TEMP_POWERUPS.find(t => t.id === data.pendingPowerupId) || null
+        : null;
+
+      // Restore powerupDrops with type lookup
+      powerupDrops = (data.powerupDrops || []).map(d => ({
+        x: d.x, y: d.y, vy: d.vy, flash: d.flash ?? 0,
+        type: TEMP_POWERUPS.find(t => t.id === d.typeId) || TEMP_POWERUPS[0]
+      }));
+
+      // Reset transient state
+      gameOver            = false;
+      paused              = true;
+      pickerPending       = false;
+      pickerTransition    = null;
+      pickerResumeCallback = null;
+      timeScale           = 1;
+      blurAmount          = 0;
+      particles           = [];
+      broodMsgs           = [];
+      droplets            = [];
+      hendOfGodAnim       = null;
+      inspectorMode       = false;
+      inspectorTouchY     = null;
+      touchX              = null;
+
+      // Camera bounds
+      HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
+
+      // Cancel any existing loop
+      if (typeof animId !== 'undefined' && animId) cancelAnimationFrame(animId);
+
+      // Draw one frame so pause screen shows the restored game
+      music.play(); music.muffle();
+      render();
+      showPause();
+
+      return true;
+    } catch (e) {
+      console.warn('[SaveManager] restoreRun failed:', e);
+      return false;
+    }
+  },
+
+  clearRun() {
+    localStorage.removeItem(SAVE_KEYS.RUN);
+  },
+
+  clearAll() {
+    localStorage.removeItem(SAVE_KEYS.META);
+    localStorage.removeItem(SAVE_KEYS.RUN);
+  },
+
+  hasSavedRun() {
+    try {
+      const raw = localStorage.getItem(SAVE_KEYS.RUN);
+      if (!raw) return false;
+      const data = JSON.parse(raw, saveReviver);
+      return !!(data && data._v && data.bees && data.hexes);
+    } catch(e) { return false; }
+  },
+
+  getSummary() {
+    const data = this.loadRun();
+    if (!data) return { hasRun: false, level: 0, depth: 0, honey: 0, savedAt: 0 };
+    return {
+      hasRun: true,
+      level: data.currentLevel || 1,
+      depth: data.hiveDepthMax || 0,
+      honey: data.totalHoney || 0,
+      savedAt: data.savedAt || 0
+    };
+  },
+
+  _maybeAutoSave() {
+    if (Date.now() - this._lastAutoSave >= AUTOSAVE_INTERVAL_MS) {
+      this.saveRun();
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════════
+
 function _tone(freq, type, vol, dur, freqEnd) {
+  if (demoMode) return; // silent during attract mode
   vol *= sfxVolume;
   acResume();
   const o = AC.createOscillator(), g = AC.createGain();
@@ -446,6 +799,7 @@ function _tone(freq, type, vol, dur, freqEnd) {
   o.start(); o.stop(AC.currentTime + dur);
 }
 function _noise(vol, dur) {
+  if (demoMode) return; // silent during attract mode
   vol *= sfxVolume;
   acResume();
   const buf = AC.createBuffer(1, Math.ceil(AC.sampleRate * dur), AC.sampleRate);
@@ -619,7 +973,7 @@ function loadHendImage() {
 let beeFrames = [];      // array of Image objects [HI, MID, LOW]
 let beeFrameSeq = [0, 1, 2, 1]; // HI, MID, LOW, MID
 let beeFrameTick = 0;
-const BEE_FLAP_SPEED = 3; // frames per flap step (lower = faster)
+const BEE_FLAP_SPEED = 8; // frames per flap step (lower = faster)
 
 function loadBeeSprites() {
   const names = ['HI-FLIGHT.png', 'MID-FLIGHT.png', 'LOW-FLIGHT.png'];
@@ -636,12 +990,103 @@ function loadBeeSprites() {
       if (d[i] > 230 && d[i+1] > 230 && d[i+2] > 230) d[i+3] = 0;
     }
     ox.putImageData(id, 0, 0);
-    return new Promise(resolve => {
-      const cleaned = new Image();
-      cleaned.onload = () => resolve(cleaned);
-      cleaned.src = oc.toDataURL();
+    return oc; // return canvas for body-stabilisation pass
+  }))).then(canvases => {
+    // Step 1: Vertically align all frames to HI-FLIGHT's BODY center.
+    // HI-FLIGHT is used as the body reference because it has the tapered stinger.
+    // Use only the central 40% horizontal strip to find the vertical center,
+    // so wing positions (which vary per frame) don't skew the alignment.
+    if (!canvases[0]) return canvases;
+    const w = canvases[0].width, h = canvases[0].height;
+    function bodyVCenter(cv) {
+      const d = cv.getContext('2d').getImageData(0, 0, w, h).data;
+      // Find horizontal extent first
+      let xMin = w, xMax = 0;
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++)
+          if (d[(y * w + x) * 4 + 3] > 10) { if (x < xMin) xMin = x; if (x > xMax) xMax = x; }
+      // Central 40% horizontal strip = body column (excludes wings)
+      const cx = (xMin + xMax) / 2, hw = (xMax - xMin) * 0.2;
+      const bLeft = Math.floor(cx - hw), bRight = Math.ceil(cx + hw);
+      // Find vertical center of body column only
+      let top = h, bot = 0;
+      for (let y = 0; y < h; y++)
+        for (let x = bLeft; x <= bRight; x++)
+          if (d[(y * w + x) * 4 + 3] > 10) { if (y < top) top = y; if (y > bot) bot = y; }
+      return (top + bot) / 2;
+    }
+    const refCY = bodyVCenter(canvases[0]);
+    canvases = canvases.map((cv, i) => {
+      if (!cv || i === 0) return cv;
+      const dy = Math.round(refCY - bodyVCenter(cv));
+      if (dy === 0) return cv;
+      const ac = document.createElement('canvas');
+      ac.width = w; ac.height = h;
+      ac.getContext('2d').drawImage(cv, 0, dy);
+      return ac;
     });
-  }))).then(imgs => { beeFrames = imgs; });
+
+    // Step 2: Body-stabilisation — use HI-FLIGHT for all shared pixels.
+    // HI-FLIGHT has the tapered stinger shape we want on all frames.
+    // For source-only pixels, only include those OUTSIDE the body column
+    // (i.e. wings on the sides). This prevents antenna/stinger tips from
+    // different frames bleeding through.
+    const ref = canvases[0].getContext('2d').getImageData(0, 0, w, h).data;
+    const nPx = w * h;
+
+    // Find HI-FLIGHT's horizontal body column (center strip)
+    let refXMin = w, refXMax = 0;
+    for (let p = 0; p < nPx; p++) {
+      if (ref[p * 4 + 3] > 10) {
+        const x = p % w;
+        if (x < refXMin) refXMin = x;
+        if (x > refXMax) refXMax = x;
+      }
+    }
+    const bodyCX = (refXMin + refXMax) / 2;
+    const bodyHW = (refXMax - refXMin) * 0.3; // 60% of width = body column
+    const bodyLeft = bodyCX - bodyHW, bodyRight = bodyCX + bodyHW;
+
+    const stabilised = canvases.map((cv, idx) => {
+      if (!cv || idx === 0) return cv; // HI-FLIGHT stays as-is (it IS the reference)
+      const src = cv.getContext('2d').getImageData(0, 0, w, h).data;
+      const nc = document.createElement('canvas');
+      nc.width = w; nc.height = h;
+      const nx = nc.getContext('2d');
+      const out = nx.createImageData(w, h);
+      const od = out.data;
+      for (let p = 0; p < nPx; p++) {
+        const i4 = p * 4;
+        const sA = src[i4+3], rA = ref[i4+3];
+        if (rA > 10 && sA > 10) {
+          // Both have pixel → always use HI-FLIGHT (tapered stinger)
+          od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
+          od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
+        } else if (sA > 10) {
+          // Only in source — only include if outside body column (wings)
+          const x = p % w;
+          if (x < bodyLeft || x > bodyRight) {
+            od[i4] = src[i4]; od[i4+1] = src[i4+1];
+            od[i4+2] = src[i4+2]; od[i4+3] = src[i4+3];
+          }
+          // else: source-only pixel inside body column (antenna/stinger tip) → skip
+        }
+        // MID-only pixel or both transparent → stays transparent
+      }
+      nx.putImageData(out, 0, 0);
+      return nc;
+    });
+
+    // Convert canvases to Images
+    return Promise.all(stabilised.map(cv => {
+      if (!cv) return null;
+      return new Promise(resolve => {
+        const img2 = new Image();
+        img2.onload = () => resolve(img2);
+        img2.src = cv.toDataURL();
+      });
+    }));
+  }).then(imgs => { beeFrames = imgs; });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -774,7 +1219,7 @@ const powers = {
   queenBlessing: 0,  // increases HONEY cell spawn rate
   swarmInstinct: 0,  // bee homing strength
   waxBreaker:    0,  // +1 damage to THICK cells
-  royalFury:     0,  // +1 damage to ROYAL/ANCIENT/TITAN
+  royalFury:     0,  // +1 damage to ROYAL cells
   broodFrenzy:   0,  // +1 extra bee from BROOD cells
   twoHends:      0,  // widens paddle to two mirrored hands
 };
@@ -830,7 +1275,7 @@ const ALL_POWERUPS = [
     id: 'royalFury',
     name: 'ROYAL FURY',
     short: 'FURY',
-    desc: 'EXTRA DAMAGE TO ROYAL, ANCIENT & TITAN.',
+    desc: '+1 DAMAGE TO ROYAL CELLS.',
     tag:  'DAMAGE',
     color: '#a060d0', outline: '#603080',
     max:  6,
@@ -860,16 +1305,17 @@ const ALL_POWERUPS = [
 
 // ─── Temporary powerups (from CHARGED cells) ─────────
 const TEMP_POWERUPS = [
-  { id:'beeGer',     name:'BEE-GER',     color:'#ff6030', duration:600, desc:'DOUBLE DAMAGE' },
-  { id:'beeBee',     name:'BEE-BEE',     color:'#ffe040', duration:0,   desc:'SPLIT BEES' },
-  { id:'booBee',     name:'BOO-BEE',     color:'#a040ff', duration:600, desc:'PHASE THROUGH' },
-  { id:'honeySurge', name:'HONEY SURGE',  color:'#ffc020', duration:600, desc:'DOUBLE HONEY' },
-  { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'SLOW & WAVY' },
-  { id:'beeF',       name:'BEE-F',       color:'#f0a0c0', duration:600, desc:'MOO' },
-  { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:360, desc:'MASSIVE BEES' },
-  { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'DIVINE CLEAR' },
-  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'CORRUPT CELLS' },
-  { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'BEE RESCUE' },
+  // Bee-sprite powerups: smallest → biggest, alphabetical tiebreaker
+  { id:'beeBee',     name:'BEE-BEE',     color:'#ffe040', duration:0,   desc:'BEES SPLIT INTO 2 SMALLER BEES' },
+  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'A DEVIL BEE APPEARS AND TURNS MULTIPLE CELLS INTO BOMBS' },
+  { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'BEES MOVE SLOWER AND IN A WAVY TRAJECTORY' },
+  { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
+  { id:'booBee',     name:'BOO-BEE',     color:'#a040ff', duration:600, desc:'BEES TURN INTO GHOSTS AND PHASE THROUGH CELLS DEALING DAMAGE' },
+  { id:'beeGer',     name:'BEE-GER',     color:'#ff6030', duration:600, desc:'BEES GET TWICE AS BIG AND DO DOUBLE DAMAGE' },
+  { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:360, desc:'BEES BECOME MASSIVE AND DEAL TRIPLE DAMAGE' },
+  // Non-bee powerups at the bottom
+  { id:'honeySurge', name:'HONEY SURGE',  color:'#ffc020', duration:600, desc:'DOUBLES THE AMOUNT OF HONEY COLLECTED' },
+  { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
 ];
 let activePowerup = null;   // { id, name, color, ticksLeft } or null
 let hasHendOfGod  = false;  // stored rescue flag
@@ -887,7 +1333,7 @@ function deactivatePowerup() {
 }
 
 // Per-bee powerup IDs (applied on paddle bounce, limited to 6 bees)
-const PER_BEE_POWERUPS = new Set(['beeGer','beeHemoth','booBee','beeR','beeF']);
+const PER_BEE_POWERUPS = new Set(['beeGer','beeHemoth','booBee','beeR']);
 
 function activatePowerup(type, px, py) {
   sfx.powerup();
@@ -1080,7 +1526,7 @@ let pickerTransition = null;    // 'slowing' | 'speeding' | null
 let pickerResumeCallback = null;
 
 function checkMeterFull() {
-  if (pickerPending || paused || pickerTransition) return;
+  if (demoMode || pickerPending || paused || pickerTransition) return;
   if (totalHoney >= getMeterCap()) {
     // HONEY SURGE: track jar fills, end early at 2
     if (activePowerup?.id === 'honeySurge') {
@@ -1126,10 +1572,18 @@ window.addEventListener('keydown', e => { keys[e.key] = true;  e.preventDefault(
 window.addEventListener('keyup',   e => { keys[e.key] = false; });
 
 let touchX = null;
+let touchX2 = null;          // second hend (split mode only)
+let touchIdLeft = null;      // finger identifier for left hend
+let touchIdRight = null;     // finger identifier for right hend
 
 function getCanvasX(touch) {
   const r = canvas.getBoundingClientRect();
   return (touch.clientX - r.left) * (canvas.width / r.width);
+}
+
+// Is split hend active this frame? Requires setting ON + upgrade acquired
+function isSplitActive() {
+  return splitHendMode && typeof powers !== 'undefined' && powers.twoHends >= 1;
 }
 
 // Attach touch to canvas (not the wrapper) so overlay buttons remain tappable.
@@ -1140,20 +1594,99 @@ function isGameRunning() { return !gameOver && !!animId; }
 canvas.addEventListener('touchstart', e => {
   if (!isGameRunning()) return;   // let overlay/shop handle the tap
   e.preventDefault();
-  touchX = getCanvasX(e.touches[0]);
+  if (inspectorMode) {
+    inspectorTouchY = e.touches[0].clientY;
+    return;
+  }
+  if (isSplitActive()) {
+    // Assign new touches to left or right hend by screen position
+    const r = canvas.getBoundingClientRect();
+    const midScreen = r.left + r.width / 2;
+    for (const t of e.changedTouches) {
+      if (t.clientX < midScreen && touchIdLeft === null) {
+        touchIdLeft = t.identifier;
+        touchX = getCanvasX(t);
+      } else if (t.clientX >= midScreen && touchIdRight === null) {
+        touchIdRight = t.identifier;
+        touchX2 = getCanvasX(t);
+      } else if (touchIdLeft === null) {
+        touchIdLeft = t.identifier;
+        touchX = getCanvasX(t);
+      } else if (touchIdRight === null) {
+        touchIdRight = t.identifier;
+        touchX2 = getCanvasX(t);
+      }
+    }
+  } else {
+    touchX = getCanvasX(e.touches[0]);
+  }
 }, {passive:false});
 
 canvas.addEventListener('touchmove', e => {
   if (!isGameRunning()) return;
   e.preventDefault();
-  touchX = getCanvasX(e.touches[0]);
+  if (inspectorMode && inspectorTouchY !== null) {
+    const dy = e.touches[0].clientY - inspectorTouchY;
+    const r = canvas.getBoundingClientRect();
+    const scale = canvas.height / r.height;
+    scrollY += dy * scale;
+    inspectorTouchY = e.touches[0].clientY;
+    return;
+  }
+  if (isSplitActive()) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchIdLeft)  touchX  = getCanvasX(t);
+      if (t.identifier === touchIdRight) touchX2 = getCanvasX(t);
+    }
+  } else {
+    touchX = getCanvasX(e.touches[0]);
+  }
 }, {passive:false});
 
 canvas.addEventListener('touchend', e => {
-  if (!isGameRunning()) { touchX = null; return; }
+  if (!isGameRunning()) { touchX = null; touchX2 = null; touchIdLeft = null; touchIdRight = null; return; }
   e.preventDefault();
-  touchX = e.touches.length ? getCanvasX(e.touches[0]) : null;
+  if (inspectorMode) { inspectorTouchY = null; return; }
+  if (isSplitActive()) {
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchIdLeft)  { touchX  = null; touchIdLeft  = null; }
+      if (t.identifier === touchIdRight) { touchX2 = null; touchIdRight = null; }
+    }
+  } else {
+    touchX = e.touches.length ? getCanvasX(e.touches[0]) : null;
+  }
 }, {passive:false});
+
+// Mouse wheel scroll for inspector mode
+canvas.addEventListener('wheel', e => {
+  if (!inspectorMode) return;
+  e.preventDefault();
+  scrollY += e.deltaY * 0.5;
+}, {passive:false});
+
+// Desktop mouse control — moves hend via same touchX path
+let mouseDown = false;
+function getCanvasXMouse(e) {
+  const r = canvas.getBoundingClientRect();
+  return (e.clientX - r.left) * (canvas.width / r.width);
+}
+canvas.addEventListener('mousedown', e => {
+  if (!isGameRunning() || inspectorMode) return;
+  mouseDown = true;
+  touchX = getCanvasXMouse(e);
+});
+canvas.addEventListener('mousemove', e => {
+  if (!mouseDown || !isGameRunning() || inspectorMode) return;
+  touchX = getCanvasXMouse(e);
+});
+canvas.addEventListener('mouseup', () => {
+  mouseDown = false;
+  touchX = null;
+});
+canvas.addEventListener('mouseleave', () => {
+  mouseDown = false;
+  touchX = null;
+});
 
 // ═══════════════════════════════════════════════════════
 // PADDLE / HENDS
@@ -1172,7 +1705,9 @@ canvas.addEventListener('touchend', e => {
 // ═══════════════════════════════════════════════════════
 // PH_COLL and PSPD moved to CONFIG.HEND_COLL_H / CONFIG.HEND_SPEED
 let paddle;
+let paddle2;   // second hend for split mode
 function mkPaddle() { return { x: W/2 - getPW()/2, squish:0, prevX: W/2 - getPW()/2 }; }
+function mkPaddle2() { return { x: W * 0.6, squish:0, prevX: W * 0.6 }; }
 
 // Pixel colors
 const H_SK = '#c09050';   // skin mid
@@ -1239,8 +1774,24 @@ function drawHand(ox, oy, side, targetW) {
       ctx.translate(Math.round(ox) + dw, Math.round(oy));
       ctx.scale(-1, 1);
       ctx.drawImage(hendCanvas, 0, 0, dw, dh);
+      // BEE>i wrist tattoo
+      if (hasHendOfGod) {
+        const fs = Math.max(3, Math.round(dw * 0.06));
+        ctx.font = 'bold ' + fs + 'px "Press Start 2P",monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(20,15,10,0.75)';
+        ctx.fillText('BEE>i', dw * 0.5, dh * 0.75);
+      }
     } else {
       ctx.drawImage(hendCanvas, Math.round(ox), Math.round(oy), dw, dh);
+      // BEE>i wrist tattoo
+      if (hasHendOfGod) {
+        const fs = Math.max(3, Math.round(dw * 0.06));
+        ctx.font = 'bold ' + fs + 'px "Press Start 2P",monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = 'rgba(20,15,10,0.75)';
+        ctx.fillText('BEE>i', Math.round(ox) + dw * 0.5, Math.round(oy) + dh * 0.75);
+      }
     }
     ctx.restore();
     return;
@@ -1272,24 +1823,36 @@ function drawHand(ox, oy, side, targetW) {
 const HEND_PALM_FRAC = 0.44;
 const HEND_VISUAL_SCALE = 0.60;  // 40% reduction
 
-function drawPaddle(p) {
+function drawPaddle(p, p2) {
   const pw = getPW();
-  const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
   const bottomY = HUD_Y - 2;
 
-  if (powers.twoHends >= 1) {
+  if (isSplitActive() && p2) {
+    // ── Split mode: two independent hends ──
+    const halfW = Math.round(pw / 2);
+    const drawH = getHandSpriteH(halfW);
+    const sq1 = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
+    const sq2 = p2.squish > 0 ? Math.ceil(p2.squish / 4) : 0;
+    drawHand(p.x, bottomY - drawH + sq1, -1, halfW);    // left hand (flipped)
+    drawHand(p2.x, bottomY - drawH + sq2, 1, halfW);    // right hand (normal)
+    if (p.squish > 0) p.squish--;
+    if (p2.squish > 0) p2.squish--;
+  } else if (powers.twoHends >= 1) {
     // Two hands side by side, mirrored, no gap
     const halfW = Math.round(pw / 2);
     const drawH = getHandSpriteH(halfW);
+    const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const oy = bottomY - drawH + sq;
     drawHand(p.x, oy, -1, halfW);             // left hand (flipped)
     drawHand(p.x + halfW, oy, 1, halfW);      // right hand (normal)
+    if (p.squish > 0) p.squish--;
   } else {
+    const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const drawH = getHandSpriteH(pw);
     const oy = bottomY - drawH + sq;
     drawHand(p.x, oy, 1, pw);
+    if (p.squish > 0) p.squish--;
   }
-  if (p.squish > 0) p.squish--;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1309,19 +1872,6 @@ const BEE_G = [
   [_,_,B, B, B, B, B, B, B,_],
   [_,_,S, S, S, S, S, S, S,_],
   [_,_,K, K, K, K, K, K, K,_],
-];
-// COW sprite — same 10×9 grid as BEE_G (for BEE-F powerup)
-const CW='#ffffff', CB='#222222', CP='#f8b0c0', CH='#d0d0d0';
-const COW_G = [
-  [_,_,_,CW,CW,CW,CW,_,_,_],
-  [_,_,CW,CB,CW,CW,CB,CW,_,_],
-  [_,CW,CW,CW,CW,CW,CW,CW,CW,_],
-  [_,CW,CB,CW,CW,CB,CW,CW,CW,_],
-  [_,CW,CW,CW,CW,CW,CW,CW,CW,_],
-  [_,CH,CH,CW,CW,CW,CH,CH,CW,_],
-  [_,CW,CW,CW,CP,CP,CW,CW,CW,_],
-  [_,_,CW,CW,CP,CP,CW,CW,_,_],
-  [_,_,_,CB,_,_,CB,_,_,_],
 ];
 const BC = BEE_G[0].length, BR = BEE_G.length;  // 10 cols, 9 rows
 const BP = 2;  // 2 canvas px per sprite cell
@@ -1367,26 +1917,29 @@ function drawBee(b) {
   ctx.rotate(angle);
   ctx.scale(scale, scale);
 
-  // Use PNG bee frames if loaded and not using special sprite
-  const usePNG = beeFrames.length === 3 && beeFrames[0] &&
-                 b.powerupId !== 'beeF' && b.powerupId !== 'beeR';
+  // Use PNG bee frames if loaded
+  const usePNG = beeFrames.length === 3 && beeFrames[0];
   if (usePNG) {
-    const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / BEE_FLAP_SPEED) % beeFrameSeq.length];
+    const flap = (b.powerupId === 'beeHemoth' || b.powerupId === 'beeR') ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
+    const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / flap) % beeFrameSeq.length];
     const img = beeFrames[frameIdx];
     // Draw centered, scaled to match the pixel sprite bounding box
     const dw = BOX * 2.4, dh = BOY * 2.4;
     ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
+    // BEE-R nauseous green tint overlay
+    if (b.powerupId === 'beeR') {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = 'rgba(60,180,70,0.45)';
+      ctx.fillRect(-dw/2, -dh/2, dw, dh);
+      ctx.globalCompositeOperation = 'source-over';
+    }
   } else {
     const ox = -BOX/2;
     const oy = -BOY/2;
-    // Choose sprite: COW_G for BEE-F, else BEE_G
-    const grid = (b.powerupId === 'beeF') ? COW_G : BEE_G;
     for (let r = 0; r < BR; r++) {
       for (let c = 0; c < BC; c++) {
-        let col = grid[r][c];
+        let col = BEE_G[r][c];
         if (!col) continue;
-        // BEE-R green tint
-        if (b.powerupId === 'beeR' && col !== '#160800') col = '#40c060';
         ctx.fillStyle = col;
         ctx.fillRect(ox + c*BP, oy + r*BP, BP, BP);
       }
@@ -1428,7 +1981,9 @@ const CELL_TYPES = {
   TITAN:       { hp: 20,       honey: 1, color: 'hexTitan',       label: 'Titan'       },
   CHARGED:     { hp: 1,        honey: 0, color: 'hexCharged',     label: 'Charged',     dropsPowerup: true },
   BOMB:        { hp: 1,        honey: 0, color: 'hexBomb',        label: 'Bomb',        explodes: true },
-  UNBREAKABLE: { hp: Infinity, honey: 0, color: 'hexUnbreakable', label: 'Unbreakable', indestructible: true },
+  UNBREAKABLE:  { hp: Infinity, honey: 0, color: 'hexUnbreakable', label: 'Unbreakable', indestructible: true },
+  ROYAL_GUARD:  { hp: Infinity, honey: 0, color: 'hexRoyalGuard',  label: 'Royal Guard', indestructible: true },
+  QUEEN:        { hp: 1,        honey: 50, color: 'hexQueen',       label: 'Queen' },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1491,14 +2046,22 @@ function drawHex(h) {
   const pts = hexPts(h.x, h.y, HEX_R);
   hexPath(pts);
 
-  // Fill color
+  // Fill color — radial gradient for 3D depth
   if (h.flash > 0) {
     ctx.fillStyle = h.type === 'PORTAL' ? '#e0a0ff' : h.type === 'HONEY' ? '#ffffff'
                   : h.type === 'CHARGED' ? '#a0e8ff' : h.type === 'BOMB' ? '#ff8060'
-                  : h.type === 'UNBREAKABLE' ? '#909090' : '#fff';
+                  : h.type === 'UNBREAKABLE' ? '#909090'
+                  : h.type === 'ROYAL_GUARD' ? '#c090ff'
+                  : h.type === 'QUEEN' ? '#ff80c0' : '#fff';
   } else {
     const cols = PAL[CELL_TYPES[h.type].color];
-    ctx.fillStyle = cols[h.ci % cols.length];
+    const baseCol = cols[h.ci % cols.length];
+    const fillBright = 15 + (h.ci % 5) * 8; // per-cell variation
+    const grad = ctx.createRadialGradient(h.x, h.y - HEX_R*0.15, 0, h.x, h.y, HEX_R);
+    grad.addColorStop(0, lightenCol(baseCol, fillBright));
+    grad.addColorStop(0.55, baseCol);
+    grad.addColorStop(1.0, darkenCol(baseCol, 35));
+    ctx.fillStyle = grad;
   }
   ctx.fill();
 
@@ -1514,9 +2077,65 @@ function drawHex(h) {
                   : h.type === 'CHARGED' ? '#50d0ff'
                   : h.type === 'BOMB'   ? '#ff4020'
                   : h.type === 'UNBREAKABLE' ? '#707070'
+                  : h.type === 'ROYAL_GUARD' ? '#d4af37'
+                  : h.type === 'QUEEN'  ? '#ffd700'
                   : PAL.hexLine;
-  ctx.lineWidth = (h.type === 'PORTAL' || h.type === 'UNBREAKABLE') ? 2.5 : 1.5;
+  ctx.lineWidth = (h.type === 'QUEEN') ? 3
+                : (h.type === 'PORTAL' || h.type === 'UNBREAKABLE' || h.type === 'ROYAL_GUARD') ? 2.5 : 2;
   ctx.stroke();
+
+  // Honey drip teardrops — multiple variants, cluster-sized
+  if (!h.flash && (h.type === 'NORMAL' || h.type === 'HONEY' || h.type === 'THICK'
+      || h.type === 'HEAVY' || h.type === 'ROYAL' || h.type === 'REINFORCED'
+      || h.type === 'ANCIENT')) {
+    // Count living neighbours to determine cluster density
+    let nCount = 0;
+    for (const n of hexes) {
+      if (!n.dead && n !== h && Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 2.4) nCount++;
+    }
+    // More neighbours = more / bigger drips
+    const isHoney = h.type === 'HONEY';
+    const baseY = h.y + HEX_R * 0.866;       // bottom edge center
+    const seed = h.ci;
+    // Drip variant table: [xOffset, lengthMul, widthMul]
+    // Variant chosen per-cell by seed; cluster size adds extra drips
+    const variants = [
+      { dx: 0,   lenMul: 1.0, wMul: 1.0 },   // center drop
+      { dx: -3,  lenMul: 0.6, wMul: 0.7 },   // small left
+      { dx: 3.5, lenMul: 0.75, wMul: 0.8 },  // small right
+      { dx: -1,  lenMul: 1.3, wMul: 1.2 },   // large off-center
+      { dx: 2,   lenMul: 0.5, wMul: 0.6 },   // tiny right
+    ];
+    // Determine how many drips: 0 neighbours = maybe 1 small, 6 = up to 3 fat ones
+    let dripCount;
+    if (nCount >= 5)      dripCount = 3 + (seed % 2);      // 3-4 drips
+    else if (nCount >= 3) dripCount = 2 + (seed % 2);      // 2-3 drips
+    else if (nCount >= 1) dripCount = 1 + (seed % 2);      // 1-2 drips
+    else                  dripCount = (seed % 3 < 2) ? 1 : 0;  // sometimes 1
+    // Cluster scale: bigger clusters = fatter, longer drips
+    const clusterScale = 0.7 + Math.min(nCount, 6) * 0.15;
+    const dripCol = isHoney ? '#ffaa00' : '#b07000';
+    const dripAlpha = isHoney ? 0.75 : 0.6;
+    ctx.fillStyle = dripCol;
+    for (let d = 0; d < dripCount; d++) {
+      const v = variants[(seed + d * 3) % variants.length];
+      const dripX = h.x + v.dx + ((seed + d) % 3 - 1) * 0.5;
+      const dripLen = (3.5 + (seed % 4)) * v.lenMul * clusterScale;
+      const dripW = 1.5 * v.wMul * clusterScale;
+      // Animated slow elongation pulse
+      const pulse = 0.9 + 0.1 * Math.sin(tick * 0.04 + seed * 1.7 + d * 2.1);
+      const len = dripLen * pulse;
+      ctx.globalAlpha = dripAlpha;
+      ctx.beginPath();
+      ctx.moveTo(dripX - dripW, baseY);
+      ctx.quadraticCurveTo(dripX - dripW * 0.4, baseY + len, dripX, baseY + len + dripW * 0.8);
+      ctx.quadraticCurveTo(dripX + dripW * 0.4, baseY + len, dripX + dripW, baseY);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
   if (h.flash > 0) return;
 
   // Inner accent / detail
@@ -1539,15 +2158,23 @@ function drawHex(h) {
     hexPath(hexPts(h.x, h.y, HEX_R * 0.38));
     ctx.fill();
   } else if (h.type === 'HONEY') {
-    // bright inner ring + drip dots
+    // bright inner ring
     ctx.strokeStyle = 'rgba(255,240,80,0.55)';
     ctx.lineWidth = 1.5; ctx.stroke();
-    // honey drip dots — 3 drops arranged inside
-    ctx.fillStyle = '#ff9800'; ctx.globalAlpha = 0.80;
-    for (const [dx, dy] of [[-3, 1], [3, 1], [0, -4]]) {
-      ctx.beginPath(); ctx.arc(h.x + dx, h.y + dy, 2.5, 0, Math.PI * 2); ctx.fill();
+    // animated sparkle crosses — crystalline honey effect
+    const sparkPhase = (tick + h.ci * 7) % 30;
+    if (sparkPhase < 12) {
+      const sp = sparkPhase / 12;
+      const sz = 1.5 + sp * 1.5;
+      ctx.strokeStyle = `rgba(255,255,200,${0.45 - sp * 0.3})`;
+      ctx.lineWidth = 0.8;
+      for (const [dx, dy] of [[-4, 0], [4, -2], [0, 4]]) {
+        ctx.beginPath();
+        ctx.moveTo(h.x+dx-sz, h.y+dy); ctx.lineTo(h.x+dx+sz, h.y+dy);
+        ctx.moveTo(h.x+dx, h.y+dy-sz); ctx.lineTo(h.x+dx, h.y+dy+sz);
+        ctx.stroke();
+      }
     }
-    ctx.globalAlpha = 1;
   } else if (h.type === 'WAX') {
     // faint inner honeycomb pattern — just a dimmer ring
     ctx.strokeStyle = 'rgba(200,190,140,0.25)';
@@ -1613,6 +2240,29 @@ function drawHex(h) {
     ctx.stroke();
     ctx.fillStyle = 'rgba(60,60,60,0.3)';
     hexPath(hexPts(h.x, h.y, HEX_R * 0.32)); ctx.fill();
+  } else if (h.type === 'ROYAL_GUARD') {
+    // Animated gold shimmer pulse
+    const p = 0.25 + 0.25 * Math.sin(tick * 0.06 + h.ci);
+    ctx.strokeStyle = `rgba(212,175,55,${p})`; ctx.lineWidth = 2; ctx.stroke();
+    // Inner gold diamond
+    ctx.fillStyle = `rgba(212,175,55,${p * 0.8})`;
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y - 5); ctx.lineTo(h.x + 4, h.y);
+    ctx.lineTo(h.x, h.y + 5); ctx.lineTo(h.x - 4, h.y); ctx.closePath(); ctx.fill();
+  } else if (h.type === 'QUEEN') {
+    // Pulsing magenta/gold glow
+    const p = 0.3 + 0.3 * Math.sin(tick * 0.05 + h.ci * 0.5);
+    ctx.strokeStyle = `rgba(255,215,0,${p})`; ctx.lineWidth = 2; ctx.stroke();
+    // Crown icon — 3 peaks with gold fill
+    ctx.fillStyle = `rgba(255,215,0,${0.5 + p * 0.3})`;
+    ctx.beginPath();
+    ctx.moveTo(h.x-5,h.y+3); ctx.lineTo(h.x-3,h.y-4); ctx.lineTo(h.x,h.y+1);
+    ctx.lineTo(h.x+3,h.y-4); ctx.lineTo(h.x+5,h.y+3); ctx.closePath(); ctx.fill();
+    // Outer glow ring
+    ctx.globalAlpha = 0.15 + p * 0.1;
+    ctx.strokeStyle = '#ff60a0'; ctx.lineWidth = 1;
+    hexPath(hexPts(h.x, h.y, HEX_R * 1.1)); ctx.stroke();
+    ctx.globalAlpha = 1;
   } else {
     ctx.strokeStyle = h.type === 'THICK' ? 'rgba(255,150,50,0.13)' : 'rgba(255,230,140,0.18)';
     ctx.lineWidth = 1; ctx.stroke();
@@ -1720,6 +2370,37 @@ function checkHex(b) {
         return {dead:false, h};
       }
 
+      // ROYAL_GUARD: indestructible barrier — always reflects, even BOO-BEE
+      if (h.type === 'ROYAL_GUARD') {
+        const dot = b.vx*nx + b.vy*ny;
+        if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
+        const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
+        b.x += nx*ov2; b.y += ny*ov2;
+        h.flash = 6;
+        return {dead:false, h};
+      }
+
+      // QUEEN: shared HP pool — damage goes to boss gate, cell reflects
+      if (h.type === 'QUEEN') {
+        const gate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
+        if (gate && !gate.dead) {
+          let qdmg = 1 + powers.beefyBees;
+          if (b.powerupId === 'beeGer') qdmg *= 2;
+          if (b.powerupId === 'beeHemoth') qdmg = 5;
+          gate.hp -= qdmg;
+          h.flash = 8;
+          if (gate.hp <= 0) {
+            triggerBossGateShatter(gate);
+          }
+          // Reflect bee (queen cells don't die individually)
+          const dot = b.vx*nx + b.vy*ny;
+          if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
+          const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
+          b.x += nx*ov2; b.y += ny*ov2;
+          return {dead:false, h};
+        }
+      }
+
       // Phase-through check (BOO-BEE or BEE-HEMOTH)
       const phasing = b.powerupId === 'booBee' || b.powerupId === 'beeHemoth';
       if (!phasing) {
@@ -1735,7 +2416,7 @@ function checkHex(b) {
       // damage
       let dmg = 1 + powers.beefyBees;
       if (h.type === 'THICK') dmg += powers.waxBreaker;
-      if (h.type === 'ROYAL' || h.type === 'ANCIENT' || h.type === 'TITAN') dmg += powers.royalFury;
+      if (h.type === 'ROYAL') dmg += powers.royalFury;
       if (b.powerupId === 'beeGer') dmg *= 2;
       if (b.powerupId === 'beeHemoth') dmg = 5;
       h.hp -= dmg; h.flash = 10;
@@ -1746,7 +2427,7 @@ function checkHex(b) {
         // WAX CELL: splash 1 damage to immediate neighbours on death
         if (h.type === 'WAX') {
           for (const n of hexes) {
-            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE') continue;
+            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 2.2) {
               n.hp -= CONFIG.WAX_DAMAGE;
               n.flash = 8;
@@ -1808,40 +2489,40 @@ function bgRand(seed) {
 const BG_THEMES = [
   { name:'Old Hive Base',
     scrollStart: 0,
-    topCol:[43,28,10],   botCol:[74,46,15],     // #2b1c0a → #4a2e0f
-    gridCol:[42,24,0],   accentCol:[58,32,0],
-    fillChance:0.18,     fillCol:[200,184,120],
-    gridAlpha:0.10,
-    particleCol:[80,50,20], particleAlpha:0.25, particleRate:0.20 },
+    topCol:[20,12,4],    botCol:[40,24,8],       // much darker cave
+    gridCol:[30,18,0],   accentCol:[42,24,0],
+    fillChance:0.14,     fillCol:[140,120,60],
+    gridAlpha:0.06,
+    particleCol:[80,50,20], particleAlpha:0.20, particleRate:0.18 },
   { name:'Active Comb',
     scrollStart: -1500,
-    topCol:[92,59,18],   botCol:[140,90,24],     // #5c3b12 → #8c5a18
-    gridCol:[58,34,0],   accentCol:[90,56,0],
-    fillChance:0.28,     fillCol:[154,82,0],
-    gridAlpha:0.12,
-    particleCol:[200,160,40], particleAlpha:0.2, particleRate:0.25 },
+    topCol:[50,30,10],   botCol:[80,50,16],      // darker amber
+    gridCol:[40,24,0],   accentCol:[60,36,0],
+    fillChance:0.22,     fillCol:[120,64,0],
+    gridAlpha:0.08,
+    particleCol:[180,140,30], particleAlpha:0.18, particleRate:0.22 },
   { name:'Royal Chambers',
     scrollStart: -3000,
-    topCol:[163,106,28], botCol:[212,154,44],    // #a36a1c → #d49a2c
-    gridCol:[120,80,20], accentCol:[180,120,40],
-    fillChance:0.24,     fillCol:[220,160,60],
-    gridAlpha:0.15,
-    particleCol:[220,180,60], particleAlpha:0.18, particleRate:0.35 },
+    topCol:[100,65,18],  botCol:[140,100,30],    // darker gold
+    gridCol:[80,50,14],  accentCol:[120,80,28],
+    fillChance:0.20,     fillCol:[180,130,40],
+    gridAlpha:0.10,
+    particleCol:[200,160,50], particleAlpha:0.15, particleRate:0.30 },
   { name:'Ancient Depths',
     scrollStart: -5000,
-    topCol:[59,30,63],   botCol:[106,44,122],    // #3b1e3f → #6a2c7a
-    gridCol:[60,30,70],  accentCol:[100,50,120],
-    fillChance:0.20,     fillCol:[140,80,180],
-    gridAlpha:0.18,
-    particleCol:[140,100,200], particleAlpha:0.15, particleRate:0.45 },
+    topCol:[40,20,44],   botCol:[72,30,84],      // darker purple
+    gridCol:[40,20,50],  accentCol:[70,35,85],
+    fillChance:0.16,     fillCol:[100,55,130],
+    gridAlpha:0.12,
+    particleCol:[120,80,170], particleAlpha:0.12, particleRate:0.40 },
 ];
-const BG_TRANSITION = 400; // px of smooth blend between themes
+const BG_TRANSITION = 900; // px of smooth blend between themes
 
 // Parallax layer definitions
 const BG_LAYERS = [
-  { r:100, speed:0.05, aMul:0.18, seed:3571 },  // far — very large, faint
-  { r:60,  speed:0.15, aMul:0.25, seed:6143 },  // mid — medium depth
-  { r:35,  speed:0.35, aMul:0.35, seed:9281 },  // near — smaller, more visible
+  { r:100, speed:0.05, aMul:0.10, seed:3571 },  // far — very large, faint
+  { r:60,  speed:0.15, aMul:0.15, seed:6143 },  // mid — medium depth
+  { r:35,  speed:0.35, aMul:0.22, seed:9281 },  // near — smaller, more visible
 ];
 
 // Ambient particles
@@ -1996,14 +2677,36 @@ function drawBGParticles(blend) {
 }
 
 function drawBGScanlines() {
-  ctx.fillStyle = 'rgba(0,0,0,0.07)';
+  ctx.fillStyle = 'rgba(0,0,0,0.03)';
   for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+}
+
+function drawBGVignette() {
+  const cb = H * PLAY_BOTTOM;
+  // Left cave edge
+  const lG = ctx.createLinearGradient(0, 0, W * 0.18, 0);
+  lG.addColorStop(0, 'rgba(4,2,0,0.75)');
+  lG.addColorStop(0.5, 'rgba(4,2,0,0.30)');
+  lG.addColorStop(1, 'rgba(4,2,0,0)');
+  ctx.fillStyle = lG; ctx.fillRect(0, 0, W * 0.18, cb);
+  // Right cave edge
+  const rG = ctx.createLinearGradient(W, 0, W * 0.82, 0);
+  rG.addColorStop(0, 'rgba(4,2,0,0.75)');
+  rG.addColorStop(0.5, 'rgba(4,2,0,0.30)');
+  rG.addColorStop(1, 'rgba(4,2,0,0)');
+  ctx.fillStyle = rG; ctx.fillRect(W * 0.82, 0, W * 0.18, cb);
+  // Top darkening
+  const tG = ctx.createLinearGradient(0, 0, 0, H * 0.12);
+  tG.addColorStop(0, 'rgba(4,2,0,0.50)');
+  tG.addColorStop(1, 'rgba(4,2,0,0)');
+  ctx.fillStyle = tG; ctx.fillRect(0, 0, W, H * 0.12);
 }
 
 function drawBG() {
   const blend = getBGBlend(scrollY);
   drawBGBase(blend);
   drawBGLayers(blend);
+  drawBGVignette();
   drawBGParticles(blend);
   drawBGScanlines();
   // HUD divider drawn later after blur overlay in render()
@@ -2016,12 +2719,12 @@ function drawBG() {
 // Powerup slots are hex-shaped outlines.
 // ═══════════════════════════════════════════════════════
 // Jar constants
-const JAR_CX  = W - 48;        // jar centre x
-const JAR_BW  = 62;            // max belly width
-const JAR_BH  = 95;            // body height
-const JAR_NW  = 28;            // neck width
-const JAR_NH  = 10;            // neck height
-const JAR_RW  = 36;            // rim width
+const JAR_CX  = W - 46;        // jar centre x
+const JAR_BW  = 59;            // max belly width (~-5%)
+const JAR_BH  = 68;            // body height (shortened to fit HUD)
+const JAR_NW  = 27;            // neck width
+const JAR_NH  = 9;             // neck height
+const JAR_RW  = 34;            // rim width
 const JAR_RH  = 7;             // rim height
 const JAR_NY  = HUD_Y + 14;   // neck top y
 const JAR_RY  = JAR_NY - JAR_RH; // rim top y
@@ -2034,7 +2737,7 @@ const JAR_RX  = JAR_CX - JAR_RW / 2;
 const SLOT_R   = 22;
 const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center (~35.6)
 const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols (~19)
-const SLOT_Y   = HUD_Y + 78;                 // base row center y
+const SLOT_Y   = HUD_Y + 58;                 // base row center y
 const SLOT0_X  = 30;
 
 function drawHexOutline(cx, cy, r) {
@@ -2055,7 +2758,7 @@ function drawHUD() {
   ctx.fillText(hiveDepthMax+'', 8, HUD_Y+22);
 
   // Pause icon — two bars inside a hex outline, top right
-  const picX = W - 20, picY = HUD_Y + 12, picR = 10;
+  const picX = W - 15, picY = HUD_Y + 12, picR = 10;
   const pp = hexPts(picX, picY, picR);
   ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
   for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
@@ -2065,6 +2768,22 @@ function drawHUD() {
   const barW = 2.5, barH = 8, barGap = 3;
   ctx.fillRect(picX - barGap - barW/2, picY - barH/2, barW, barH);
   ctx.fillRect(picX + barGap - barW/2, picY - barH/2, barW, barH);
+
+  // Inspector mode label
+  if (inspectorMode) {
+    ctx.save();
+    ctx.font = F7;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,160,0,0.8)';
+    ctx.fillText('INSPECTING — DRAG TO SCROLL', W/2, HUD_Y + 10);
+    // Show current depth index for tuning reference
+    const rowH = CONFIG.HEX_R * Math.sqrt(3);
+    const hiveBottom = PADDLE_Y - HIVE_CONFIG.HIVE_BOTTOM_GAP;
+    const firstRowY = Math.floor(hiveBottom / rowH) * rowH;
+    const inspDepth = Math.max(0, Math.ceil((firstRowY - scrollY) / rowH));
+    ctx.fillText('DEPTH ~' + inspDepth, W/2, HUD_Y + 22);
+    ctx.restore();
+  }
 
   // ── Honey Pot ─────────────────────────────────────────
   const fill = Math.min(1, totalHoney / getMeterCap());
@@ -2122,6 +2841,19 @@ function drawHUD() {
     ctx.clip();
     ctx.fillStyle = 'rgba(120,80,30,0.08)';
     ctx.fillRect(bx + bw * 0.6, by, bw * 0.25, bh);
+    ctx.restore();
+
+    // 3b) "HONEY" label — hand-written cozy style
+    ctx.save();
+    jarBodyPath(); ctx.clip();
+    ctx.font = 'italic 9px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const labelY = by + bh * 0.45;
+    ctx.fillStyle = 'rgba(40,20,5,0.55)';
+    ctx.fillText('HONEY', JAR_CX, labelY + 0.5);
+    ctx.fillStyle = '#d4a030';
+    ctx.fillText('HONEY', JAR_CX, labelY);
     ctx.restore();
 
     // 4) Neck — connects body to lid
@@ -2210,7 +2942,7 @@ function drawHUD() {
   ctx.textAlign='left';
 }
 
-const PAUSE_TAP = { x: W-30, y: HUD_Y, w: 30, h: 22 };
+const PAUSE_TAP = { x: W-25, y: HUD_Y, w: 25, h: 22 };
 
 function getCanvasXY(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
@@ -2226,7 +2958,7 @@ function handleCanvasTap(cx, cy, e) {
       cx >= PAUSE_TAP.x && cx <= PAUSE_TAP.x+PAUSE_TAP.w &&
       cy >= PAUSE_TAP.y && cy <= PAUSE_TAP.y+PAUSE_TAP.h) {
     if (e) e.preventDefault();
-    paused = true; showPause(); return true;
+    paused = true; SaveManager.saveRun(); showPause(); return true;
   }
   return false;
 }
@@ -2261,7 +2993,7 @@ const HIVE_CONFIG = {
   HIVE_BOTTOM_GAP: 240,  // world px above PADDLE_Y where the hive floor sits
   CAMERA_LEAD:     150,  // world px above topmost bee that camera targets
   CAMERA_LERP:    0.06,  // smooth-follow factor (0=frozen, 1=instant)
-  CAMERA_FALLBACK: 0.04, // max downward drift as fraction of H from highest point
+  CAMERA_FALLBACK: 0.25, // max downward drift as fraction of H from highest point
   CAMERA_MIN:     null,  // computed at level start; ≤0 when hive overflows screen
   // LV1-3→2 chunks, LV4-6→3, LV7-9→4, LV10-12→5, LV13+→6
   getChunkCount(lvl) {
@@ -2272,26 +3004,26 @@ const HIVE_CONFIG = {
 // ── Weighted spawn tables ───────────────────────────────
 // depth = (lvl-1) + chunkIndex — increases with both level and chunk depth.
 const DEPTH_TABLE = [
-  { fill:0.55, weights:{NORMAL:92,THICK:8} },                                                                                                              // 0  (no specials)
-  { fill:0.57, weights:{NORMAL:88,THICK:10,HONEY:1,WAX:1} },                                                                                               // 1  first specials
-  { fill:0.59, weights:{NORMAL:84,THICK:12,HONEY:2,WAX:2,HEAVY:1} },                                                                                       // 2  heavy enters
-  { fill:0.60, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,BROOD:1,HEAVY:2} },                                                                               // 3  brood enters
-  { fill:0.62, weights:{NORMAL:76,THICK:14,HONEY:3,WAX:3,BROOD:1,HEAVY:3,CHARGED:1} },                                                                     // 4  charged enters
-  { fill:0.63, weights:{NORMAL:72,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,CHARGED:2,BOMB:1} },                                                              // 5  bomb enters
-  { fill:0.65, weights:{NORMAL:68,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,CHARGED:2,BOMB:2,ROYAL:1} },                                                      // 6  royal enters
-  { fill:0.66, weights:{NORMAL:64,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:2,BOMB:2,ROYAL:2} },                                                      // 7
-  { fill:0.67, weights:{NORMAL:60,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:2,BOMB:2,ROYAL:3,UNBREAKABLE:1} },                                        // 8  unbreakable enters
-  { fill:0.68, weights:{NORMAL:56,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:3,BOMB:3,ROYAL:3,UNBREAKABLE:2} },                                        // 9
-  { fill:0.69, weights:{NORMAL:52,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:3,BOMB:3,ROYAL:3,UNBREAKABLE:2,ANCIENT:2} },                              // 10 ancient enters
-  { fill:0.70, weights:{NORMAL:50,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:3,UNBREAKABLE:3,ANCIENT:3} },                              // 11
-  { fill:0.71, weights:{NORMAL:48,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:3,TITAN:1} },                      // 12 titan enters
-  { fill:0.72, weights:{NORMAL:46,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:2} },                      // 13
-  { fill:0.73, weights:{NORMAL:44,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:3,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 14
-  { fill:0.74, weights:{NORMAL:43,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 15
-  { fill:0.75, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:3} },                      // 16
-  { fill:0.76, weights:{NORMAL:41,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 17
-  { fill:0.77, weights:{NORMAL:40,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 18
-  { fill:0.78, weights:{NORMAL:40,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:3,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 19+ cap
+  { fill:0.30, weights:{NORMAL:92,THICK:8} },                                                                                                              // 0  very open start
+  { fill:0.32, weights:{NORMAL:88,THICK:10,HONEY:1,WAX:1} },                                                                                               // 1  first specials
+  { fill:0.34, weights:{NORMAL:84,THICK:12,HONEY:2,WAX:2,HEAVY:1} },                                                                                       // 2  heavy enters
+  { fill:0.35, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,BROOD:1,HEAVY:2} },                                                                               // 3  brood enters
+  { fill:0.36, weights:{NORMAL:77,THICK:14,HONEY:3,WAX:3,BROOD:1,HEAVY:3} },                                                                               // 4  (charged via stamp only)
+  { fill:0.37, weights:{NORMAL:74,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,BOMB:1} },                                                                        // 5  bomb enters
+  { fill:0.38, weights:{NORMAL:70,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,BOMB:2,ROYAL:1} },                                                                // 6  royal enters
+  { fill:0.39, weights:{NORMAL:65,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:2} },                                                      // 7  charged enters (rare)
+  { fill:0.40, weights:{NORMAL:62,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3,UNBREAKABLE:1} },                                        // 8  unbreakable enters
+  { fill:0.41, weights:{NORMAL:58,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2} },                                        // 9
+  { fill:0.42, weights:{NORMAL:54,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2,ANCIENT:2} },                              // 10 ancient enters
+  { fill:0.43, weights:{NORMAL:52,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:3,ANCIENT:3} },                              // 11
+  { fill:0.44, weights:{NORMAL:50,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:3,TITAN:1} },                      // 12 titan enters
+  { fill:0.45, weights:{NORMAL:48,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:2} },                      // 13
+  { fill:0.46, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 14
+  { fill:0.47, weights:{NORMAL:45,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 15
+  { fill:0.48, weights:{NORMAL:44,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:3} },                      // 16
+  { fill:0.49, weights:{NORMAL:43,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 17
+  { fill:0.50, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 18
+  { fill:0.52, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 19+ cap
 ];
 function getDepthEntry(depth) {
   return DEPTH_TABLE[Math.min(Math.max(0, depth), DEPTH_TABLE.length - 1)];
@@ -2367,8 +3099,9 @@ const STRUCTURES = [
       const i1 = Math.floor(rng() * candidates.length);
       const p1 = candidates[i1];
       p1.type = 'PORTAL'; p1.hp = CELL_TYPES.PORTAL.hp;
-      // Pick second portal: must also be 3+ cells from p1
-      const valid2 = candidates.filter(h => h !== p1 && hexDist(h, p1) >= MIN_PORTAL_DIST && hexDist(h, p1) <= MAX_PORTAL_DIST);
+      // Pick second portal: must be 3+ cells from p1, and have enough vertical
+      // separation to prevent bees getting stuck in horizontal teleport loops
+      const valid2 = candidates.filter(h => h !== p1 && hexDist(h, p1) >= MIN_PORTAL_DIST && hexDist(h, p1) <= MAX_PORTAL_DIST && Math.abs(h.y - p1.y) >= MIN_PORTAL_Y_SEP);
       if (valid2.length === 0) { p1.type = 'NORMAL'; p1.hp = CELL_TYPES.NORMAL.hp; return; }
       const p2 = valid2[Math.floor(rng() * valid2.length)];
       p2.type = 'PORTAL'; p2.hp = CELL_TYPES.PORTAL.hp;
@@ -2380,19 +3113,22 @@ const STRUCTURES = [
       const vals = [...hexMap.values()];
       if (vals.length === 0) return;
       const seed = vals[Math.floor(rng() * vals.length)];
-      const count = 3 + Math.floor(rng() * 3);
-      const near = vals.filter(h => Math.hypot(h.x-seed.x, h.y-seed.y) < HEX_R*3.0).slice(0, count);
+      const count = 1 + Math.floor(rng() * 2);  // 1-2 bombs (was 3-5)
+      const near = vals.filter(h => Math.hypot(h.x-seed.x, h.y-seed.y) < HEX_R*2.0).slice(0, count);
       for (const h of near) { h.type = 'BOMB'; h.hp = CELL_TYPES.BOMB.hp; }
     },
   },
   {
-    id: 'CHARGED_COLUMN', minDepth: 7, weight: 6,
+    id: 'CHARGED_CELL', minDepth: 7, weight: 6,
     stamp(hexMap, rng) {
-      const vals = [...hexMap.values()];
-      if (vals.length < 3) return;
-      const seed = vals[Math.floor(rng() * vals.length)];
-      const column = vals.filter(h => Math.abs(h.x - seed.x) < HEX_R && h.y >= seed.y && h.y <= seed.y + HEX_R*6).slice(0, 3);
-      for (const h of column) { h.type = 'CHARGED'; h.hp = CELL_TYPES.CHARGED.hp; }
+      // Place a single CHARGED cell, away from edges, other CHARGED, and global gap
+      const vals = [...hexMap.values()].filter(h =>
+        !isNearEdge(h.x) && !SPECIAL_TYPES.has(h.type) &&
+        Math.abs(h.y - lastChargedY) >= MIN_CHARGED_DIST &&
+        hasMinDist(h, 'CHARGED', hexMap, MIN_CHARGED_DIST));
+      if (vals.length === 0) return;
+      const h = vals[Math.floor(rng() * vals.length)];
+      h.type = 'CHARGED'; h.hp = CELL_TYPES.CHARGED.hp;
     },
   },
   {
@@ -2449,6 +3185,42 @@ const STRUCTURES = [
   },
   // TODO: QUEEN_CHAMBER  — fortified center cluster, minDepth: 8
   // TODO: SECRET_ROOM    — hollow cavity ringed by wax, minDepth: 5
+  {
+    id: 'BARRIER_WALL', minDepth: 6, weight: 8,
+    stamp(hexMap, rng) {
+      // Horizontal row of UNBREAKABLE cells on the same hex row
+      const vals = [...hexMap.values()];
+      const seeds = vals.filter(h => !isNearEdge(h.x) && !SPECIAL_TYPES.has(h.type)
+                                     && h.x > W*0.25 && h.x < W*0.75);
+      if (seeds.length === 0) return;
+      const seed = seeds[Math.floor(rng() * seeds.length)];
+      // Gather ALL cells on the same hex row (same Y ±5px), including specials
+      const sameRow = vals.filter(h => Math.abs(h.y - seed.y) < 5)
+                          .sort((a, b) => a.x - b.x);
+      if (sameRow.length < 3) return;
+      const seedIdx = sameRow.indexOf(seed);
+      if (seedIdx < 0) return;
+      const count = 3 + Math.floor(rng() * 3); // 3-5 cells wide
+      const startIdx = Math.max(0, seedIdx - Math.floor(count / 2));
+      const span = sameRow.slice(startIdx, startIdx + count);
+      // Convert non-special cells in the span to UNBREAKABLE
+      let converted = 0;
+      for (const wc of span) {
+        if (!SPECIAL_TYPES.has(wc.type)) {
+          wc.type = 'UNBREAKABLE'; wc.hp = CELL_TYPES.UNBREAKABLE.hp;
+          converted++;
+        }
+      }
+      // If too few were converted (most were special), bail — no visual wall
+      if (converted < 2) {
+        for (const wc of span) {
+          if (wc.type === 'UNBREAKABLE') {
+            wc.type = 'NORMAL'; wc.hp = CELL_TYPES.NORMAL.hp;
+          }
+        }
+      }
+    },
+  },
 ];
 
 // ── Spawn validation helpers ─────────────────────────────
@@ -2459,7 +3231,10 @@ function isNearEdge(x) { return x < EDGE_MARGIN + HEX_R * 1.5 || x > W - EDGE_MA
 function hexDist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 const MIN_PORTAL_DIST  = HEX_R * Math.sqrt(3) * 4;  // 4 cell spaces
 const MAX_PORTAL_DIST  = HEX_R * Math.sqrt(3) * 8;  // 8 cell spaces max
+const MIN_PORTAL_Y_SEP = HEX_R * Math.sqrt(3) * 3;  // min 3 rows vertical separation to prevent teleport loops
 const MIN_SPECIAL_DIST = HEX_R * Math.sqrt(3) * 1.5; // 1.5 cell spaces between different specials
+const MIN_BOMB_DIST    = HEX_R * Math.sqrt(3) * 3;   // 3 cell spaces between bombs
+const MIN_CHARGED_DIST = HEX_R * Math.sqrt(3) * 20;  // 20 row levels between charged cells
 const SPECIAL_TYPES = new Set(['PORTAL','BROOD','HONEY','CHARGED','BOMB','UNBREAKABLE']);
 
 // Check if a hex has minimum distance from all same-type cells in the map
@@ -2479,6 +3254,13 @@ function spawnChunk(chunkTop, depth, seed) {
   const hexMap = new Map();
   const chunkBot = chunkTop + HIVE_CONFIG.CHUNK_HEIGHT;
 
+  // Portal exclusion near boss gates
+  const rowH = HEX_R * Math.sqrt(3);
+  const nearBossGate = bossGates.some(g => {
+    const exclusionDist = BOSS_GATE_PORTAL_EXCLUSION * rowH;
+    return Math.abs(chunkTop - g.gateY) < exclusionDist;
+  });
+
   // Queen's Blessing: boost HONEY weight
   const weights = Object.assign({}, entry.weights);
   if (powers.queenBlessing > 0 && weights.HONEY) {
@@ -2489,10 +3271,23 @@ function spawnChunk(chunkTop, depth, seed) {
     if (rng() > entry.fill) continue;
     let type = weightedRoll(weights, rng);
 
-    // Edge exclusion: portals never on or near edges
+    // Lucky start: rare chance for a single early CHARGED cell (depth 1 = just off-screen)
+    if (depth === 1 && type === 'NORMAL' && rng() < 0.02) type = 'CHARGED';
+
+    // Boss gate portal exclusion: no portals near boss gates
+    if (type === 'PORTAL' && nearBossGate) type = 'NORMAL';
+
+    // Edge exclusion: specials never on far left/right edges
     if (type === 'PORTAL' && isNearEdge(x)) type = 'NORMAL';
-    // Edge exclusion: brood not on edges
     if (type === 'BROOD' && isEdgeCell(x)) type = 'NORMAL';
+    if (type === 'CHARGED' && isNearEdge(x)) type = 'NORMAL';
+    if (type === 'BOMB' && isNearEdge(x)) type = 'NORMAL';
+
+    // CHARGED cells: enforce 20-row minimum gap globally (cross-chunk)
+    if (type === 'CHARGED') {
+      const minGap = MIN_CHARGED_DIST;
+      if (Math.abs(y - lastChargedY) < minGap) type = 'NORMAL';
+    }
 
     const key  = `${Math.round(x)},${Math.round(y)}`;
     hexMap.set(key, { x, y, dead:false, flash:0,
@@ -2502,7 +3297,10 @@ function spawnChunk(chunkTop, depth, seed) {
   // Post-roll spacing enforcement: downgrade specials that are too close together
   for (const h of hexMap.values()) {
     if (!SPECIAL_TYPES.has(h.type)) continue;
-    const minD = h.type === 'PORTAL' ? MIN_PORTAL_DIST : MIN_SPECIAL_DIST;
+    const minD = h.type === 'PORTAL'  ? MIN_PORTAL_DIST
+               : h.type === 'BOMB'    ? MIN_BOMB_DIST
+               : h.type === 'CHARGED' ? MIN_CHARGED_DIST
+               : MIN_SPECIAL_DIST;
     // Check against all previously-seen specials of same type
     for (const other of hexMap.values()) {
       if (other === h || other.type !== h.type) continue;
@@ -2514,14 +3312,19 @@ function spawnChunk(chunkTop, depth, seed) {
     }
   }
 
-  // Stamps
-  const eligible   = STRUCTURES.filter(s => s.minDepth <= depth);
+  // Stamps (skip portal stamps near boss gates)
+  const eligible   = STRUCTURES.filter(s => s.minDepth <= depth && !(nearBossGate && s.id === 'PORTAL_PAIR'));
   const stampCount = eligible.length > 0 ? 1 + Math.floor(rng() * 2) : 0;
   for (let si = 0; si < stampCount && si < eligible.length; si++) {
     eligible[Math.floor(rng() * eligible.length)].stamp(hexMap, rng);
   }
 
   const newHexes = [...hexMap.values()];
+
+  // Update global CHARGED tracking (cross-chunk spacing)
+  for (const h of newHexes) {
+    if (h.type === 'CHARGED') lastChargedY = h.y;
+  }
 
   // Pair portals within this chunk (globally unique channels)
   const portals = newHexes.filter(h => h.type === 'PORTAL');
@@ -2539,12 +3342,97 @@ function spawnChunk(chunkTop, depth, seed) {
   return newHexes;
 }
 
+// ── Boss Gate: barrier band (2-row-thick Royal Guard wall) ──
+function spawnBossGateChunk(chunkTop) {
+  const rowH = HEX_R * Math.sqrt(3);
+  const bandTop = chunkTop;
+  const bandBot = chunkTop + rowH * 2;   // 2 rows tall
+  const positions = enumHexPositions(bandTop, bandBot);
+  const guardCells = [];
+  const gateIndex = bossGates.length;
+  for (const { x, y } of positions) {
+    const h = { x, y, dead: false, flash: 0,
+                type: 'ROYAL_GUARD', hp: CELL_TYPES.ROYAL_GUARD.hp,
+                ci: Math.floor(Math.random() * 5), bossGateId: gateIndex };
+    guardCells.push(h);
+  }
+  return guardCells;
+}
+
+// ── Boss Gate: queen cluster (7-cell honeycomb below barrier) ──
+// Uses grid-snapped positions so queens tile seamlessly with existing cells.
+function spawnQueenCluster(gateY, gateIndex) {
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+  // Target center: middle of screen, 1.5 chunks below the barrier
+  const targetY = gateY + HIVE_CONFIG.CHUNK_HEIGHT * 1.5;
+  // Find the nearest grid column to screen center
+  const centerCol = Math.round((W / 2 - HEX_R) / colW);
+  // Snap to nearest grid row in that column
+  const yOff = (centerCol & 1) ? rowH * 0.5 : 0;
+  const centerRow = Math.round((targetY - yOff) / rowH);
+  const centerX = HEX_R + centerCol * colW;
+  const centerY = yOff + centerRow * rowH;
+
+  // Flat-top hex grid neighbours: the 6 adjacent grid cells
+  // Even col offsets: (col±1, row-1), (col±1, row), (col, row±1)
+  // Odd  col offsets: (col±1, row), (col±1, row+1), (col, row±1)
+  const neighborOffsets = (centerCol & 1)
+    ? [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]]   // odd column
+    : [[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]]; // even column
+
+  const queenCells = [];
+  // Center cell
+  queenCells.push({ x: centerX, y: centerY, dead: false, flash: 0,
+    type: 'QUEEN', hp: CELL_TYPES.QUEEN.hp,
+    ci: 0, bossGateId: gateIndex });
+  // 6 surrounding grid-snapped cells
+  for (let n = 0; n < 6; n++) {
+    const [dc, dr] = neighborOffsets[n];
+    const nc = centerCol + dc;
+    const nr = centerRow + dr;
+    const nYOff = (nc & 1) ? rowH * 0.5 : 0;
+    const qx = HEX_R + nc * colW;
+    const qy = nYOff + nr * rowH;
+    queenCells.push({ x: qx, y: qy, dead: false, flash: 0,
+      type: 'QUEEN', hp: CELL_TYPES.QUEEN.hp,
+      ci: n + 1, bossGateId: gateIndex });
+  }
+  // Remove any existing hexes that overlap queen positions
+  const queenPositions = new Set(queenCells.map(q => `${Math.round(q.x)},${Math.round(q.y)}`));
+  hexes = hexes.filter(h => !queenPositions.has(`${Math.round(h.x)},${Math.round(h.y)}`));
+  return queenCells;
+}
+
+// ── Boss Gate: shatter all guard cells when Queen dies ──
+function triggerBossGateShatter(gate) {
+  gate.dead = true;
+  // Shatter guard cells with staggered particle bursts
+  for (const h of gate.guardCells) {
+    h.dead = true;
+    spawnParts(h.x, h.y, 6, ['#d4af37','#8040c0','#f0d060','#fff']);
+  }
+  // Kill queen cells
+  for (const h of gate.queenCells) {
+    h.dead = true;
+    spawnParts(h.x, h.y, 10, ['#d03088','#f060a0','#ffd700','#fff']);
+  }
+  // Big screen shake + message
+  triggerShake(8, 20);
+  sfx.bomb();
+  const qc = gate.queenCells[0];
+  if (qc) broodMsgs.push({ x: qc.x, y: qc.y - 20, life: 90, txt: 'QUEEN DEFEATED!' });
+  // Honey reward: 50 droplets
+  if (qc) for (let i = 0; i < 50; i++) spawnDroplet(qc.x + (Math.random()-0.5)*40, qc.y + (Math.random()-0.5)*40);
+}
+
 // ── Main grid builder ────────────────────────────────────
 // Pre-generates the first 4 chunks; streaming continues in update().
 function buildGrid(lvl) {
   levelSeed            = lvl * 7919;
   totalDepth           = 0;
   portalChannelCounter = 0;
+  lastChargedY         = Infinity;
 
   const hiveBottom = PADDLE_Y - HIVE_CONFIG.HIVE_BOTTOM_GAP;
   const INIT_CHUNKS = 4;
@@ -2558,6 +3446,41 @@ function buildGrid(lvl) {
     const seed     = levelSeed + ci * 1000003;
     allHexes.push(...spawnChunk(chunkTop, depth, seed));
     totalDepth = ci + 1;
+  }
+
+  // Sparse side-wall cells from paddle (depth 0) up to hive bottom,
+  // implying the hive starts at the hand even though the main grid
+  // begins higher. Only edge columns, ~30% fill chance each.
+  const wallRng = seededRng(levelSeed + 999);
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+  const wallTop = hiveBottom;          // where main hive starts
+  const wallBot = PADDLE_Y - 30;       // just above the paddle
+  // Left-edge and right-edge column indices by pixel position
+  // Find rightmost columns whose x falls near the right canvas edge
+  const rCol1 = Math.floor((W - HEX_R) / colW);      // last fully visible
+  const rCol2 = rCol1 + 1;                             // partially visible at edge
+  const leftCols  = [-1, 0, 1];
+  const rightCols = [rCol2, rCol1];
+  const outerCols = new Set([-1, rCol2]);
+  const wallCols  = [...leftCols, ...rightCols];
+  for (const col of wallCols) {
+    const px   = HEX_R + col * colW;
+    // Skip columns that are clearly off-screen
+    if (px < -HEX_R || px > W + HEX_R) continue;
+    const yOff = (col & 1) ? rowH * 0.5 : 0;
+    const rMin = Math.floor((wallTop - yOff) / rowH);
+    const rMax = Math.ceil ((wallBot - yOff) / rowH);
+    for (let row = rMin; row <= rMax; row++) {
+      const py = yOff + row * rowH;
+      if (py <= wallTop || py > wallBot) continue;
+      // Sparse: ~45% chance for outermost columns, ~25% for inner wall columns
+      const chance = outerCols.has(col) ? 0.45 : 0.25;
+      if (wallRng() > chance) continue;
+      allHexes.push({ x: px, y: py, dead: false, flash: 0,
+                       type: 'NORMAL', hp: CELL_TYPES.NORMAL.hp,
+                       ci: Math.floor(wallRng() * 5) });
+    }
   }
 
   // generatedTop = world y of the uppermost chunk's top edge
@@ -2577,10 +3500,21 @@ let portalChannelCounter = 0;   // unique portal channel IDs across streaming ch
 let scrollYMin           = 0;   // highest (most negative) scroll reached — camera floor
 let hiveDepthMax         = 0;   // high-water mark: deepest row reached by any bee
 
+// ── Boss Gate system ──
+let bossGates = []; // { guardCells:[], queenCells:[], hp, maxHp, gateY, dead }
+const BOSS_GATE_INTERVAL = 20;        // chunks between boss gates (~100 hex rows)
+const BOSS_GATE_QUEEN_HP = 100;       // shared HP pool for queen cluster
+const BOSS_GATE_PORTAL_EXCLUSION = 15; // rows of no-portal zone each side
+
 // ═══════════════════════════════════════════════════════
 // GAME STATE
 // ═══════════════════════════════════════════════════════
 let gameOver=false, animId;
+let demoMode = false;  // attract-mode: AI plays behind title screen
+let inspectorMode = false;
+let inspectorTouchY = null; // for drag-to-scroll in inspector
+let hendOfGodAnim = null;   // { x, y, targetY, alpha, frame, maxFrames, beeSpawned }
+let lastChargedY = Infinity; // cross-chunk tracking for CHARGED spacing
 let destroyed=0, currentLevel=1;
 let bees=[], broodMsgs=[];
 let levelHoneyEarned = 0;   // honey collected this level specifically
@@ -2594,6 +3528,8 @@ function resetRun() {
   levelHoneyEarned = 0;
   activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
   powerupDrops = []; pendingPowerup = null; powerupBeesRemaining = 0;
+  bossGates = [];
+  touchX2 = null; touchIdLeft = null; touchIdRight = null;
 }
 
 function mkBee(x,y,vx,vy,spd) {
@@ -2616,16 +3552,19 @@ function startBee(xOff) {
 }
 
 function startLevel(lvl) {
-  music.play(); music.unmuffle();
+  music.play();
+  if (!demoMode) music.unmuffle();
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
-  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0;
+  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[];
   timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null;
-  particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; honeySurgeFills=0; touchX=null;
+  particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; honeySurgeFills=0; touchX=null; touchX2=null; touchIdLeft=null; touchIdRight=null;
   paddle=mkPaddle();
+  paddle2=mkPaddle2();
   hexes=buildGrid(lvl);   // sets HIVE_CONFIG.CAMERA_MIN
   bees=[startBee()];
   if (animId) cancelAnimationFrame(animId);
+  if (!demoMode) SaveManager.saveRun(); // capture fresh level state
   loop();
 }
 
@@ -2636,7 +3575,7 @@ let lastTime = 0;
 let dt = 1/60; // delta time in seconds, default one frame
 
 function loop(ts=0) {
-  if (gameOver) return;
+  if (gameOver && !inspectorMode) return;
   // Hard-stop for manual pause; keep running during picker transition
   if (paused && !pickerTransition) return;
   dt = Math.min((ts - lastTime) / 1000, 1/20); // cap at 50ms to avoid spiral
@@ -2668,6 +3607,48 @@ function update() {
     }
   }
 
+  // ── Inspector mode: skip all physics, only do chunk generation ──
+  if (inspectorMode) {
+    const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
+    while (scrollY - generatedTop < LOOK_AHEAD) {
+      const chunkTop = generatedTop - HIVE_CONFIG.CHUNK_HEIGHT;
+      const depth    = (currentLevel - 1) + totalDepth;
+      const seed     = levelSeed + totalDepth * 1000003;
+
+      // Boss gate check (same as normal streaming)
+      if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) {
+        const gateIndex = bossGates.length;
+        const guardCells = spawnBossGateChunk(chunkTop);
+        const gate = {
+          guardCells, queenCells: [], hp: BOSS_GATE_QUEEN_HP,
+          maxHp: BOSS_GATE_QUEEN_HP, gateY: chunkTop, dead: false
+        };
+        bossGates.push(gate);
+        hexes.push(...guardCells);
+        const queenCells = spawnQueenCluster(chunkTop, gateIndex);
+        gate.queenCells = queenCells;
+        hexes.push(...queenCells);
+      } else {
+        hexes.push(...spawnChunk(chunkTop, depth, seed));
+      }
+
+      generatedTop = chunkTop;
+      totalDepth++;
+      HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
+    }
+    // Cull hexes far below screen — preserve living boss gate cells
+    const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
+    hexes = hexes.filter(h => {
+      if (h.y < cullY) return true;
+      if (h.bossGateId != null) {
+        const gate = bossGates[h.bossGateId];
+        if (gate && !gate.dead) return true;
+      }
+      return false;
+    });
+    return;
+  }
+
   // Scale physics dt by timeScale for smooth slow/speed transitions
   dt *= timeScale;
   if (dt <= 0 && !pickerTransition) return;  // fully frozen, skip physics
@@ -2677,50 +3658,116 @@ function update() {
   const pw=getPW();
 
   paddle.prevX = paddle.x;
-  // keyboard paddle
-  if (keys['ArrowLeft']||keys['a']||keys['A'])
-    paddle.x=Math.max(0,paddle.x-CONFIG.HEND_SPEED*dt);
-  if (keys['ArrowRight']||keys['d']||keys['D'])
-    paddle.x=Math.min(W-pw,paddle.x+CONFIG.HEND_SPEED*dt);
-  // touch paddle — smooth follow
-  if (touchX !== null) {
-    const tgt=Math.max(0,Math.min(W-pw,touchX-pw/2));
-    paddle.x += (tgt-paddle.x)*CONFIG.HEND_TOUCH_FOLLOW;
+  if (demoMode) {
+    // Attract-mode AI: intentionally bad — reacts late, drifts, sometimes ignores bee
+    const tBee = bees.length ? bees.reduce((a, b) => b.y > a.y ? b : a) : null;
+    if (tBee) {
+      // Only react when bee is in the lower 40% of screen (delayed reaction)
+      const screenBeeY = tBee.y - scrollY;
+      if (screenBeeY > H * 0.6) {
+        // Add random drift so the paddle doesn't center perfectly
+        const wobble = Math.sin(tick * 0.02) * pw * 0.4;
+        const tgt = Math.max(0, Math.min(W - pw, tBee.x - pw / 2 + wobble));
+        paddle.x += (tgt - paddle.x) * 0.045; // very sluggish
+      }
+    }
+  } else if (isSplitActive()) {
+    // ── Split hend mode: each hend moves independently ──
+    const halfW = Math.round(pw / 2);
+    paddle.prevX = paddle.x;
+    paddle2.prevX = paddle2.x;
+    // Keyboard moves both hends together
+    if (keys['ArrowLeft']||keys['a']||keys['A']) {
+      paddle.x  = Math.max(0, paddle.x  - CONFIG.HEND_SPEED * dt);
+      paddle2.x = Math.max(0, paddle2.x - CONFIG.HEND_SPEED * dt);
+    }
+    if (keys['ArrowRight']||keys['d']||keys['D']) {
+      paddle.x  = Math.min(W - halfW, paddle.x  + CONFIG.HEND_SPEED * dt);
+      paddle2.x = Math.min(W - halfW, paddle2.x + CONFIG.HEND_SPEED * dt);
+    }
+    // Touch: left finger → left hend, right finger → right hend
+    if (touchX !== null) {
+      const tgt = Math.max(0, Math.min(W - halfW, touchX - halfW / 2));
+      paddle.x += (tgt - paddle.x) * CONFIG.HEND_TOUCH_FOLLOW;
+    }
+    if (touchX2 !== null) {
+      const tgt = Math.max(0, Math.min(W - halfW, touchX2 - halfW / 2));
+      paddle2.x += (tgt - paddle2.x) * CONFIG.HEND_TOUCH_FOLLOW;
+    }
+  } else {
+    // ── Normal mode: single paddle ──
+    // keyboard paddle
+    if (keys['ArrowLeft']||keys['a']||keys['A'])
+      paddle.x=Math.max(0,paddle.x-CONFIG.HEND_SPEED*dt);
+    if (keys['ArrowRight']||keys['d']||keys['D'])
+      paddle.x=Math.min(W-pw,paddle.x+CONFIG.HEND_SPEED*dt);
+    // touch paddle — smooth follow
+    if (touchX !== null) {
+      const tgt=Math.max(0,Math.min(W-pw,touchX-pw/2));
+      paddle.x += (tgt-paddle.x)*CONFIG.HEND_TOUCH_FOLLOW;
+    }
   }
 
   // Camera: smooth-follow the topmost bee upward
   // Can fall back down at most H/2 from the highest point reached this run
-  if (bees.length > 0) {
+  // Freeze camera entirely during picker blur transition to prevent pops
+  if (pickerTransition) { /* hold camera still during blur transition */ }
+  else if (bees.length > 0) {
     const topBeeY = bees.reduce((m, b) => Math.min(m, b.y), Infinity);
     const rawTarget = topBeeY - HIVE_CONFIG.CAMERA_LEAD;
     if (scrollY < scrollYMin) scrollYMin = scrollY;               // ratchet: track peak
-    // Track hive depth: count hex cell rows from the bottom-most row upward
+    // Track hive depth: measured from the paddle start line (wrist) upward
     const rowH = CONFIG.HEX_R * Math.sqrt(3);
-    const hiveBottom = PADDLE_Y - HIVE_CONFIG.HIVE_BOTTOM_GAP;
-    // Bottom-most hex row Y = largest multiple of rowH ≤ hiveBottom
-    const firstRowY = Math.floor(hiveBottom / rowH) * rowH;
-    // Depth = how many rows above the first row the bee has reached
-    const depthNow = Math.max(0, Math.ceil((firstRowY - topBeeY) / rowH));
-    if (depthNow > hiveDepthMax) hiveDepthMax = depthNow;
-    const fallbackFloor = Math.min(0, scrollYMin + H * HIVE_CONFIG.CAMERA_FALLBACK);
-    scrollYTarget = Math.max(HIVE_CONFIG.CAMERA_MIN ?? -Infinity, Math.min(fallbackFloor, rawTarget));
+    // Depth = how many hex rows above the paddle the bee has reached
+    const depthNow = Math.max(0, Math.ceil((PADDLE_Y - topBeeY) / rowH));
+    if (!demoMode && depthNow > hiveDepthMax) hiveDepthMax = depthNow;
+    // Camera only progresses upward — never backpedals
+    scrollYTarget = Math.max(HIVE_CONFIG.CAMERA_MIN ?? -Infinity, Math.min(scrollYMin, rawTarget));
     scrollY += (scrollYTarget - scrollY) * HIVE_CONFIG.CAMERA_LERP;
   }
 
   // Infinite chunk streaming: generate new chunks 2 chunk-heights ahead of camera top
+  if (!pickerTransition) {
   const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
   while (scrollY - generatedTop < LOOK_AHEAD) {
     const chunkTop = generatedTop - HIVE_CONFIG.CHUNK_HEIGHT;
     const depth    = (currentLevel - 1) + totalDepth;
     const seed     = levelSeed + totalDepth * 1000003;
-    hexes.push(...spawnChunk(chunkTop, depth, seed));
+
+    // Boss gate check: every BOSS_GATE_INTERVAL chunks, spawn barrier + queen
+    if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) {
+      const gateIndex = bossGates.length;
+      const guardCells = spawnBossGateChunk(chunkTop);
+      const gate = {
+        guardCells, queenCells: [], hp: BOSS_GATE_QUEEN_HP,
+        maxHp: BOSS_GATE_QUEEN_HP, gateY: chunkTop, dead: false
+      };
+      bossGates.push(gate);
+      hexes.push(...guardCells);
+      // Queen cluster spawns 1.5 chunks below the barrier
+      const queenCells = spawnQueenCluster(chunkTop, gateIndex);
+      gate.queenCells = queenCells;
+      hexes.push(...queenCells);
+    } else {
+      hexes.push(...spawnChunk(chunkTop, depth, seed));
+    }
+
     generatedTop = chunkTop;
     totalDepth++;
     HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
   }
+  }
   // Cull hexes more than 2 chunks below the screen bottom (camera can never reach them)
+  // Boss gate cells with living gates are preserved
   const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
-  hexes = hexes.filter(h => h.y < cullY);
+  hexes = hexes.filter(h => {
+    if (h.y < cullY) return true;
+    if (h.bossGateId != null) {
+      const gate = bossGates[h.bossGateId];
+      if (gate && !gate.dead) return true;
+    }
+    return false;
+  });
 
   // World-space constants for this frame
   // Ceiling is pegged just above the camera's max scroll — never appears on-screen
@@ -2759,27 +3806,35 @@ function update() {
     if (b.x+BALL_R>W)  {b.x=W-BALL_R;  b.vx=-Math.abs(b.vx);  b.vx*=wf; b.vy*=wf; normSpd(b,b.speed); sfx.wall();}
     if (b.y-BALL_R<hiveTopY) {b.y=hiveTopY+BALL_R; b.vy=Math.abs(b.vy); b.vx*=wf; b.vy*=wf; normSpd(b,b.speed); sfx.wall();}
 
-    // paddle (world-space Y)
-    if (b.vy>0 && b.y+BALL_R>=paddleWorldY-4 && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+8
-        && b.x>=paddle.x-4 && b.x<=paddle.x+pw+4) {
-      b.y=paddleWorldY-4-BALL_R; paddle.squish=7;
-      const rel=(b.x-(paddle.x+pw/2))/(pw/2);
-      const ang = rel * (CONFIG.HEND_ANGLE_SPREAD * Math.PI/180);
-      b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
-      // velocity boost from paddle movement
-      const pv = dt > 0 ? (paddle.x - paddle.prevX) / dt : 0;
-      b.vx += pv * CONFIG.HEND_VEL_BOOST;
-      b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
-      sfx.paddle();
-      normSpd(b,b.speed);
-      // Apply pending per-bee powerup on paddle bounce
-      if (pendingPowerup && powerupBeesRemaining > 0) {
-        b.powerupId = pendingPowerup.id;
-        b.powerupColor = pendingPowerup.color;
-        b.powerupTimer = pendingPowerup.duration;
-        powerupBeesRemaining--;
-        if (powerupBeesRemaining <= 0) pendingPowerup = null;
+    // paddle (world-space Y) — check against each hend
+    function bouncePaddle(b, p, hendW) {
+      if (b.vy>0 && b.y+BALL_R>=paddleWorldY-4 && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+8
+          && b.x>=p.x-4 && b.x<=p.x+hendW+4) {
+        b.y=paddleWorldY-4-BALL_R; p.squish=7;
+        const rel=(b.x-(p.x+hendW/2))/(hendW/2);
+        const ang = rel * (CONFIG.HEND_ANGLE_SPREAD * Math.PI/180);
+        b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
+        const pv = dt > 0 ? (p.x - p.prevX) / dt : 0;
+        b.vx += pv * CONFIG.HEND_VEL_BOOST;
+        b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
+        sfx.paddle();
+        normSpd(b,b.speed);
+        if (pendingPowerup && powerupBeesRemaining > 0) {
+          b.powerupId = pendingPowerup.id;
+          b.powerupColor = pendingPowerup.color;
+          b.powerupTimer = pendingPowerup.duration;
+          powerupBeesRemaining--;
+          if (powerupBeesRemaining <= 0) pendingPowerup = null;
+        }
+        return true;
       }
+      return false;
+    }
+    if (isSplitActive()) {
+      const halfW = Math.round(pw / 2);
+      if (!bouncePaddle(b, paddle, halfW)) bouncePaddle(b, paddle2, halfW);
+    } else {
+      bouncePaddle(b, paddle, pw);
     }
 
     // hex
@@ -2844,7 +3899,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
           /* text removed: BOOM! */
           // Explosion: 2 damage, wider radius than WAX
           for (const n of hexes) {
-            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE') continue;
+            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 3.5) {
               n.hp -= 2; n.flash = 10;
               if (n.hp <= 0) { n.dead = true; destroyed++; spawnParts(n.x,n.y,6,['#ff8040','#ff4020','#fff']); }
@@ -2902,12 +3957,46 @@ if (b.tpCooldown > 0) b.tpCooldown--;
     }
   }
 
+  // ── HEND OF GOD animation tick ──
+  if (hendOfGodAnim) {
+    const a = hendOfGodAnim;
+    a.frame++;
+    const prog = a.frame / a.maxFrames;
+    if (prog < 0.4) {
+      a.y += (a.targetY - a.y) * 0.12;
+      a.alpha = Math.min(0.6, prog * 1.5);
+    } else {
+      a.alpha = 0.6 * (1 - (prog - 0.4) / 0.6);
+    }
+    if (!a.beeSpawned && prog >= 0.35) {
+      a.beeSpawned = true;
+      bees.push(startBee(0));
+    }
+    if (a.frame >= a.maxFrames) hendOfGodAnim = null;
+  }
+
   // ── HEND OF GOD rescue ──
-  if (bees.length === 0 && hasHendOfGod) {
+  if (bees.length === 0 && !demoMode && hasHendOfGod && !hendOfGodAnim) {
     hasHendOfGod = false;
-    bees.push(startBee(0));
+    hendOfGodAnim = {
+      x: W / 2, y: scrollY + PADDLE_Y + 80,
+      targetY: scrollY + PADDLE_Y - 60,
+      alpha: 0, frame: 0, maxFrames: 50, beeSpawned: false
+    };
     broodMsgs.push({ x: W / 2, y: scrollY + PADDLE_Y - 40, life: 80, txt: 'SAVED!' });
-  } else if (bees.length===0) {gameOver=true;touchX=null;triggerShake(4,10);render();setTimeout(showLose,350);return;}
+    triggerShake(5, 15);
+  } else if (bees.length === 0 && !hendOfGodAnim) {
+    if (demoMode) {
+      // Attract-mode: silently restart demo
+      resetRun(); startLevel(1); return;
+    }
+    gameOver=true;touchX=null;touchX2=null;touchIdLeft=null;touchIdRight=null;triggerShake(4,10);
+    SaveManager.saveMeta(); // persist best scores before game-over
+    render();setTimeout(showLose,350);return;
+  }
+
+  // Debounced autosave — check once per second (every 60 ticks)
+  if (!demoMode && tick % 60 === 0) SaveManager._maybeAutoSave();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2934,8 +4023,30 @@ function render() {
   // Draw paddle UNDER bees (in world space temporarily)
   ctx.save();
   ctx.translate(0, scrollY);          // back to screen space for paddle
-  drawPaddle(paddle);
+  drawPaddle(paddle, paddle2);
   ctx.restore();                       // back to world space
+
+  // ── HEND OF GOD ghost hand animation ──
+  if (hendOfGodAnim && hendCanvas) {
+    const a = hendOfGodAnim;
+    ctx.save();
+    ctx.globalAlpha = a.alpha;
+    // Golden glow behind the hand
+    const glowR = 60;
+    const glow = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, glowR);
+    glow.addColorStop(0, 'rgba(255,200,60,0.4)');
+    glow.addColorStop(1, 'rgba(255,200,60,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(a.x - glowR, a.y - glowR, glowR * 2, glowR * 2);
+    // Draw hand sprite at 3× normal size, centered
+    const pw = getPW();
+    const ghostW = pw * 2.5;
+    const ghostH = Math.round(ghostW / hendAspect);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(hendCanvas, a.x - ghostW / 2, a.y - ghostH / 2, ghostW, ghostH);
+    ctx.restore();
+  }
 
   for (const b of bees) drawBee(b);
 
@@ -2971,6 +4082,12 @@ function render() {
 
   ctx.restore();                     // back to screen space
 
+  // ── Attract-mode dark wash for title readability ──
+  if (demoMode) {
+    ctx.fillStyle = 'rgba(10, 6, 2, 0.45)';
+    ctx.fillRect(0, 0, W, H);
+  }
+
   // ── Picker transition: fullscreen blur + darken ──
   if (blurAmount > 0.1) {
     const bp = 16;
@@ -2983,6 +4100,7 @@ function render() {
     ctx.restore();
   }
 
+  if (!demoMode) {
   drawDroplets();                    // screen space — travels to HUD jar
 
   // ── Translucent blurred HUD backdrop ──
@@ -3003,9 +4121,10 @@ function render() {
   ctx.fillRect(0, HUD_Y - 2, W, 2);
 
   drawHUD();                         // screen space
+  } // end !demoMode HUD block
 
   // ── Active powerup HUD timer (global, e.g. honeySurge) ──
-  if (activePowerup) {
+  if (!demoMode && activePowerup) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = 4;
     const frac = activePowerup.ticksLeft / (TEMP_POWERUPS.find(t => t.id === activePowerup.id)?.duration || 600);
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -3021,7 +4140,7 @@ function render() {
     ctx.textAlign = 'left';
   }
   // ── Pending per-bee powerup indicator ──
-  if (pendingPowerup && powerupBeesRemaining > 0) {
+  if (!demoMode && pendingPowerup && powerupBeesRemaining > 0) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = activePowerup ? 22 : 4;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 14);
@@ -3035,18 +4154,38 @@ function render() {
     ctx.fillText(pendingPowerup.name + ' x' + powerupBeesRemaining, W / 2, by + bh + 9);
     ctx.textAlign = 'left';
   }
-  // ── HEND OF GOD stored indicator ──
-  if (hasHendOfGod) {
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '5px "Press Start 2P",monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText('\u2721', W - 6, 14);
-    ctx.globalAlpha = 0.3 + 0.2 * Math.sin(tick * 0.08);
-    ctx.beginPath(); ctx.arc(W - 9, 11, 7, 0, Math.PI * 2);
-    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.textAlign = 'left';
+  // ── Boss HP bar — shown when camera is near a living boss gate ──
+  if (!demoMode) {
+    const activeBoss = bossGates.find(g => !g.dead &&
+      scrollY < g.gateY + HIVE_CONFIG.CHUNK_HEIGHT * 4 &&
+      scrollY > g.gateY - H * 2);
+    if (activeBoss) {
+      const bw = 160, bh = 10;
+      const bx = (W - bw) / 2, by = activePowerup ? 40 : (pendingPowerup && powerupBeesRemaining > 0) ? 40 : 20;
+      // Background
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillRect(bx - 3, by - 3, bw + 6, bh + 16);
+      // HP fill — magenta to gold gradient
+      const frac = Math.max(0, activeBoss.hp / activeBoss.maxHp);
+      const hpGrad = ctx.createLinearGradient(bx, by, bx + bw * frac, by);
+      hpGrad.addColorStop(0, '#c02070');
+      hpGrad.addColorStop(1, '#ffd700');
+      ctx.fillStyle = hpGrad;
+      ctx.fillRect(bx, by, bw * frac, bh);
+      // Border
+      ctx.strokeStyle = '#ffd700'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(bx, by, bw, bh);
+      // Label
+      ctx.fillStyle = '#ffd700';
+      ctx.font = '6px "Press Start 2P",monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('QUEEN', W / 2, by + bh + 11);
+      ctx.textAlign = 'left';
+    }
   }
+
+  // ── HEND OF GOD stored indicator ──
+  // Hend of God indicator is now the "BEE>i" wrist tattoo (drawn in drawHand)
 
   // Close screen shake transform
   if (sx !== 0 || sy !== 0) ctx.restore();
@@ -3111,6 +4250,7 @@ function drawSummary() {
 }
 
 function showSummary() {
+  SaveManager.saveRun(); // force save on level clear
   hideOv();
   document.getElementById('sumLv').textContent = 'LEVEL ' + currentLevel;
   drawSummary();
@@ -3152,54 +4292,70 @@ function buildGuide() {
   const TAG_C = { PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040', SWARM:'#80e060', HONEY:'#f0a020' };
 
   // ── HEX CELLS tab ──────────────────────────────────
-  const CELLS = [
-    { name:'NORMAL',      col:'#f5c030', out:'#7a3d00', lw:1.5, hits:'1 HIT',   honey:'1 HONEY', note:'STANDARD CELL',
+  // Interleaved: left column = breakable cells, right column = special cells
+  // CSS grid fills left→right per row, so array order is [left1, right1, left2, right2, ...]
+  const CELLS_LEFT = [
+    { name:'NORMAL',      col:'#f5c030', out:'#7a3d00', lw:3, hits:'1 HIT',   honey:'1', note:'STANDARD CELL',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,230,140,0.45)" stroke-width="1"/>` },
-    { name:'REINFORCED',  col:'#7a4800', out:'#7a3d00', lw:1.5, hits:'2 HITS',  honey:'1 HONEY', note:'STRONGER WAX CELL',
+    { name:'REINFORCED',  col:'#7a4800', out:'#7a3d00', lw:3, hits:'2 HITS',  honey:'1', note:'STRONGER CELL',
       svg:`<line x1="0" y1="0" x2="-5" y2="-6" stroke="#2a1000" stroke-width="1.2"/><line x1="0" y1="0" x2="5" y2="-5" stroke="#2a1000" stroke-width="1.2"/>` },
-    { name:'HEAVY',       col:'#8a6830', out:'#a08040', lw:1.5, hits:'3 HITS',  honey:'1 HONEY', note:'HIGHER DURABILITY',
+    { name:'HEAVY',       col:'#8a6830', out:'#a08040', lw:3, hits:'3 HITS',  honey:'1', note:'HIGHER DURABILITY',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(138,104,48,0.5)" stroke-width="1.5"/>` },
-    { name:'ROYAL',       col:'#d4af37', out:'#d4af37', lw:1.5, hits:'5 HITS',  honey:'1 HONEY', note:'HIGH DURABILITY',
+    { name:'ROYAL',       col:'#d4af37', out:'#d4af37', lw:3, hits:'5 HITS',  honey:'1', note:'HIGH DURABILITY',
       svg:`<polygon points="-4,2 -2,-3 0,2 2,-3 4,2" fill="rgba(255,220,80,0.7)" stroke="none"/>` },
-    { name:'ANCIENT',     col:'#4a6050', out:'#4a7060', lw:1.5, hits:'10 HITS', honey:'1 HONEY', note:'VERY STRONG',
+    { name:'ANCIENT',     col:'#4a6050', out:'#4a7060', lw:3, hits:'10 HITS', honey:'1', note:'VERY STRONG',
       svg:`<line x1="-5" y1="0" x2="5" y2="0" stroke="rgba(80,120,90,0.5)" stroke-width="1"/><line x1="0" y1="-5" x2="0" y2="5" stroke="rgba(80,120,90,0.5)" stroke-width="1"/>` },
-    { name:'TITAN',       col:'#3a3a50', out:'#6060a0', lw:1.5, hits:'20 HITS', honey:'1 HONEY', note:'EXTREMELY DURABLE',
+    { name:'TITAN',       col:'#3a3a50', out:'#6060a0', lw:3, hits:'20 HITS', honey:'1', note:'EXTREMELY DURABLE',
       svg:`<circle cx="0" cy="0" r="4" fill="rgba(100,100,160,0.4)"/><circle cx="0" cy="0" r="6" fill="none" stroke="rgba(80,80,140,0.5)" stroke-width="2"/>` },
-    { name:'HONEY',       col:'#ffe050', out:'#e8b000', lw:1.5, hits:'1 HIT',   honey:'6 HONEY', note:'HIGH HONEY REWARD',
+    { name:'HONEY',       col:'#ffe050', out:'#e8b000', lw:3, hits:'1 HIT',   honey:'6', note:'HIGH HONEY REWARD',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,240,80,0.6)" stroke-width="1.5"/><circle cx="-3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="0" cy="-4" r="2" fill="#ff9800" opacity="0.9"/>` },
-    { name:'CHARGED',     col:'#50d0ff', out:'#50d0ff', lw:1.5, hits:'1 HIT',   honey:'0 HONEY', note:'DROPS POWERUP',
-      svg:`<line x1="-2" y1="-4" x2="1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="1" y1="0" x2="-1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="-1" y1="0" x2="2" y2="4" stroke="rgba(150,230,255,0.7)" stroke-width="1"/>` },
-    { name:'BOMB',        col:'#ff4020', out:'#ff4020', lw:1.5, hits:'1 HIT',   honey:'0 HONEY', note:'EXPLODES NEARBY',
-      svg:`<circle cx="0" cy="0" r="5" fill="rgba(255,64,32,0.3)"/><circle cx="0" cy="-5" r="2" fill="rgba(255,200,80,0.8)"/>` },
-    { name:'BROOD',       col:'#3a2408', out:'#a86800', lw:1.5, hits:'1 HIT',   honey:'0 HONEY', note:'RELEASES BEES',
-      svg:`<circle cx="-4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="0" cy="4" r="2" fill="#f5a010" opacity="0.8"/>` },
-    { name:'WAX',         col:'#e2d9b2', out:'#b0a070', lw:1.5, hits:'1 HIT',   honey:'0 HONEY', note:'WEAKENS NEIGHBORS',
-      svg:`<line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(180,170,120,0.5)" stroke-width="1"/><line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(180,170,120,0.5)" stroke-width="1"/>` },
-    { name:'PORTAL',      col:'#9020d0', out:'#cc60ff', lw:2.0, hits:'IMMUNE',  honey:'0 HONEY', note:'TELEPORTS THE BEE',
-      svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(220,140,255,0.8)" stroke-width="1.5"/><text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="6" fill="#f0c0ff">1</text>` },
-    { name:'UNBREAKABLE', col:'#505050', out:'#707070', lw:2.0, hits:'IMMUNE',  honey:'0 HONEY', note:'PERMANENT OBSTACLE',
-      svg:`<line x1="-5" y1="-4" x2="5" y2="4" stroke="rgba(100,100,100,0.5)" stroke-width="1"/><line x1="5" y1="-4" x2="-5" y2="4" stroke="rgba(100,100,100,0.5)" stroke-width="1"/>` },
   ];
+  const CELLS_RIGHT = [
+    { name:'WAX',         col:'#e2d9b2', out:'#b0a070', lw:3, hits:'1 HIT',   honey:'0', note:'WEAKENS NEIGHBORS',
+      svg:`<line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(180,170,120,0.5)" stroke-width="1"/><line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(180,170,120,0.5)" stroke-width="1"/>` },
+    { name:'BROOD',       col:'#3a2408', out:'#a86800', lw:3, hits:'1 HIT',   honey:'0', note:'RELEASES BEES',
+      svg:`<circle cx="-4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="0" cy="4" r="2" fill="#f5a010" opacity="0.8"/>` },
+    { name:'BOMB',        col:'#ff4020', out:'#ff4020', lw:3, hits:'1 HIT',   honey:'0', note:'EXPLODES NEARBY',
+      svg:`<circle cx="0" cy="0" r="5" fill="rgba(255,64,32,0.3)"/><circle cx="0" cy="-5" r="2" fill="rgba(255,200,80,0.8)"/>` },
+    { name:'CHARGED',     col:'#50d0ff', out:'#50d0ff', lw:3, hits:'1 HIT',   honey:'0', note:'DROPS POWERUP',
+      svg:`<line x1="-2" y1="-4" x2="1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="1" y1="0" x2="-1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="-1" y1="0" x2="2" y2="4" stroke="rgba(150,230,255,0.7)" stroke-width="1"/>` },
+    { name:'PORTAL',      col:'#9020d0', out:'#cc60ff', lw:3, hits:'IMMUNE',  honey:'0', note:'TELEPORTS THE BEE',
+      svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(220,140,255,0.8)" stroke-width="1.5"/><text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="6" fill="#f0c0ff">1</text>` },
+    { name:'UNBREAKABLE', col:'#505050', out:'#707070', lw:3, hits:'IMMUNE',  honey:'0', note:'PERMANENT OBSTACLE',
+      svg:`<line x1="-5" y1="-4" x2="5" y2="4" stroke="rgba(100,100,100,0.5)" stroke-width="1"/><line x1="5" y1="-4" x2="-5" y2="4" stroke="rgba(100,100,100,0.5)" stroke-width="1"/>` },
+    { name:'ROYAL GUARD', col:'#6a2fa0', out:'#d4af37', lw:3, hits:'IMMUNE',  honey:'0', note:'BOSS GATE BARRIER',
+      svg:`<polygon points="0,-5 4,0 0,5 -4,0" fill="rgba(212,175,55,0.5)" stroke="none"/>` },
+  ];
+  const QUEEN_CELL = { name:'QUEEN', col:'#c02070', out:'#ffd700', lw:3, hits:'SHARED HP', honey:'50', note:'BOSS \u2014 DEFEAT TO OPEN GATE',
+    svg:`<polygon points="-5,3 -3,-4 0,1 3,-4 5,3" fill="rgba(255,215,0,0.6)" stroke="none"/>` };
 
-  const cellsEl = document.getElementById('tab-cells');
-  cellsEl.innerHTML = CELLS.map(c => {
+  // Interleave left/right for grid flow
+  const CELLS = [];
+  const maxLen = Math.max(CELLS_LEFT.length, CELLS_RIGHT.length);
+  for (let i = 0; i < maxLen; i++) {
+    if (i < CELLS_LEFT.length) CELLS.push(CELLS_LEFT[i]);
+    if (i < CELLS_RIGHT.length) CELLS.push(CELLS_RIGHT[i]);
+  }
+
+  function cellHTML(c) {
     const nameCol = c.col === '#e2d9b2' ? '#c0b080' : c.col;
-    return `<div class="gc-row">
-      <div class="gc-hex">${hexSVG(c.col, c.out, c.lw, 30, c.svg)}</div>
+    const honeyStr = c.honey !== '0' ? ` \u00b7 ${c.honey} HONEY` : '';
+    return `<div class="gc-hex">${hexSVG(c.col, c.out, c.lw, 28, c.svg)}</div>
       <div class="gc-info">
         <div class="gc-name" style="color:${nameCol}">${c.name}</div>
         <div class="gc-note">${c.note}</div>
-        <div class="gc-stats">
-          <span class="gc-stat" style="color:#c8a060">${c.hits}</span>
-          <span class="gc-stat" style="color:#f5c030">${c.honey}</span>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
+        <div class="gc-stats">${c.hits}${honeyStr}</div>
+      </div>`;
+  }
+
+  const cellsEl = document.getElementById('tab-cells');
+  cellsEl.innerHTML =
+    CELLS.map(c => `<div class="gc-row">${cellHTML(c)}</div>`).join('') +
+    `<div class="gc-queen-row">${cellHTML(QUEEN_CELL)}</div>`;
 
   // ── POWER-UPS tab (temporary powerups from CHARGED cells) ──
   const powersEl = document.getElementById('tab-powers');
-  powersEl.innerHTML = TEMP_POWERUPS.map(p => {
+  powersEl.innerHTML = TEMP_POWERUPS.map((p, i) => {
     const dur = p.duration > 0 ? Math.round(p.duration / 60) + 's'
               : p.duration === 0 ? 'INSTANT'
               : 'STORED';
@@ -3212,8 +4368,325 @@ function buildGuide() {
         <div class="gp-desc">${p.desc}</div>
         <div class="gp-tag" style="color:${p.color}99">${dur}</div>
       </div>
+      <canvas class="gp-preview" data-puid="${p.id}" width="40" height="40"></canvas>
     </div>`;
   }).join('');
+
+  // Animated bee previews for guide power-ups section
+  let _gpAnimRunning = false;
+  let _gpTick = 0;
+  function _gpDrawBee(cvs, pId, ft) {
+    const gc = cvs.getContext('2d');
+    gc.clearRect(0, 0, 40, 40);
+    // HEND OF GOD — ethereal hand with slow yellow glow pulse
+    if (pId === 'hendOfGod' && hendCanvas) {
+      const dw = 24, dh = Math.round(dw / hendAspect);
+      const hx = (40 - dw) / 2, hy = (40 - dh) / 2;
+      // Slow pulsing bright white radial glow
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.02);
+      const aR = 18 + pulse * 4;
+      const gA = 0.25 + pulse * 0.2;
+      const g = gc.createRadialGradient(20, 20, 2, 20, 20, aR);
+      g.addColorStop(0, `rgba(255,255,255,${gA})`);
+      g.addColorStop(0.4, `rgba(230,245,255,${gA * 0.5})`);
+      g.addColorStop(1, 'rgba(220,240,255,0)');
+      gc.fillStyle = g; gc.fillRect(0, 0, 40, 40);
+      // Hand sprite — translucent, heavenly
+      gc.globalAlpha = 0.45 + pulse * 0.15;
+      gc.imageSmoothingEnabled = true;
+      gc.drawImage(hendCanvas, hx, hy, dw, dh);
+      // White tint overlay — shift yellow palette toward white
+      gc.globalCompositeOperation = 'source-atop';
+      gc.fillStyle = 'rgba(230,240,255,0.4)';
+      gc.fillRect(hx, hy, dw, dh);
+      gc.globalCompositeOperation = 'source-over';
+      gc.globalAlpha = 1;
+      return;
+    }
+    // HONEY SURGE — just "x2" centered with golden pulse
+    if (pId === 'honeySurge') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.025);
+      const bob = Math.sin(ft * 0.03) * 1.5;
+      gc.font = 'bold 14px "Press Start 2P", monospace';
+      gc.textAlign = 'center'; gc.textBaseline = 'middle';
+      gc.fillStyle = '#000';
+      gc.fillText('x2', 21, 21 + bob + 1);  // shadow
+      gc.fillStyle = `rgb(255, ${Math.round(200 + pulse * 55)}, ${Math.round(40 + pulse * 40)})`;
+      gc.fillText('x2', 20, 20 + bob);
+      return;
+    }
+    let sc = 1;
+    if (pId === 'beeBee') sc = 0.65;
+    if (pId === 'beeGer') sc = 1.5;
+    if (pId === 'beeHemoth') sc = 2.4;
+    if (pId === 'booBee') gc.globalAlpha = 0.3;
+    const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 14 : 8; // BEE-HEMOTH & BEE-R flap slower
+    const fIdx = [0,1,2,1][Math.floor(ft / flapSpeed) % 4];
+    const bob = 0; // frames are now vertically aligned at load time
+    const extraBob = (pId === 'booBee') ? Math.sin(ft * 0.02) * 2 : 0;
+    // BOO-BEE teal ghost aura glow (slow, sleepy pulse)
+    if (pId === 'booBee') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.008);
+      const gy = 20 + bob + extraBob;
+      const aR = 18 + pulse * 3;
+      const aA = 0.22 + pulse * 0.12;
+      const gg = gc.createRadialGradient(20, gy, 3, 20, gy, aR);
+      gg.addColorStop(0, `rgba(60,200,190,${aA})`);
+      gg.addColorStop(0.35, `rgba(40,170,170,${aA * 0.5})`);
+      gg.addColorStop(0.7, `rgba(30,140,150,${aA * 0.2})`);
+      gg.addColorStop(1, 'rgba(20,120,130,0)');
+      gc.globalAlpha = 0.6;
+      gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
+      gc.globalAlpha = 0.45;
+    }
+    // BEE-SUS gold+white pulsing aura (drawn before the bee)
+    if (pId === 'beeSus') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.015);
+      const gy = 20 + bob + extraBob;
+      const aR = 16 + pulse * 4;
+      const aA = 0.25 + pulse * 0.15;
+      const gg = gc.createRadialGradient(20, gy, 3, 20, gy, aR);
+      gg.addColorStop(0, `rgba(255,240,180,${aA * 1.2})`);
+      gg.addColorStop(0.3, `rgba(255,220,100,${aA})`);
+      gg.addColorStop(0.6, `rgba(255,200,60,${aA * 0.4})`);
+      gg.addColorStop(1, 'rgba(255,180,40,0)');
+      gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
+    }
+    // BEE-ELZEBUB red pulsing aura (drawn before the bee)
+    if (pId === 'beeElzebub') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.018);
+      const gy = 20 + bob + extraBob;
+      const aR = 14 + pulse * 4;
+      const aA = 0.2 + pulse * 0.12;
+      const gg = gc.createRadialGradient(20, gy, 2, 20, gy, aR);
+      gg.addColorStop(0, `rgba(255,50,20,${aA})`);
+      gg.addColorStop(0.4, `rgba(200,20,10,${aA * 0.5})`);
+      gg.addColorStop(1, 'rgba(150,10,0,0)');
+      gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
+    }
+    gc.save();
+    gc.translate(20, 20 + bob + extraBob);
+    gc.scale(sc, sc);
+    // Use PNG bee frames if available
+    const usePNG = beeFrames.length === 3 && beeFrames[0];
+    if (usePNG) {
+      gc.imageSmoothingEnabled = true;
+      const img = beeFrames[beeFrameSeq[fIdx]];
+      const dw = BOX * 2.4, dh = BOY * 2.4;
+      gc.drawImage(img, -dw/2, -dh/2, dw, dh);
+      // BEE-R nauseous green tint — fades in/out (tipsy between normal and drunken)
+      if (pId === 'beeR') {
+        const tipsy = (Math.sin(ft * 0.02) + 1) / 2; // 0 = normal, 1 = fully green
+        if (tipsy > 0.02) {
+          gc.globalCompositeOperation = 'source-atop';
+          gc.fillStyle = `rgba(60,180,70,${tipsy * 0.5})`;
+          gc.fillRect(-dw/2, -dh/2, dw, dh);
+          gc.globalCompositeOperation = 'source-over';
+        }
+      }
+    } else {
+      const px = 2, ox = -(BC*px)/2, oy = -(BR*px)/2;
+      for (let r = 0; r < BR; r++) for (let c = 0; c < BC; c++) {
+        let col = BEE_G[r][c]; if (!col) continue;
+        gc.fillStyle = col; gc.fillRect(ox+c*px, oy+r*px, px, px);
+      }
+    }
+    gc.restore(); gc.globalAlpha = 1;
+    // BEE-R drunken bubbles — always visible
+    if (pId === 'beeR') {
+      const bTime = ft * 0.07;
+      for (let i = 0; i < 3; i++) {
+        const seed = i * 2.5;
+        const bx = 20 + Math.sin(bTime + seed) * 6 + (i - 1) * 4;
+        const by = 20 - 8 - ((bTime * 0.8 + seed * 3) % 14);
+        const br = 1.0 + Math.sin(bTime + i) * 0.4;
+        const ba = 0.5 - ((bTime * 0.8 + seed * 3) % 14) / 28;
+        if (ba > 0) {
+          gc.strokeStyle = `rgba(80,210,100,${ba})`;
+          gc.lineWidth = 0.7;
+          gc.beginPath(); gc.arc(bx, by, br, 0, Math.PI*2); gc.stroke();
+        }
+      }
+    }
+    // BOO-BEE: blue-teal ghost overlay + white outline + slow drifting wisps
+    if (pId === 'booBee') {
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        const img2 = beeFrames[beeFrameSeq[fIdx]];
+        const dw2 = BOX * 2.4, dh2 = BOY * 2.4;
+        // Thin white outline — draw sprite offset in 4 directions with white tint
+        const ol = 0.6; // outline thickness
+        gc.globalAlpha = 0.25;
+        for (const [ox, oy] of [[-ol,0],[ol,0],[0,-ol],[0,ol]]) {
+          gc.drawImage(img2, -dw2/2 + ox, -dh2/2 + oy, dw2, dh2);
+        }
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(220,250,255,0.9)';
+        gc.fillRect(-dw2/2 - ol, -dh2/2 - ol, dw2 + ol*2, dh2 + ol*2);
+        gc.globalCompositeOperation = 'source-over';
+        // Blue-teal body tint
+        gc.globalAlpha = 0.4;
+        gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(60,180,200,0.65)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        // White highlight pass — ghostly bright edges
+        gc.fillStyle = 'rgba(220,250,255,0.3)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-over';
+      }
+      gc.restore();
+      // Slow drifting wisps — ancient, sleepy particles
+      const pts = [[8,10],[30,14],[12,30],[28,28],[20,6],[16,18],[26,22]];
+      for (let i = 0; i < pts.length; i++) {
+        const phase = ft * 0.006 + i * 1.5;
+        const pa = Math.max(0, Math.sin(phase) * 0.4);
+        if (pa > 0.02) {
+          gc.globalAlpha = pa;
+          // Alternate teal, blue, and white wisps
+          const colors = ['rgba(80,210,200,0.7)','rgba(100,180,240,0.6)','rgba(220,250,255,0.5)'];
+          gc.fillStyle = colors[i % 3];
+          gc.beginPath(); gc.arc(pts[i][0], pts[i][1], 0.9 + Math.sin(phase)*0.4, 0, Math.PI*2); gc.fill();
+        }
+      }
+      gc.globalAlpha = 1;
+    }
+    // BEE-SUS: divine bee — golden/white body, halo, gold aura, golden sparkles
+    if (pId === 'beeSus') {
+      // Bright golden-white tint overlay on the bee body
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        const img2 = beeFrames[beeFrameSeq[fIdx]];
+        const dw2 = BOX * 2.4, dh2 = BOY * 2.4;
+        gc.globalAlpha = 0.5;
+        gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(255,240,180,0.6)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-over';
+      }
+      gc.restore();
+      // Halo — small golden ellipse above the bee head
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      const haloPulse = 0.7 + 0.3 * Math.sin(ft * 0.02);
+      gc.strokeStyle = `rgba(255,220,80,${0.6 * haloPulse})`;
+      gc.lineWidth = 1;
+      gc.beginPath();
+      gc.ellipse(0, -12.5, 5, 1.8, 0, 0, Math.PI * 2);
+      gc.stroke();
+      // Inner brighter halo
+      gc.strokeStyle = `rgba(255,250,200,${0.4 * haloPulse})`;
+      gc.lineWidth = 0.6;
+      gc.beginPath();
+      gc.ellipse(0, -12.5, 4, 1.3, 0, 0, Math.PI * 2);
+      gc.stroke();
+      gc.restore();
+      // Golden sparkle particles — scattered around, twinkle in/out
+      const sparkles = [[8,8],[30,10],[6,24],[32,26],[14,32],[26,6],[20,4],[12,14],[28,18]];
+      for (let i = 0; i < sparkles.length; i++) {
+        const phase = ft * 0.025 + i * 0.9;
+        const sa = Math.max(0, Math.sin(phase) * 0.7);
+        if (sa > 0.05) {
+          const sx = sparkles[i][0], sy = sparkles[i][1];
+          gc.globalAlpha = sa;
+          // Draw a tiny 4-point star/cross sparkle
+          gc.strokeStyle = (i % 3 === 0) ? 'rgba(255,255,240,0.9)' : 'rgba(255,220,80,0.9)';
+          gc.lineWidth = 0.5;
+          const sr = 0.8 + Math.sin(phase) * 0.4;
+          gc.beginPath(); gc.moveTo(sx - sr, sy); gc.lineTo(sx + sr, sy); gc.stroke();
+          gc.beginPath(); gc.moveTo(sx, sy - sr); gc.lineTo(sx, sy + sr); gc.stroke();
+        }
+      }
+      gc.globalAlpha = 1;
+    }
+    // BEE-ELZEBUB: devil bee — red body tint, horns, red aura, ember particles
+    if (pId === 'beeElzebub') {
+      // Red tint overlay on the bee body via source-atop
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        const img2 = beeFrames[beeFrameSeq[fIdx]];
+        const dw2 = BOX * 2.4, dh2 = BOY * 2.4;
+        gc.globalAlpha = 0.55;
+        gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(200,30,20,0.7)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-over';
+      }
+      gc.restore();
+      // Devil horns — two small triangles on top of the bee head
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      gc.fillStyle = '#a01010';
+      // Left horn
+      gc.beginPath();
+      gc.moveTo(-4.5, -8.5);
+      gc.lineTo(-6.5, -13);
+      gc.lineTo(-2.5, -9.5);
+      gc.closePath();
+      gc.fill();
+      // Right horn
+      gc.beginPath();
+      gc.moveTo(4.5, -8.5);
+      gc.lineTo(6.5, -13);
+      gc.lineTo(2.5, -9.5);
+      gc.closePath();
+      gc.fill();
+      gc.restore();
+      // Devil stinger — tiny straight red spike from bee's rear
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      gc.fillStyle = '#e02020';
+      gc.beginPath();
+      gc.moveTo(-1, 8);
+      gc.lineTo(0, 12);
+      gc.lineTo(1, 8);
+      gc.closePath();
+      gc.fill();
+      gc.restore();
+      // Ember particles — small dots that rise and fade
+      const embers = [[10,28],[28,26],[8,16],[30,12],[18,32],[24,8],[14,6]];
+      for (let i = 0; i < embers.length; i++) {
+        const phase = ft * 0.02 + i * 1.1;
+        const life = (Math.sin(phase) + 1) / 2; // 0–1
+        const ea = life * 0.6;
+        if (ea > 0.05) {
+          const ey = embers[i][1] - life * 5; // rise upward
+          const er = 0.6 + life * 0.4;
+          gc.globalAlpha = ea;
+          // Alternate orange and red embers
+          gc.fillStyle = (i % 2 === 0) ? 'rgba(255,120,20,0.9)' : 'rgba(255,60,20,0.9)';
+          gc.beginPath(); gc.arc(embers[i][0], ey, er, 0, Math.PI*2); gc.fill();
+        }
+      }
+      gc.globalAlpha = 1;
+    }
+  }
+  function _gpLoop() {
+    _gpTick++;
+    const cs = powersEl.querySelectorAll('.gp-preview');
+    cs.forEach(cvs => _gpDrawBee(cvs, cvs.dataset.puid, _gpTick));
+    const gb = document.getElementById('guideBody');
+    if (gb && gb.style.display !== 'none' && gb.offsetParent) {
+      requestAnimationFrame(_gpLoop);
+    } else { _gpAnimRunning = false; }
+  }
+  // Expose starter so showPause(true) can kick it
+  window._startGuideBeeAnim = function() {
+    if (_gpAnimRunning) return;
+    _gpAnimRunning = true; _gpTick = 0;
+    requestAnimationFrame(_gpLoop);
+  };
 
   // ── UPGRADES tab ────────────────────────────────────
   // Shows current run's active upgrades; if none yet, placeholder grid
@@ -3224,14 +4697,15 @@ function buildGuide() {
       const col = TAG_C[pu.tag] || '#f0c040';
       const icon = hexSVG('#120900', col, 1.5, 28,
         `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="${col}">${pu.tag[0]}</text>`);
-      const badge = slot ? `<span style="color:${col}"> ×${slot.stacks}/${pu.max}</span>` : `<span style="color:${col}"> 0/${pu.max}</span>`;
+      const count = slot ? `${slot.stacks}/${pu.max}` : `0/${pu.max}`;
       const desc = pu.desc.replace(/\n/g, ' ');
       return `<div class="gu-row">
         <div class="gu-icon">${icon}</div>
         <div class="gu-info">
-          <div class="gu-name" style="color:${col}">${pu.name}${badge}</div>
+          <div class="gu-name" style="color:${col}">${pu.name}</div>
           <div class="gu-desc">${desc}</div>
         </div>
+        <div class="gu-count" style="color:${col}">${count}</div>
       </div>`;
     }).join('');
   }
@@ -3254,6 +4728,7 @@ function showPause(showGuide) {
     if (pb) pb.style.display = 'none';
     if (bb) bb.style.display = '';
     pausePanel.style.justifyContent = 'flex-start';
+    if (window._startGuideBeeAnim) window._startGuideBeeAnim();
   } else {
     gb.style.display = 'none';
     if (pb) pb.style.display = '';
@@ -3275,8 +4750,14 @@ function hidePause() { pausePanel.classList.remove('show'); }
   rb.textContent = 'RESUME';
   rb.onclick = () => {
     hidePause();
+    if (demoMode) { showOv(); return; } // return to menu overlay
+    if (inspectorMode) {
+      inspectorMode = false;
+      inspectorTouchY = null;
+    }
     if (!gameOver && !pickerPending) {
       music.play(); music.unmuffle();
+      lastTime = 0;
       startCountdown(() => loop());
     }
   };
@@ -3293,6 +4774,29 @@ function hidePause() { pausePanel.classList.remove('show'); }
   sb.textContent = 'SETTINGS';
   sb.onclick = () => { hidePause(); showSettings('pause'); };
   container.appendChild(sb);
+
+  const ib = document.createElement('button');
+  ib.className = 'ob';
+  ib.textContent = 'INSPECT';
+  ib.onclick = () => {
+    inspectorMode = true;
+    inspectorTouchY = null;
+    hidePause();
+    paused = false;
+    lastTime = 0;
+    loop();
+  };
+  container.appendChild(ib);
+
+  const csb = document.createElement('button');
+  csb.className = 'ob';
+  csb.textContent = 'CLEAR SAVE';
+  csb.onclick = () => {
+    SaveManager.clearAll();
+    csb.textContent = 'CLEARED \u2713';
+    setTimeout(() => { csb.textContent = 'CLEAR SAVE'; }, 1500);
+  };
+  container.appendChild(csb);
 
   pausePanel.appendChild(container);
 
@@ -3327,16 +4831,41 @@ let menuBGScrollY = 0;
 function showMenu() {
   music.play(); music.muffle();
   ovTitle.textContent='HENDSBEE';
-  ovSub.innerHTML='';
+  const meta = SaveManager.loadMeta();
+  ovSub.innerHTML = meta.bestDepth > 0 ? 'HIGH SCORE: DEPTH ' + meta.bestDepth : '';
   clearBtns();
-  mkBtn('PLAY',     true,  ()=>{hideOv(); menuBGActive=false; resetRun();startLevel(1);});
+  const hasSave = SaveManager.hasSavedRun();
+  const s = hasSave ? SaveManager.getSummary() : null;
+  // Only show CONTINUE if there's a saved run with actual progress
+  if (hasSave && s && s.depth > 0) {
+    mkBtn('CONTINUE · DEPTH ' + s.depth, true, () => {
+      hideOv();
+      // Stop demo loop, exit demo mode
+      if (animId) cancelAnimationFrame(animId);
+      demoMode = false; menuBGActive = false;
+      if (!SaveManager.restoreRun()) {
+        // Fallback: save was corrupt, start fresh
+        SaveManager.clearRun();
+        resetRun(); startLevel(1);
+      }
+    });
+  }
+  mkBtn('PLAY', !hasSave, () => {
+    hideOv();
+    // Stop demo loop, exit demo mode
+    if (animId) cancelAnimationFrame(animId);
+    demoMode = false; menuBGActive = false;
+    SaveManager.clearRun(); resetRun(); startLevel(1);
+  });
   mkBtn('GUIDE',    false, ()=>{showPause(true);});
   mkBtn('SETTINGS', false, ()=>{hideOv(); showSettings('menu');});
   showOv();
-  // Start animated hive background
-  menuBGActive = true;
-  menuBGScrollY = 0;
-  requestAnimationFrame(menuBGLoop);
+  // Start attract-mode demo: real gameplay behind the title screen
+  if (animId) cancelAnimationFrame(animId);
+  demoMode = true;
+  menuBGActive = false;
+  resetRun();
+  startLevel(1);
 }
 
 // ── Settings panel ──────────────────────────────────────
@@ -3366,6 +4895,16 @@ toggleShakeBtn.addEventListener('click', () => {
   localStorage.setItem('hendsbee_shake', screenShakeEnabled);
 });
 
+// 2 Hend Mode toggle — split paddle with independent finger control
+let splitHendMode = localStorage.getItem('hendsbee_splitHend') === 'true';
+const toggleSplitBtn = document.getElementById('toggleSplitHend');
+toggleSplitBtn.textContent = splitHendMode ? 'ON' : 'OFF';
+toggleSplitBtn.addEventListener('click', () => {
+  splitHendMode = !splitHendMode;
+  toggleSplitBtn.textContent = splitHendMode ? 'ON' : 'OFF';
+  localStorage.setItem('hendsbee_splitHend', splitHendMode);
+});
+
 function showSettings(returnTo) {
   _settingsReturnTo = returnTo || 'menu';
   settingsPanel.classList.add('show');
@@ -3386,6 +4925,7 @@ function hideSettings() { settingsPanel.classList.remove('show'); }
 })();
 
 function showLose() {
+  SaveManager.clearRun(); // run is over — remove run save
   music.play(); music.muffle();
   // Blur the frozen game frame behind the overlay
   // Draw scaled up so edges blur evenly (blur kernel has content beyond viewport)
@@ -3493,6 +5033,7 @@ window.addEventListener('keydown', e => {
       }
     } else if (!gameOver && !pickerPending && animId) {
       paused = true;
+      SaveManager.saveRun(); // force save on pause
       showPause();
     }
   }
@@ -3527,6 +5068,13 @@ function startCountdown(cb) {
 // BOOT
 // ═══════════════════════════════════════════════════════
 ctx.fillStyle=PAL.bg; ctx.fillRect(0,0,W,H);
+// Save on tab-switch / phone lock
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden && !gameOver && !menuBGActive) {
+    SaveManager.saveRun();
+  }
+});
+
 Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() => showMenu());
 </script>
 <script>
