@@ -1048,8 +1048,15 @@ const music = {
       // is permitted without a new gesture
       this.el.play().catch(() => {});
     });
-    // Route through Web Audio for filter control (deferred until AC is resumed)
-    this._connectWebAudio();
+    // Route through Web Audio for filter control
+    // Android Chrome: createMediaElementSource causes silent playback on many
+    // devices, so skip Web Audio routing on mobile — use el.volume instead
+    this._isMobile = /Mobi|Android/i.test(navigator.userAgent);
+    if (!this._isMobile) {
+      this._connectWebAudio();
+    } else {
+      this.el.volume = musicVolume;
+    }
   },
 
   _connectWebAudio() {
@@ -1069,14 +1076,13 @@ const music = {
     } catch (e) {
       // Fallback: play without Web Audio filter chain (no muffle, but audio works)
       this.source = null; this.filter = null; this.gain = null;
+      if (this.el) this.el.volume = musicVolume;
     }
   },
 
   play() {
     acResume();
     this._init();
-    // Ensure Web Audio graph is connected (may have failed during early _init)
-    if (!this.source) this._connectWebAudio();
     if (!this.playing) {
       this.el.play().catch(() => {});
       this.playing = true;
@@ -1136,7 +1142,6 @@ function loadImg(paths) {
     function tryNext() {
       if (i >= paths.length) { resolve(null); return; }
       const img = new Image();
-      img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
       img.onerror = () => { i++; tryNext(); };
       // Cache-bust for mobile browsers that aggressively cache old assets
