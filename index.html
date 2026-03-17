@@ -34,6 +34,24 @@
     box-shadow:5px 5px 0 #280e00;
     transform-origin: 0 0;
     flex-shrink:0;
+    --crt:0;
+  }
+  /* CRT overlay — scanlines + vignette over EVERYTHING (canvas + menus) */
+  #gw::after {
+    content:'';
+    position:absolute; inset:0;
+    pointer-events:none;
+    z-index:9999;
+    opacity:var(--crt);
+    background:
+      repeating-linear-gradient(
+        0deg,
+        rgba(0,0,0,0.18) 0px,
+        rgba(0,0,0,0.18) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+    mix-blend-mode:multiply;
   }
 
   canvas {
@@ -72,6 +90,33 @@
   }
   .shop-dot:hover { transform:scale(1.2); }
   .shop-dot.active { border-color:#f5d040; box-shadow:0 0 4px rgba(245,208,64,0.5); }
+  .shop-tile {
+    display:flex; align-items:center; gap:6px;
+    padding:4px 6px; border-radius:4px;
+    border:2px solid #604020; cursor:pointer;
+    transition:border-color 0.12s;
+    width:100%; box-sizing:border-box;
+  }
+  .shop-tile:hover { border-color:#a06020; }
+  .shop-tile.active { border-color:#f5d040; box-shadow:0 0 4px rgba(245,208,64,0.5); }
+  .shop-tile-swatch {
+    width:28px; height:28px; border-radius:3px;
+    flex-shrink:0;
+  }
+  .shop-tile-info { flex:1; min-width:0; }
+  .shop-tile-name {
+    font-family:'Press Start 2P',monospace;
+    font-size:0.32rem; color:#f0a020;
+  }
+  .shop-tile-desc {
+    font-family:'Press Start 2P',monospace;
+    font-size:0.22rem; color:#806030; margin-top:1px;
+  }
+  .shop-tile-cost {
+    font-family:'Press Start 2P',monospace;
+    font-size:0.26rem; color:#f5c030;
+    flex-shrink:0;
+  }
   .shop-dot-label {
     font-family:'Press Start 2P',monospace;
     font-size:0.28rem; color:#806030; text-align:center;
@@ -312,7 +357,9 @@
       <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">MUSIC</label>
       <input type="range" id="sliderMusic" min="0" max="100" value="50" style="width:100%;accent-color:#f0a020;margin-bottom:16px;">
       <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">SFX</label>
-      <input type="range" id="sliderSfx" min="0" max="100" value="100" style="width:100%;accent-color:#f0a020;margin-bottom:20px;">
+      <input type="range" id="sliderSfx" min="0" max="100" value="100" style="width:100%;accent-color:#f0a020;margin-bottom:16px;">
+      <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">CRT FILTER</label>
+      <input type="range" id="sliderCRT" min="0" max="100" value="0" style="width:100%;accent-color:#f0a020;margin-bottom:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">SCREEN SHAKE</label>
         <button id="toggleShake" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
@@ -321,44 +368,53 @@
         <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">HAPTICS</label>
         <button id="toggleHaptics" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">DOMINANT HEND</label>
-        <button id="toggleDominant" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">RIGHT</button>
-      </div>
     </div>
   </div>
 
   <div id="shopPanel" class="panel">
     <div id="shopBody">
       <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.60rem;letter-spacing:2px;padding:10px 0 6px 0;text-align:center;">SHOP</div>
+      <button id="shopBackBtn" class="ob" style="margin:0 auto 6px auto;">BACK</button>
 
-      <!-- HEND SECTION -->
-      <div class="gsec-title">HEND</div>
-      <div id="shopHandToggle" style="display:flex;gap:6px;justify-content:center;margin-bottom:6px;"></div>
-      <div style="display:flex;justify-content:center;margin-bottom:6px;">
-        <canvas id="shopHendPreview" width="120" height="90" style="border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;"></canvas>
+      <!-- Two-column split: HEND left, BEE right -->
+      <div style="display:flex;gap:8px;">
+        <!-- LEFT COLUMN: HEND -->
+        <div style="flex:1;min-width:0;">
+          <div class="gsec-title" style="text-align:center;">HENDS</div>
+          <div id="shopHandToggle" style="display:flex;gap:6px;margin-bottom:6px;justify-content:center;"></div>
+          <label id="shopStartingHendLabel" style="display:flex;align-items:center;gap:3px;cursor:pointer;margin-bottom:3px;justify-content:center;">
+            <input type="checkbox" id="shopStartingHendCB" style="accent-color:#f0a020;width:10px;height:10px;cursor:pointer;">
+            <span style="font-family:'Press Start 2P',monospace;font-size:0.32rem;color:#f5d040;white-space:nowrap;">STARTING HEND</span>
+          </label>
+          <div style="position:relative;margin-bottom:6px;">
+            <canvas id="shopHendPreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
+          </div>
+          <div class="shop-dot-label">SKIN SHADE</div>
+          <div id="shopTilesSkin" class="shop-dots"></div>
+          <div class="shop-dot-label">RING</div>
+          <div id="shopTilesAcc" class="shop-dots"></div>
+          <div class="shop-dot-label">HEND STYLE</div>
+          <div id="shopTilesHendSkin" class="shop-dots"></div>
+        </div>
+        <!-- RIGHT COLUMN: BEE -->
+        <div style="flex:1;min-width:0;">
+          <div class="gsec-title" style="text-align:center;">BEE</div>
+          <div id="shopBeeToggle" style="display:flex;gap:4px;margin-bottom:6px;justify-content:center;"></div>
+          <label style="display:flex;align-items:center;gap:3px;margin-bottom:3px;visibility:hidden;">
+            <input type="checkbox" style="width:10px;height:10px;">
+            <span style="font-family:'Press Start 2P',monospace;font-size:0.22rem;">X</span>
+          </label>
+          <div style="position:relative;margin-bottom:6px;">
+            <canvas id="shopBeePreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
+          </div>
+          <div class="shop-dot-label">BEE COLOUR</div>
+          <div id="shopTilesBeeSkin" class="shop-dots"></div>
+          <div class="shop-dot-label">TRAIL EFFECT</div>
+          <div id="shopTilesTracer" class="shop-dots"></div>
+        </div>
       </div>
-      <div class="shop-dot-label">SKIN TONE</div>
-      <div id="shopDotsSkin" class="shop-dots"></div>
-      <div class="shop-dot-label">HEND SKIN</div>
-      <div id="shopDotsHendSkin" class="shop-dots"></div>
-      <div class="shop-dot-label">ACCESSORY</div>
-      <div id="shopDotsAcc" class="shop-dots"></div>
-
-      <div class="gsec-divider"></div>
-
-      <!-- BEE + TRACER SECTION -->
-      <div class="gsec-title">BEE + TRAIL</div>
-      <div style="display:flex;justify-content:center;margin-bottom:6px;">
-        <canvas id="shopBeePreview" width="280" height="70" style="border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;"></canvas>
-      </div>
-      <div class="shop-dot-label">BEE SKIN</div>
-      <div id="shopDotsBeeSkin" class="shop-dots"></div>
-      <div class="shop-dot-label">TRAIL EFFECT</div>
-      <div id="shopDotsTracer" class="shop-dots"></div>
 
     </div>
-    <button id="shopBackBtn" class="ob" style="margin:4px auto 10px auto;">BACK</button>
   </div>
 
   <div id="summary" class="panel">
@@ -414,9 +470,9 @@ scaleToFit();
 window.addEventListener('resize', scaleToFit);
 screen.orientation && screen.orientation.addEventListener('change', scaleToFit);
 
-const PLAY_BOTTOM = 0.825;               // fraction where play zone ends
+const PLAY_BOTTOM = 0.87;                // fraction where play zone ends
 const HUD_Y       = Math.round(H * PLAY_BOTTOM) + 2;   // ≈543
-const PADDLE_Y    = Math.round(H * PLAY_BOTTOM) - 14;  // ≈527
+const PADDLE_Y    = Math.round(H * PLAY_BOTTOM) - 17;  // ≈524
 
 // ═══════════════════════════════════════════════════════
 // PALETTE
@@ -514,16 +570,19 @@ const HEX_COLL_R = CONFIG.HEX_R * CONFIG.HEX_COLL_RATIO;  // effective hex colli
 const AC = new (window.AudioContext || window.webkitAudioContext)();
 function acResume() { if (AC.state === 'suspended') AC.resume(); }
 
-// iOS Safari requires AC.resume() inside a direct user gesture handler.
+// iOS/Android require AC.resume() + Audio.play() inside a direct user gesture handler.
 function _iosUnlock() {
   acResume();
-  // Only do the play-pause unlock trick if music isn't already playing
-  if (music.el && !music.playing) { music.el.play().then(() => { if (!music.playing) music.el.pause(); }).catch(()=>{}); }
+  // Create and unlock Audio element inside gesture for mobile
+  music._init();
+  if (!music.playing) { music.el.play().then(() => { if (!music.playing) music.el.pause(); }).catch(()=>{}); }
   document.removeEventListener('touchstart', _iosUnlock, true);
   document.removeEventListener('click', _iosUnlock, true);
+  document.removeEventListener('pointerdown', _iosUnlock, true);
 }
 document.addEventListener('touchstart', _iosUnlock, true);
 document.addEventListener('click', _iosUnlock, true);
+document.addEventListener('pointerdown', _iosUnlock, true);
 
 let sfxVolume = parseFloat(localStorage.getItem('hendsbee_sfx') || '1');
 let musicVolume = parseFloat(localStorage.getItem('hendsbee_music') || '0.5');
@@ -533,6 +592,9 @@ function triggerShake(mag, frames) {
   if (!screenShakeEnabled) return;
   shakeMag = mag; shakeTimer = frames;
 }
+
+// ── CRT Filter ───────────────────────────────────────────────────
+let crtIntensity = parseFloat(localStorage.getItem('hendsbee_crt') || '0');
 
 // ── Haptics (Vibration API) ──────────────────────────────────────
 let hapticsEnabled = localStorage.getItem('hendsbee_haptics') !== 'false'; // default ON
@@ -545,7 +607,7 @@ const _VIB_THROTTLE = 30; // ms min gap between vibrations to avoid overload
  * Throttled to prevent motor overload on rapid hits.
  */
 function haptic(pattern) {
-  if (!hapticsEnabled || !_canVibrate) return;
+  if (!hapticsEnabled || !_canVibrate || demoMode) return;
   const now = performance.now();
   if (now - _lastVibTime < _VIB_THROTTLE) return;
   _lastVibTime = now;
@@ -935,9 +997,9 @@ const sfx = {
 };
 
 // ═══════════════════════════════════════════════════════
-// MUSIC — single track with low-pass muffle filter
+// MUSIC — two-track playlist with low-pass muffle filter
 // ═══════════════════════════════════════════════════════
-const MUSIC_PATHS = ['Music/ingame1.mp3', 'ingame1.mp3'];
+const MUSIC_TRACKS = ['Music/ingame1.mp3', 'Music/menu1.mp3'];
 const music = {
   el: null,       // Audio element
   source: null,   // MediaElementAudioSourceNode
@@ -945,18 +1007,20 @@ const music = {
   gain: null,     // GainNode
   playing: false,
   muffled: false,
-  _fadeId: null,
+  trackIdx: 0,
 
   _init() {
     if (this.el) return;
-    // Try each path; use first that doesn't immediately error
-    this.el = new Audio(MUSIC_PATHS[0]);
-    this.el.loop = true;
-    let tried = 0;
-    this.el.addEventListener('error', () => {
-      tried++;
-      if (tried < MUSIC_PATHS.length) { this.el.src = MUSIC_PATHS[tried]; }
-    }, { once: false });
+    this.el = new Audio(MUSIC_TRACKS[0]);
+    this.el.preload = 'auto';
+    this.el.loop = false;
+    // On track end → advance to next track
+    this.el.addEventListener('ended', () => {
+      this.trackIdx = (this.trackIdx + 1) % MUSIC_TRACKS.length;
+      this.el.src = MUSIC_TRACKS[this.trackIdx];
+      this.el.load();
+      this.el.play().catch(() => {});
+    });
     // Route through Web Audio for filter control
     this.source = AC.createMediaElementSource(this.el);
     this.filter = AC.createBiquadFilter();
@@ -1001,6 +1065,7 @@ const music = {
     if (this.el) { this.el.pause(); this.el.currentTime = 0; }
     this.playing = false;
     this.muffled = false;
+    this.trackIdx = 0;
     if (this.filter) this.filter.frequency.value = 22000;
   }
 };
@@ -1048,25 +1113,19 @@ let lifetimeHoney = 0; // loaded from SaveManager meta
 ;(function() { const m = SaveManager.loadMeta(); lifetimeHoney = m.totalLifetimeHoney || 0; })();
 
 const SKIN_TONES = [
-  { id:'porcelain', name:'PORCELAIN', base:[240,200,168], light:[255,224,200], shadow:[200,148,106] },
-  { id:'peach',     name:'PEACH',     base:[221,184,112], light:[234,216,152], shadow:[154,104,48]  },
-  { id:'honey',     name:'HONEY',     base:[200,152,80],  light:[216,176,104], shadow:[144,104,40]  },
-  { id:'caramel',   name:'CARAMEL',   base:[160,112,64],  light:[184,136,88],  shadow:[112,72,32]   },
-  { id:'espresso',  name:'ESPRESSO',  base:[112,72,48],   light:[136,96,72],   shadow:[74,40,24]    },
-  { id:'cocoa',     name:'COCOA',     base:[80,48,32],    light:[104,72,56],   shadow:[48,24,16]    },
+  { id:'porcelain', name:'PORCELAIN', cost:0, desc:'Lightest shade', base:[240,200,168], light:[255,224,200], shadow:[200,148,106] },
+  { id:'peach',     name:'PEACH',     cost:0, desc:'Default shade',  base:[230,190,148], light:[245,216,188], shadow:[170,120,72]  },
+  { id:'honey',     name:'HONEY',     cost:0, desc:'Warm golden',    base:[200,152,80],  light:[216,176,104], shadow:[144,104,40]  },
+  { id:'caramel',   name:'CARAMEL',   cost:0, desc:'Rich brown',     base:[160,112,64],  light:[184,136,88],  shadow:[112,72,32]   },
+  { id:'espresso',  name:'ESPRESSO',  cost:0, desc:'Deep tone',      base:[112,72,48],   light:[136,96,72],   shadow:[74,40,24]    },
+  { id:'cocoa',     name:'SEYMOUR',   cost:0, desc:'Darkest shade',  base:[80,48,32],    light:[104,72,56],   shadow:[48,24,16]    },
 ];
 const DEFAULT_SKIN = 1; // Peach
 
 const HEND_ACCESSORIES = [
   { id:'goldRing',       name:'GOLD RING',       cost:0, color:'#d4af37', desc:'Classic gold band' },
-  { id:'diamondRing',    name:'DIAMOND RING',    cost:0, color:'#b0e0ff', desc:'Sparkle ring' },
+  { id:'silverRing',     name:'SILVER RING',     cost:0, color:'#b0c0d0', desc:'Silver band' },
   { id:'blackRing',      name:'BLACK RING',      cost:0, color:'#2a2a2a', desc:'Matte black band' },
-  { id:'honeyDrip',      name:'HONEY DRIP',      cost:0, color:'#f5a020', desc:'Dripping honey' },
-  { id:'beeTattoo',      name:'BEE TATTOO',      cost:0, color:'#f5c030', desc:'Ink on hand' },
-  { id:'leatherBracelet',name:'LEATHER BAND',    cost:0, color:'#8b5e3c', desc:'Brown leather strap' },
-  { id:'goldBracelet',   name:'GOLD CHAIN',      cost:0, color:'#d4af37', desc:'Gold chain bracelet' },
-  { id:'sportWatch',     name:'SPORT WATCH',     cost:0, color:'#30d050', desc:'Digital watch' },
-  { id:'classicWatch',   name:'CLASSIC WATCH',   cost:0, color:'#c0a070', desc:'Analog timepiece' },
 ];
 
 const BEE_SKINS = [
@@ -1090,87 +1149,17 @@ const BEE_TRACERS = [
 // ── Hend Skins (full sprite overrides) ──
 // Note: use 0 for empty cells (not _ variable, which is declared later for BEE_G)
 const HEND_SKINS = [
-  { id:'none', name:'DEFAULT', color:'#ddb870', grid:null },
-  { id:'robot', name:'ROBOT', color:'#8090a0',
+  { id:'none', name:'DEFAULT', cost:0, desc:'Natural hend', color:'#ddb870', grid:null },
+  { id:'classic', name:'CLASSIC', cost:0, desc:'Red pattern', color:'#e04030',
     grid:[
-      [0,0,'#607080','#8090a0','#8090a0','#8090a0','#8090a0','#8090a0','#607080',0,0,0,0,0,0,0,0,0,0,0],
-      [0,'#607080','#a0b0c0','#c0d0e0','#8090a0','#a0b0c0','#c0d0e0','#8090a0','#a0b0c0','#607080',0,0,0,0,0,0,0,0,0,0],
-      [0,'#607080','#8090a0','#a0b0c0','#8090a0','#8090a0','#a0b0c0','#8090a0','#8090a0','#607080',0,0,0,0,0,0,0,0,0,0],
-      ['#506070','#8090a0','#a0b0c0','#8090a0','#a0b0c0','#8090a0','#a0b0c0','#8090a0','#a0b0c0','#8090a0','#506070',0,0,0,0,0,0,0,0,0],
-      ['#506070','#8090a0','#c0d0e0','#a0b0c0','#8090a0','#c0d0e0','#8090a0','#a0b0c0','#c0d0e0','#8090a0','#506070',0,0,0,0,0,0,0,0,0],
-      [0,'#506070','#8090a0','#8090a0','#8090a0','#8090a0','#8090a0','#8090a0','#8090a0','#506070',0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#506070','#607080','#8090a0','#a0b0c0','#8090a0','#607080','#506070',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#506070','#607080','#8090a0','#8090a0','#8090a0','#607080','#506070',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#506070','#607080','#607080','#8090a0','#607080','#607080','#506070',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,0,'#506070','#607080','#607080','#607080','#506070',0,0,0,0,0,0,0,0,0,0,0,0],
-    ]
-  },
-  { id:'wooden', name:'WOODEN', color:'#a0703c',
-    grid:[
-      [0,0,'#6a4420','#8b5e3c','#a0703c','#8b5e3c','#a0703c','#8b5e3c','#6a4420',0,0,0,0,0,0,0,0,0,0,0],
-      [0,'#6a4420','#a0703c','#c09060','#8b5e3c','#a0703c','#c09060','#8b5e3c','#a0703c','#6a4420',0,0,0,0,0,0,0,0,0,0],
-      [0,'#6a4420','#8b5e3c','#a0703c','#8b5e3c','#c09060','#a0703c','#8b5e3c','#8b5e3c','#6a4420',0,0,0,0,0,0,0,0,0,0],
-      ['#503018','#8b5e3c','#a0703c','#c09060','#a0703c','#8b5e3c','#c09060','#a0703c','#a0703c','#8b5e3c','#503018',0,0,0,0,0,0,0,0,0],
-      ['#503018','#8b5e3c','#c09060','#a0703c','#8b5e3c','#c09060','#8b5e3c','#a0703c','#c09060','#8b5e3c','#503018',0,0,0,0,0,0,0,0,0],
-      [0,'#503018','#8b5e3c','#a0703c','#8b5e3c','#a0703c','#8b5e3c','#a0703c','#8b5e3c','#503018',0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#503018','#6a4420','#8b5e3c','#a0703c','#8b5e3c','#6a4420','#503018',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#503018','#6a4420','#8b5e3c','#8b5e3c','#8b5e3c','#6a4420','#503018',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#503018','#6a4420','#6a4420','#8b5e3c','#6a4420','#6a4420','#503018',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,0,'#503018','#6a4420','#6a4420','#6a4420','#503018',0,0,0,0,0,0,0,0,0,0,0,0],
-    ]
-  },
-  { id:'stone', name:'STONE', color:'#808080',
-    grid:[
-      [0,0,'#505050','#707070','#808080','#707070','#808080','#707070','#505050',0,0,0,0,0,0,0,0,0,0,0],
-      [0,'#505050','#808080','#909090','#707070','#808080','#909090','#707070','#808080','#505050',0,0,0,0,0,0,0,0,0,0],
-      [0,'#505050','#707070','#808080','#606060','#808080','#707070','#808080','#707070','#505050',0,0,0,0,0,0,0,0,0,0],
-      ['#404040','#707070','#808080','#909090','#808080','#707070','#909090','#808080','#808080','#707070','#404040',0,0,0,0,0,0,0,0,0],
-      ['#404040','#707070','#909090','#808080','#606060','#909090','#707070','#808080','#909090','#707070','#404040',0,0,0,0,0,0,0,0,0],
-      [0,'#404040','#707070','#808080','#707070','#808080','#707070','#808080','#707070','#404040',0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#404040','#505050','#707070','#808080','#707070','#505050','#404040',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#404040','#505050','#707070','#707070','#707070','#505050','#404040',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#404040','#505050','#505050','#707070','#505050','#505050','#404040',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,0,'#404040','#505050','#505050','#505050','#404040',0,0,0,0,0,0,0,0,0,0,0,0],
-    ]
-  },
-  { id:'classic', name:'CLASSIC', color:'#e04030',
-    grid:[
-      ['#a02020','#c03030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#c03030','#a02020',0,0,0,0,0,0,0,0,0],
-      ['#c03030','#e04030','#f06050','#e04030','#f06050','#e04030','#f06050','#e04030','#f06050','#e04030','#c03030',0,0,0,0,0,0,0,0,0],
-      ['#a02020','#c03030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#c03030','#a02020',0,0,0,0,0,0,0,0,0],
-    ]
-  },
-  { id:'skeleton', name:'SKELETON', color:'#e0d8c8',
-    grid:[
-      [0,0,'#b0a898','#d0c8b8','#e0d8c8','#d0c8b8','#e0d8c8','#d0c8b8','#b0a898',0,0,0,0,0,0,0,0,0,0,0],
-      [0,'#b0a898','#e0d8c8','#f0e8d8','#b0a898','#e0d8c8','#f0e8d8','#b0a898','#e0d8c8','#b0a898',0,0,0,0,0,0,0,0,0,0],
-      [0,'#b0a898','#d0c8b8','#e0d8c8',0,'#d0c8b8','#e0d8c8',0,'#d0c8b8','#b0a898',0,0,0,0,0,0,0,0,0,0],
-      ['#908880','#d0c8b8','#e0d8c8',0,0,'#e0d8c8',0,0,'#e0d8c8','#d0c8b8','#908880',0,0,0,0,0,0,0,0,0],
-      ['#908880','#d0c8b8','#e0d8c8','#d0c8b8','#e0d8c8','#d0c8b8','#e0d8c8','#d0c8b8','#e0d8c8','#d0c8b8','#908880',0,0,0,0,0,0,0,0,0],
-      [0,'#908880','#d0c8b8','#e0d8c8','#d0c8b8','#e0d8c8','#d0c8b8','#e0d8c8','#d0c8b8','#908880',0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#908880','#b0a898','#d0c8b8','#e0d8c8','#d0c8b8','#b0a898','#908880',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#908880','#b0a898','#d0c8b8','#d0c8b8','#d0c8b8','#b0a898','#908880',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#908880','#b0a898','#b0a898','#d0c8b8','#b0a898','#b0a898','#908880',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,0,'#908880','#b0a898','#b0a898','#b0a898','#908880',0,0,0,0,0,0,0,0,0,0,0,0],
-    ]
-  },
-  { id:'gold', name:'GOLDEN', color:'#ffd700',
-    grid:[
-      [0,0,'#b8960a','#d4af37','#ffd700','#d4af37','#ffd700','#d4af37','#b8960a',0,0,0,0,0,0,0,0,0,0,0],
-      [0,'#b8960a','#ffd700','#ffe850','#d4af37','#ffd700','#ffe850','#d4af37','#ffd700','#b8960a',0,0,0,0,0,0,0,0,0,0],
-      [0,'#b8960a','#d4af37','#ffd700','#d4af37','#ffe850','#ffd700','#d4af37','#d4af37','#b8960a',0,0,0,0,0,0,0,0,0,0],
-      ['#8a6e08','#d4af37','#ffd700','#ffe850','#ffd700','#d4af37','#ffe850','#ffd700','#ffd700','#d4af37','#8a6e08',0,0,0,0,0,0,0,0,0],
-      ['#8a6e08','#d4af37','#ffe850','#ffd700','#d4af37','#ffe850','#d4af37','#ffd700','#ffe850','#d4af37','#8a6e08',0,0,0,0,0,0,0,0,0],
-      [0,'#8a6e08','#d4af37','#ffd700','#d4af37','#ffd700','#d4af37','#ffd700','#d4af37','#8a6e08',0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#8a6e08','#b8960a','#d4af37','#ffd700','#d4af37','#b8960a','#8a6e08',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#8a6e08','#b8960a','#d4af37','#d4af37','#d4af37','#b8960a','#8a6e08',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,'#8a6e08','#b8960a','#b8960a','#d4af37','#b8960a','#b8960a','#8a6e08',0,0,0,0,0,0,0,0,0,0,0],
-      [0,0,0,'#8a6e08','#b8960a','#b8960a','#b8960a','#8a6e08',0,0,0,0,0,0,0,0,0,0,0,0],
+      ['#a02020','#c03030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#c03030','#a02020'],
+      ['#c03030','#e04030','#f06050','#e04030','#f06050','#e04030','#f06050','#e04030','#f06050','#e04030','#c03030'],
+      ['#a02020','#c03030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#c03030','#a02020'],
     ]
   },
 ];
 
-// Selected cosmetics — per-hand (L = left, R = right)
+// Selected cosmetics — global (both hends share skin tone, accessory, hend skin)
 let selectedSkinL = DEFAULT_SKIN;
 let selectedSkinR = DEFAULT_SKIN;
 let selectedAccessoryL = null;
@@ -1180,6 +1169,7 @@ let selectedHendSkinR = 'none';
 let selectedBeeSkin = 'classic';
 let selectedTracer = 'classic';
 let dominantHand = 'right';
+let favouriteHend = 'right'; // which hend shows when single-paddle
 let hendSkins = []; // populated after hendCanvas loads
 // Legacy compat — point selectedSkin/selectedAccessory at dominant hand
 let selectedSkin = DEFAULT_SKIN;
@@ -1190,37 +1180,33 @@ let selectedAccessory = null;
     const raw = localStorage.getItem('hendsbee_cosmetics');
     if (raw) {
       const c = JSON.parse(raw);
-      // Per-hand data
-      if (typeof c.skinL === 'number') selectedSkinL = c.skinL;
-      if (typeof c.skinR === 'number') selectedSkinR = c.skinR;
-      if (typeof c.skin === 'number' && typeof c.skinL === 'undefined') {
-        // Migrate old single-hand data
-        selectedSkinL = c.skin; selectedSkinR = c.skin;
-      }
+      // Skin tone — global (both hends share)
+      if (typeof c.skinL === 'number') { selectedSkinL = c.skinL; selectedSkinR = c.skinL; }
+      if (typeof c.skin === 'number') { selectedSkinL = c.skin; selectedSkinR = c.skin; }
+      // Accessory — per-hand
       if (c.accL !== undefined) selectedAccessoryL = c.accL;
       if (c.accR !== undefined) selectedAccessoryR = c.accR;
-      if (c.accessory && c.accL === undefined) {
-        selectedAccessoryL = c.accessory; selectedAccessoryR = c.accessory;
-      }
-      if (c.hendSkinL) selectedHendSkinL = c.hendSkinL;
-      if (c.hendSkinR) selectedHendSkinR = c.hendSkinR;
+      else if (c.accL !== undefined) selectedAccessoryR = c.accL; // migrate from global
+      if (c.accessory && c.accL === undefined) { selectedAccessoryL = c.accessory; selectedAccessoryR = c.accessory; }
+      // Hend skin — global (both hends share)
+      if (c.hendSkinL) { selectedHendSkinL = c.hendSkinL; selectedHendSkinR = c.hendSkinL; }
       if (c.beeSkin) selectedBeeSkin = c.beeSkin;
       if (c.tracer) selectedTracer = c.tracer;
-      if (c.dominant) dominantHand = c.dominant;
+      if (c.favourite) favouriteHend = c.favourite;
     }
   } catch(e) {}
-  selectedSkin = selectedSkinR;
-  selectedAccessory = selectedAccessoryR;
-  dominantHand = localStorage.getItem('hendsbee_dominant') || 'right';
+  selectedSkin = selectedSkinL;
+  selectedAccessory = selectedAccessoryL;
+  favouriteHend = localStorage.getItem('hendsbee_favourite') || 'right';
 })();
 
 function saveCosmetics() {
   localStorage.setItem('hendsbee_cosmetics', JSON.stringify({
-    skinL: selectedSkinL, skinR: selectedSkinR,
+    skinL: selectedSkinL,
     accL: selectedAccessoryL, accR: selectedAccessoryR,
-    hendSkinL: selectedHendSkinL, hendSkinR: selectedHendSkinR,
+    hendSkinL: selectedHendSkinL,
     beeSkin: selectedBeeSkin, tracer: selectedTracer,
-    dominant: dominantHand,
+    favourite: favouriteHend,
   }));
 }
 let hendAspect = 1.242;  // width/height ratio of hand content (467/376)
@@ -1249,6 +1235,70 @@ function loadHendImage() {
       }
     }
     x.putImageData(id, 0, 0);
+
+    // ── Clean up isolated dark pixels (stray artifacts) ──
+    // Any dark opaque pixel surrounded mostly by lighter opaque pixels
+    // gets replaced with the average of its opaque neighbours.
+    const id2 = x.getImageData(0, 0, crop.w, crop.h);
+    const d2 = id2.data;
+    const w2 = crop.w, h2 = crop.h;
+    const changed = new Uint8Array(w2 * h2); // mark pixels to fix
+    // Pass 1: identify isolated dark pixels
+    for (let py = 1; py < h2 - 1; py++) {
+      for (let px = 1; px < w2 - 1; px++) {
+        const idx = (py * w2 + px) * 4;
+        if (d2[idx+3] < 30) continue; // skip transparent
+        const br = (d2[idx] + d2[idx+1] + d2[idx+2]) / 3;
+        if (br >= 90) continue; // not a dark pixel
+        // Check 8 neighbours — count how many are lighter & opaque
+        let lightCount = 0, totalOpaque = 0;
+        let sumR = 0, sumG = 0, sumB = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ni = ((py + dy) * w2 + (px + dx)) * 4;
+            if (d2[ni+3] < 30) continue;
+            totalOpaque++;
+            const nbr = (d2[ni] + d2[ni+1] + d2[ni+2]) / 3;
+            if (nbr > 100) {
+              lightCount++;
+              sumR += d2[ni]; sumG += d2[ni+1]; sumB += d2[ni+2];
+            }
+          }
+        }
+        // If most opaque neighbours are light, this pixel is a stray artifact
+        if (lightCount >= 3 && lightCount >= totalOpaque * 0.5) {
+          changed[py * w2 + px] = 1;
+        }
+      }
+    }
+    // Pass 2: replace marked pixels with neighbour average
+    for (let py = 1; py < h2 - 1; py++) {
+      for (let px = 1; px < w2 - 1; px++) {
+        if (!changed[py * w2 + px]) continue;
+        const idx = (py * w2 + px) * 4;
+        let sumR = 0, sumG = 0, sumB = 0, cnt = 0;
+        for (let dy = -1; dy <= 1; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const ni = ((py + dy) * w2 + (px + dx)) * 4;
+            if (d2[ni+3] < 30) continue;
+            const nbr = (d2[ni] + d2[ni+1] + d2[ni+2]) / 3;
+            if (nbr > 60 && !changed[(py + dy) * w2 + (px + dx)]) {
+              sumR += d2[ni]; sumG += d2[ni+1]; sumB += d2[ni+2]; cnt++;
+            }
+          }
+        }
+        if (cnt > 0) {
+          d2[idx] = Math.round(sumR / cnt);
+          d2[idx+1] = Math.round(sumG / cnt);
+          d2[idx+2] = Math.round(sumB / cnt);
+          d2[idx+3] = 255;
+        }
+      }
+    }
+    x.putImageData(id2, 0, 0);
+
     hendCanvas = c;
     hendAspect = crop.w / crop.h;
     generateSkinTones();
@@ -1274,12 +1324,19 @@ function generateSkinTones() {
     tx.drawImage(hendCanvas, 0, 0);
     const id = tx.getImageData(0, 0, tc.width, tc.height);
     const d = id.data;
+    // Derive outline color from shadow: darker, desaturated brown
+    const outR = Math.round(tone.shadow[0] * 0.45);
+    const outG = Math.round(tone.shadow[1] * 0.35);
+    const outB = Math.round(tone.shadow[2] * 0.30);
     for (let i = 0; i < d.length; i += 4) {
       if (d[i+3] < 10) continue; // skip transparent
       const r = d[i], g = d[i+1], b = d[i+2];
-      // Classify pixel: is it skin-colored? (warm tone, not outline/dark)
       const brightness = (r + g + b) / 3;
-      if (brightness < 40) continue; // outline pixels stay dark
+      if (brightness < 40) {
+        // Remap outline pixels to a brown derived from this skin tone
+        d[i] = outR; d[i+1] = outG; d[i+2] = outB;
+        continue;
+      }
       // Compute blend factor: how "light" vs "shadow" is this pixel?
       const t = Math.max(0, Math.min(1, (brightness - 80) / 140)); // 0=shadow, 1=light
       // Remap to target skin tone
@@ -1293,32 +1350,54 @@ function generateSkinTones() {
 }
 
 // ═══════════════════════════════════════════════════════
-// BEE SPRITE LOADING — 3 wing frames from PNGs
+// BEE SPRITE LOADING — 4 wing frames from PNGs (HI + MID + LOW + LOWEST)
 // ═══════════════════════════════════════════════════════
-let beeFrames = [];      // array of Image objects [HI, MID, LOW]
-let beeFrameSeq = [0, 1, 2, 1]; // HI, MID, LOW, MID
+let beeFrames = [];      // array of Image objects [HI, MID, LOW, LOWEST]
+let beeFrameSeq = [0, 1, 2, 3, 2, 1]; // HI, MID, LOW, LOWEST, LOW, MID
 let beeFrameTick = 0;
 const BEE_FLAP_SPEED = 8; // frames per flap step (lower = faster)
 
 function loadBeeSprites() {
-  const names = ['HI-FLIGHT.png', 'MID-FLIGHT.png', 'LOW-FLIGHT.png'];
+  const names = ['1-HI-FLIGHT.png', '2-MID-FLIGHT.png', '3-LOW-FLIGHT.png', '4-LOWEST-FLIGHT.png'];
   return Promise.all(names.map(n => loadImg(['Assets/BEE/' + n, n]).then(img => {
     if (!img) return null;
-    // Strip white background: draw to offscreen canvas, make near-white pixels transparent
+    // Strip white background via flood-fill from edges — only removes
+    // near-white pixels connected to the image border, preserving interior
     const oc = document.createElement('canvas');
     oc.width = img.naturalWidth; oc.height = img.naturalHeight;
     const ox = oc.getContext('2d');
     ox.drawImage(img, 0, 0);
     const id = ox.getImageData(0, 0, oc.width, oc.height);
     const d = id.data;
-    for (let i = 0; i < d.length; i += 4) {
-      if (d[i] > 230 && d[i+1] > 230 && d[i+2] > 230) d[i+3] = 0;
+    const w = oc.width, h = oc.height;
+    const visited = new Uint8Array(w * h);
+    const isWhitish = p => d[p*4] > 200 && d[p*4+1] > 200 && d[p*4+2] > 200;
+    // Seed flood-fill from all border pixels that are near-white
+    const stack = [];
+    for (let x = 0; x < w; x++) {
+      if (isWhitish(x)) stack.push(x);                    // top row
+      if (isWhitish((h-1)*w+x)) stack.push((h-1)*w+x);   // bottom row
+    }
+    for (let y = 1; y < h-1; y++) {
+      if (isWhitish(y*w)) stack.push(y*w);                 // left col
+      if (isWhitish(y*w+w-1)) stack.push(y*w+w-1);        // right col
+    }
+    while (stack.length) {
+      const p = stack.pop();
+      if (visited[p]) continue;
+      visited[p] = 1;
+      d[p*4+3] = 0; // make transparent
+      const x = p % w, y = (p - x) / w;
+      if (x > 0   && !visited[p-1] && isWhitish(p-1)) stack.push(p-1);
+      if (x < w-1 && !visited[p+1] && isWhitish(p+1)) stack.push(p+1);
+      if (y > 0   && !visited[p-w] && isWhitish(p-w)) stack.push(p-w);
+      if (y < h-1 && !visited[p+w] && isWhitish(p+w)) stack.push(p+w);
     }
     ox.putImageData(id, 0, 0);
     return oc; // return canvas for body-stabilisation pass
   }))).then(canvases => {
-    // Step 1: Vertically align all frames to HI-FLIGHT's BODY center.
-    // HI-FLIGHT is used as the body reference because it has the tapered stinger.
+    // Step 1: Vertically align all frames to 1-HI-FLIGHT's BODY center.
+    // 1-HI-FLIGHT (index 0) is used as the body reference.
     // Use only the central 40% horizontal strip to find the vertical center,
     // so wing positions (which vary per frame) don't skew the alignment.
     if (!canvases[0]) return canvases;
@@ -1351,15 +1430,15 @@ function loadBeeSprites() {
       return ac;
     });
 
-    // Step 2: Body-stabilisation — use HI-FLIGHT for all shared pixels.
-    // HI-FLIGHT has the tapered stinger shape we want on all frames.
+    // Step 2: Body-stabilisation — use 1-HI-FLIGHT for all shared pixels.
+    // 1-HI-FLIGHT (index 0) is the body reference frame.
     // For source-only pixels, only include those OUTSIDE the body column
     // (i.e. wings on the sides). This prevents antenna/stinger tips from
     // different frames bleeding through.
     const ref = canvases[0].getContext('2d').getImageData(0, 0, w, h).data;
     const nPx = w * h;
 
-    // Find HI-FLIGHT's horizontal body column (center strip)
+    // Find 1-HI-FLIGHT's horizontal body column (center strip)
     let refXMin = w, refXMax = 0;
     for (let p = 0; p < nPx; p++) {
       if (ref[p * 4 + 3] > 10) {
@@ -1373,7 +1452,7 @@ function loadBeeSprites() {
     const bodyLeft = bodyCX - bodyHW, bodyRight = bodyCX + bodyHW;
 
     const stabilised = canvases.map((cv, idx) => {
-      if (!cv || idx === 0) return cv; // HI-FLIGHT stays as-is (it IS the reference)
+      if (!cv || idx === 0) return cv; // 1-HI-FLIGHT stays as-is (it IS the reference)
       const src = cv.getContext('2d').getImageData(0, 0, w, h).data;
       const nc = document.createElement('canvas');
       nc.width = w; nc.height = h;
@@ -1384,7 +1463,7 @@ function loadBeeSprites() {
         const i4 = p * 4;
         const sA = src[i4+3], rA = ref[i4+3];
         if (rA > 10 && sA > 10) {
-          // Both have pixel → always use HI-FLIGHT (tapered stinger)
+          // Both have pixel → always use 1-HI-FLIGHT (reference body)
           od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
           od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
         } else if (sA > 10) {
@@ -1396,7 +1475,7 @@ function loadBeeSprites() {
           }
           // else: source-only pixel inside body column (antenna/stinger tip) → skip
         }
-        // MID-only pixel or both transparent → stays transparent
+        // ref-only pixel or both transparent → stays transparent
       }
       nx.putImageData(out, 0, 0);
       return nc;
@@ -1630,19 +1709,18 @@ const ALL_POWERUPS = [
 
 // ─── Temporary powerups (from CHARGED cells) ─────────
 const TEMP_POWERUPS = [
-  // Bee-sprite powerups: smallest → biggest, alphabetical tiebreaker
+  { id:'honeySurge', name:'HONEY SURGE',  color:'#ffc020', duration:600, desc:'DOUBLES THE AMOUNT OF HONEY COLLECTED' },
   { id:'beeBee',     name:'BEE-BEE',     color:'#ffe040', duration:0,   desc:'BEES SPLIT INTO 2 SMALLER BEES' },
-  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'A DEVIL BEE APPEARS AND TURNS MULTIPLE CELLS INTO BOMBS' },
-  { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'BEES MOVE SLOWER AND IN A WAVY TRAJECTORY' },
-  { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
   { id:'booBee',     name:'BOO-BEE',     color:'#a040ff', duration:600, desc:'BEES TURN INTO GHOSTS AND PHASE THROUGH CELLS DEALING DAMAGE' },
+  { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'BEES MOVE SLOWER AND IN A WAVY TRAJECTORY' },
   { id:'beeGer',     name:'BEE-GER',     color:'#ff6030', duration:600, desc:'BEES GET TWICE AS BIG AND DO DOUBLE DAMAGE' },
   { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:360, desc:'BEES BECOME MASSIVE AND DEAL TRIPLE DAMAGE' },
-  // Non-bee powerups at the bottom
-  { id:'honeySurge', name:'HONEY SURGE',  color:'#ffc020', duration:600, desc:'DOUBLES THE AMOUNT OF HONEY COLLECTED' },
+  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'A DEVIL BEE APPEARS AND TURNS MULTIPLE CELLS INTO BOMBS' },
+  { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
   { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
 ];
 let activePowerup = null;   // { id, name, color, ticksLeft } or null
+let puAnnounce = null;      // { text, color, timer, maxTimer } — pickup text announcement
 let hasHendOfGod  = false;  // stored rescue flag
 let honeySurgeFills = 0;    // jar fills during HONEY SURGE (ends at 2)
 let powerupDrops = [];      // falling pickup entities
@@ -1662,6 +1740,8 @@ const PER_BEE_POWERUPS = new Set(['beeGer','beeHemoth','booBee','beeR']);
 
 function activatePowerup(type, px, py) {
   sfx.powerup();
+  // Large centered text announcement
+  puAnnounce = { text: type.name, color: type.color, timer: 120, maxTimer: 120 };
   if (type.duration > 0 && PER_BEE_POWERUPS.has(type.id)) {
     // Per-bee timed — store as pending, applied on next 6 paddle bounces
     pendingPowerup = type;
@@ -1864,7 +1944,6 @@ function checkMeterFull() {
       honeySurgeFills++;
       if (honeySurgeFills >= 2) deactivatePowerup();
     }
-    totalHoney = 0;
     upgradeCount++;
     const choices = pickTwo();
     if (choices.length === 0) return; // all upgrades maxed
@@ -2092,11 +2171,11 @@ function getHandSpriteH(pw) {
 }
 
 function drawHand(ox, oy, side, targetW) {
-  // Per-hand cosmetic selection
+  // Skin tone & hend skin are global; accessories are per-hand
   const isLeft = (side !== 1);
-  const skinIdx = isLeft ? selectedSkinL : selectedSkinR;
+  const skinIdx = selectedSkinL;
   const accId = isLeft ? selectedAccessoryL : selectedAccessoryR;
-  const hendSkinId = isLeft ? selectedHendSkinL : selectedHendSkinR;
+  const hendSkinId = selectedHendSkinL;
 
   // Check for hend skin override (pixel grid sprite)
   const hskin = (hendSkinId && hendSkinId !== 'none') ? HEND_SKINS.find(h => h.id === hendSkinId) : null;
@@ -2199,178 +2278,25 @@ function drawHand(ox, oy, side, targetW) {
 }
 
 // ── Accessory overlay drawn on top of the hand sprite ──
+// Rings only — partial arc on ring finger to imply wrap-around
 function drawAccessory(ox, oy, dw, dh, side) {
   if (!selectedAccessory) return;
   const acc = HEND_ACCESSORIES.find(a => a.id === selectedAccessory);
   if (!acc) return;
 
-  switch (acc.id) {
-    case 'goldRing': {
-      const rx = ox + dw * 0.62, ry = oy + dh * 0.32;
-      ctx.strokeStyle = '#d4af37';
-      ctx.lineWidth = Math.max(1, dw * 0.015);
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, dw * 0.07, dh * 0.04, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      break;
-    }
-    case 'diamondRing': {
-      const rx = ox + dw * 0.62, ry = oy + dh * 0.32;
-      const rw = dw * 0.07, rh = dh * 0.04;
-      ctx.strokeStyle = '#d4af37';
-      ctx.lineWidth = Math.max(1, dw * 0.015);
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, rw, rh, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      const dx = rx, dy = ry - rh - dh * 0.01, ds = dw * 0.025;
-      ctx.fillStyle = '#e0f0ff';
-      ctx.beginPath();
-      ctx.moveTo(dx, dy - ds); ctx.lineTo(dx + ds * 0.5, dy);
-      ctx.lineTo(dx, dy + ds * 0.4); ctx.lineTo(dx - ds * 0.5, dy);
-      ctx.closePath(); ctx.fill();
-      const glint = Math.sin(tick * 0.15) * 0.5 + 0.5;
-      ctx.globalAlpha = glint * 0.8;
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(dx + ds * 0.3, dy - ds * 0.3, ds * 0.2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      break;
-    }
-    case 'blackRing': {
-      const rx = ox + dw * 0.62, ry = oy + dh * 0.32;
-      ctx.strokeStyle = '#2a2a2a';
-      ctx.lineWidth = Math.max(1.5, dw * 0.02);
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, dw * 0.07, dh * 0.04, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      break;
-    }
-    case 'honeyDrip': {
-      ctx.fillStyle = 'rgba(245,160,32,0.8)';
-      const tips = [{x:0.22,y:0.04},{x:0.48,y:0.0},{x:0.72,y:0.08}];
-      for (let i = 0; i < tips.length; i++) {
-        const t = tips[i];
-        const dripPhase = (tick * 0.04 + i * 2.1) % (Math.PI * 2);
-        const dripLen = dh * 0.06 * (Math.sin(dripPhase) * 0.5 + 0.5);
-        const bx = ox + dw * t.x, by = oy + dh * t.y;
-        ctx.beginPath();
-        ctx.moveTo(bx - dw * 0.015, by);
-        ctx.quadraticCurveTo(bx, by + dripLen + dh * 0.02, bx + dw * 0.015, by);
-        ctx.fill();
-        if (dripLen > dh * 0.03) {
-          ctx.beginPath();
-          ctx.arc(bx, by + dripLen, dw * 0.012, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-      break;
-    }
-    case 'beeTattoo': {
-      const bx = ox + dw * 0.45, by = oy + dh * 0.55;
-      const bs = dw * 0.06;
-      ctx.fillStyle = 'rgba(245,192,48,0.7)';
-      ctx.beginPath();
-      ctx.ellipse(bx, by, bs, bs * 0.7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = 'rgba(30,20,10,0.6)';
-      ctx.fillRect(bx - bs * 0.8, by - bs * 0.12, bs * 1.6, bs * 0.22);
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.beginPath();
-      ctx.ellipse(bx - bs * 0.5, by - bs * 0.6, bs * 0.4, bs * 0.55, -0.3, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(bx + bs * 0.5, by - bs * 0.6, bs * 0.4, bs * 0.55, 0.3, 0, Math.PI * 2);
-      ctx.fill();
-      break;
-    }
-    case 'leatherBracelet': {
-      // Brown leather strap at wrist
-      const wy = oy + dh * 0.78, wh = dh * 0.06;
-      ctx.fillStyle = '#8b5e3c';
-      ctx.fillRect(ox + dw * 0.15, wy, dw * 0.7, wh);
-      ctx.strokeStyle = '#503018';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(ox + dw * 0.15, wy, dw * 0.7, wh);
-      // Stitch detail
-      ctx.strokeStyle = '#c09060';
-      ctx.lineWidth = 0.3;
-      ctx.setLineDash([1, 2]);
-      ctx.beginPath();
-      ctx.moveTo(ox + dw * 0.18, wy + wh * 0.5);
-      ctx.lineTo(ox + dw * 0.82, wy + wh * 0.5);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      break;
-    }
-    case 'goldBracelet': {
-      // Gold chain bracelet at wrist
-      const wy = oy + dh * 0.80;
-      ctx.strokeStyle = '#d4af37';
-      ctx.lineWidth = Math.max(1, dw * 0.012);
-      const links = 6;
-      for (let i = 0; i < links; i++) {
-        const lx = ox + dw * 0.18 + (i / links) * dw * 0.64;
-        ctx.beginPath();
-        ctx.ellipse(lx, wy, dw * 0.04, dh * 0.02, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      break;
-    }
-    case 'sportWatch': {
-      // Digital watch on wrist
-      const wx = ox + dw * 0.35, wy = oy + dh * 0.72;
-      const ww = dw * 0.30, whh = dh * 0.12;
-      // Strap
-      ctx.fillStyle = '#303030';
-      ctx.fillRect(wx + ww * 0.1, wy - dh * 0.04, ww * 0.8, whh + dh * 0.08);
-      // Watch face
-      ctx.fillStyle = '#101010';
-      ctx.fillRect(wx, wy, ww, whh);
-      ctx.strokeStyle = '#404040';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(wx, wy, ww, whh);
-      // Digital display
-      ctx.fillStyle = '#30d050';
-      ctx.font = Math.max(2, dw * 0.04) + 'px monospace';
-      ctx.textAlign = 'center';
-      const mins = Math.floor(tick / 60) % 60;
-      const secs = tick % 60;
-      ctx.fillText(`${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`, wx + ww / 2, wy + whh * 0.75);
-      break;
-    }
-    case 'classicWatch': {
-      // Analog watch on wrist
-      const cx2 = ox + dw * 0.50, cy2 = oy + dh * 0.76;
-      const wr = dw * 0.09;
-      // Strap
-      ctx.fillStyle = '#c0a070';
-      ctx.fillRect(cx2 - wr * 0.5, cy2 - wr * 1.8, wr, wr * 3.6);
-      // Watch body
-      ctx.fillStyle = '#d4af37';
-      ctx.beginPath();
-      ctx.arc(cx2, cy2, wr, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f8f0e0';
-      ctx.beginPath();
-      ctx.arc(cx2, cy2, wr * 0.8, 0, Math.PI * 2);
-      ctx.fill();
-      // Hands
-      const mAngle = (tick * 0.02) % (Math.PI * 2);
-      const hAngle = mAngle / 12;
-      ctx.strokeStyle = '#2a2018';
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      ctx.moveTo(cx2, cy2);
-      ctx.lineTo(cx2 + Math.cos(hAngle - Math.PI/2) * wr * 0.45, cy2 + Math.sin(hAngle - Math.PI/2) * wr * 0.45);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx2, cy2);
-      ctx.lineTo(cx2 + Math.cos(mAngle - Math.PI/2) * wr * 0.65, cy2 + Math.sin(mAngle - Math.PI/2) * wr * 0.65);
-      ctx.stroke();
-      break;
-    }
-  }
+  // Ring finger position — shifted down 1px and toward pinky 2px
+  const rx = ox + dw * 0.50 - 2, ry = oy + dh * 0.28 + 1;
+  const rw = dw * 0.06, rh = dh * 0.035;
+  const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
+  const col = colors[acc.id];
+  if (!col) return;
+
+  ctx.strokeStyle = col;
+  ctx.lineWidth = Math.max(2, dw * 0.030);
+  ctx.beginPath();
+  // Draw only the visible top arc — implies ring wraps behind finger
+  ctx.ellipse(rx, ry, rw, rh, 0, Math.PI, Math.PI * 2);
+  ctx.stroke();
 }
 
 // Paddle y is the TOP of the palm body.
@@ -2409,7 +2335,7 @@ function drawPaddle(p, p2) {
     const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const drawH = getHandSpriteH(pw);
     const oy = bottomY - drawH + sq;
-    drawHand(p.x, oy, dominantHand === 'left' ? -1 : 1, pw);
+    drawHand(p.x, oy, favouriteHend === 'left' ? -1 : 1, pw);
     if (p.squish > 0) p.squish--;
   }
 }
@@ -2500,13 +2426,19 @@ function drawBee(b) {
   // BOO-BEE transparency
   if (b.powerupId === 'booBee') ctx.globalAlpha = 0.5;
 
+  // Flicker effect for expiring timed powerups (last ~2.5 seconds)
+  if (b.powerupId && b.powerupTimer > 0 && b.powerupTimer < 150) {
+    const flickRate = b.powerupTimer < 60 ? 4 : 8; // faster flicker in last second
+    if (Math.floor(tick / flickRate) % 2 === 0) ctx.globalAlpha *= 0.3;
+  }
+
   ctx.save();
   ctx.translate(Math.round(b.x), Math.round(b.y));
   ctx.rotate(angle);
   ctx.scale(scale, scale);
 
   // Use PNG bee frames if loaded
-  const usePNG = beeFrames.length === 3 && beeFrames[0];
+  const usePNG = beeFrames.length === 4 && beeFrames[0];
   if (usePNG) {
     const flap = (b.powerupId === 'beeHemoth' || b.powerupId === 'beeR') ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
     const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / flap) % beeFrameSeq.length];
@@ -3060,7 +2992,7 @@ let particles = [];
 
 function spawnParts(x, y, n, cols) {
   for (let i=0;i<n;i++) {
-    const a=Math.random()*Math.PI*2, s=0.8+Math.random()*3;
+    const a=Math.random()*Math.PI*2, s=0.4+Math.random()*1.6;
     particles.push({x,y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
                     life:1, r:1+Math.random()*2,
                     col:cols[Math.floor(Math.random()*cols.length)]});
@@ -3070,7 +3002,8 @@ function spawnParts(x, y, n, cols) {
 function drawParts() {
   particles = particles.filter(p=>p.life>0);
   for (const p of particles) {
-    p.x += p.vx; p.y += p.vy; p.vy += 0.10; p.life -= 0.038;
+    p.vx *= 0.97; p.vy *= 0.97;  // honey-sticky drag
+    p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.life -= 0.018;
     ctx.globalAlpha = Math.max(0, p.life);
     ctx.fillStyle = p.col;
     const sz = Math.max(1, Math.round(p.r * p.life));
@@ -3290,6 +3223,99 @@ function drawBGScanlines() {
   for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
 }
 
+// ── CRT Post-Processing Filter ──────────────────────────────────
+let _crtScanY = 0; // scrolling refresh band position
+function drawCRT(intensity) {
+  if (intensity <= 0) return;
+  ctx.save();
+
+  // 1) Scanlines — every 2nd row darkened
+  ctx.fillStyle = `rgba(0,0,0,${(0.18 * intensity).toFixed(3)})`;
+  for (let y = 0; y < H; y += 2) ctx.fillRect(0, y, W, 1);
+
+  // 2) Subtle chromatic aberration at higher intensities
+  if (intensity > 0.3) {
+    const abr = Math.min(1, (intensity - 0.3) * 1.4); // 0→1 over 0.3→1.0
+    ctx.globalAlpha = 0.03 * abr;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.drawImage(canvas, 1, 0, W, H);  // slight red-shift right
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  // 3) Scrolling refresh band — bright line that drifts down like a real CRT
+  _crtScanY = (_crtScanY + 1.2) % H;
+  const bandH = 60;
+  const bandAlpha = 0.18 * intensity;
+  const bg = ctx.createLinearGradient(0, _crtScanY - bandH, 0, _crtScanY + bandH);
+  bg.addColorStop(0, 'rgba(255,255,255,0)');
+  bg.addColorStop(0.4, `rgba(255,255,255,${(bandAlpha * 0.5).toFixed(3)})`);
+  bg.addColorStop(0.5, `rgba(255,255,255,${bandAlpha.toFixed(3)})`);
+  bg.addColorStop(0.6, `rgba(255,255,255,${(bandAlpha * 0.5).toFixed(3)})`);
+  bg.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, _crtScanY - bandH, W, bandH * 2);
+
+  // 4) Slight screen curvature highlight — thin bright line at top
+  if (intensity > 0.2) {
+    const hlAlpha = 0.06 * intensity;
+    const hl = ctx.createLinearGradient(0, 0, 0, 6);
+    hl.addColorStop(0, `rgba(255,255,255,${hlAlpha.toFixed(3)})`);
+    hl.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = hl;
+    ctx.fillRect(W * 0.1, 0, W * 0.8, 6);
+  }
+
+  // 5) Rounded corner vignette — dark corners mimicking CRT tube curvature
+  {
+    const r = 38 * intensity;  // corner radius scales with CRT intensity
+    const a = 0.85 * intensity; // max darkness at corners
+    // Draw four corner shadows using radial gradients
+    const corners = [[0, 0], [W, 0], [0, H], [W, H]];
+    for (const [cx, cy] of corners) {
+      const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 2.2);
+      rg.addColorStop(0, `rgba(0,0,0,${a.toFixed(3)})`);
+      rg.addColorStop(0.5, `rgba(0,0,0,${(a * 0.4).toFixed(3)})`);
+      rg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rg;
+      const sz = r * 2.5;
+      ctx.fillRect(cx === 0 ? 0 : W - sz, cy === 0 ? 0 : H - sz, sz, sz);
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+// ── Power-up pickup text announcement ────────────────────────────
+function drawPuAnnounce() {
+  if (!puAnnounce || puAnnounce.timer <= 0) return;
+  const t = puAnnounce.timer, mt = puAnnounce.maxTimer;
+  // Fade out over last 40%
+  const fadeThresh = mt * 0.4;
+  const alpha = t < fadeThresh ? t / fadeThresh : 1;
+  // Scale: start at 1.5x, settle to 1.0x over first 20%
+  const introThresh = mt * 0.2;
+  const elapsed = mt - t;
+  const sc = elapsed < introThresh ? 1.5 - 0.5 * (elapsed / introThresh) : 1.0;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(W / 2, H * 0.33);
+  ctx.scale(sc, sc);
+  ctx.font = '14px "Press Start 2P",monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // White stroke outline
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.strokeText(puAnnounce.text, 0, 0);
+  // Colored fill
+  ctx.fillStyle = puAnnounce.color;
+  ctx.fillText(puAnnounce.text, 0, 0);
+  ctx.restore();
+}
+
 function drawBGVignette() {
   const cb = H * PLAY_BOTTOM;
   // Left cave edge
@@ -3330,12 +3356,12 @@ function drawBG() {
 // Jar constants
 const JAR_CX  = W - 46;        // jar centre x
 const JAR_BW  = 59;            // max belly width (~-5%)
-const JAR_BH  = 68;            // body height (shortened to fit HUD)
+const JAR_BH  = 56;            // body height (shortened to fit HUD)
 const JAR_NW  = 27;            // neck width
 const JAR_NH  = 9;             // neck height
 const JAR_RW  = 34;            // rim width
 const JAR_RH  = 7;             // rim height
-const JAR_NY  = HUD_Y + 14;   // neck top y
+const JAR_NY  = H - JAR_NH - JAR_BH - 12;   // neck top y — 12px above canvas bottom
 const JAR_RY  = JAR_NY - JAR_RH; // rim top y
 const JAR_BY  = JAR_NY + JAR_NH; // body top y
 const JAR_BB  = JAR_BY + JAR_BH; // body bottom
@@ -3346,7 +3372,7 @@ const JAR_RX  = JAR_CX - JAR_RW / 2;
 const SLOT_R   = 22;
 const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center (~35.6)
 const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols (~19)
-const SLOT_Y   = HUD_Y + 58;                 // base row center y
+const SLOT_Y   = HUD_Y + 48;                 // base row center y
 const SLOT0_X  = 30;
 
 function drawHexOutline(cx, cy, r) {
@@ -3360,11 +3386,7 @@ function drawHUD() {
   const F7 = '7px "Press Start 2P",monospace';
   const F5 = '5px "Press Start 2P",monospace';
 
-  // LV label — top left
-  ctx.font = F5; ctx.textAlign='left'; ctx.fillStyle='#4a2808';
-  ctx.fillText('HIVE DEPTH', 8, HUD_Y+10);
-  ctx.font = F7; ctx.fillStyle='#7a4a10';
-  ctx.fillText(hiveDepthMax+'', 8, HUD_Y+22);
+  // LV label — moved to top-left of screen (drawn separately below HUD)
 
   // Pause icon — two bars inside a hex outline, top right
   const picX = W - 15, picY = HUD_Y + 12, picR = 10;
@@ -3372,8 +3394,8 @@ function drawHUD() {
   ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
   for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
   ctx.closePath();
-  ctx.strokeStyle = '#3a1c08'; ctx.lineWidth = 1.2; ctx.stroke();
-  ctx.fillStyle = '#3a1c08';
+  ctx.strokeStyle = '#c8a020'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#c8a020';
   const barW = 2.5, barH = 8, barGap = 3;
   ctx.fillRect(picX - barGap - barW/2, picY - barH/2, barW, barH);
   ctx.fillRect(picX + barGap - barW/2, picY - barH/2, barW, barH);
@@ -3511,6 +3533,15 @@ function drawHUD() {
   if (upgradeBannerActive) ctx.restore();
 
   // ── Upgrade slots ─────────────────────────────────────
+  // "UPGRADES" label centred above slots
+  {
+    const slotCount = ALL_POWERUPS.length;
+    const labelCX = SLOT0_X + (slotCount - 1) * SLOT_SPC / 2;
+    ctx.font = '8px "Press Start 2P",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#c8a020';
+    ctx.fillText('UPGRADES', labelCX, SLOT_Y - SLOT_R - 5);
+  }
   const TAG_COL = {
     PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
     SWARM:'#80e060',  HONEY:'#f0a020',
@@ -3527,7 +3558,7 @@ function drawHUD() {
       ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
       for (let p=1;p<6;p++) ctx.lineTo(pts[p][0],pts[p][1]);
       ctx.closePath();
-      ctx.strokeStyle='#1e0c00'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.strokeStyle='#c8a020'; ctx.lineWidth=1.5; ctx.stroke();
       continue;
     }
 
@@ -3570,10 +3601,12 @@ function drawHUD() {
 function drawUpgradeBanner() {
   if (!upgradeBannerActive || upgradeBannerChoices.length === 0) return;
 
-  const bannerH = 46;
-  const bannerY = HUD_Y + 24;
-  const bannerX = 8;
-  const bannerW = W - 16;
+  const bannerY = 32;                 // just below hive depth counter
+  const bannerX = 4;
+  const bannerW = W - 8;
+  const btnH = 58;                   // tall buttons: icon + name + description
+  const gap = 4;
+  const bannerH = 14 + btnH + gap + 4; // title + button + padding
   const cr = 6;
 
   // ── Background rounded rect ──
@@ -3588,30 +3621,31 @@ function drawUpgradeBanner() {
   ctx.lineTo(bannerX, bannerY + cr);
   ctx.quadraticCurveTo(bannerX, bannerY, bannerX + cr, bannerY);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(16, 8, 2, 0.88)';
+  ctx.fillStyle = 'rgba(16, 8, 2, 0.92)';
   ctx.fill();
   ctx.strokeStyle = '#d4af37';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
   // ── Title text ──
-  ctx.font = '5px "Press Start 2P",monospace';
+  ctx.font = '6px "Press Start 2P",monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillStyle = '#f0a020';
-  ctx.fillText('CHOOSE AN UPGRADE', bannerX + bannerW / 2, bannerY + 5);
+  ctx.fillText('CHOOSE AN UPGRADE', bannerX + bannerW / 2, bannerY + 4);
 
   // ── Two side-by-side buttons ──
-  const gap = 5;
-  const btnW = (bannerW - gap * 3) / 2;
-  const btnH = bannerH - 20;
+  const btnGap = 5;
+  const btnW = (bannerW - btnGap * 3) / 2;
   const btnY = bannerY + 16;
+  const iconR = 20;                  // large hex icon radius
+  const textLeft = iconR * 2 + 12;   // text starts after icon
 
   for (let i = 0; i < upgradeBannerChoices.length; i++) {
     const pu = upgradeBannerChoices[i];
-    const btnX = bannerX + gap + i * (btnW + gap);
+    const btnX = bannerX + btnGap + i * (btnW + btnGap);
 
     // Button bg
-    ctx.fillStyle = 'rgba(50, 25, 4, 0.92)';
+    ctx.fillStyle = 'rgba(50, 25, 4, 0.95)';
     const bcr = 4;
     ctx.beginPath();
     ctx.moveTo(btnX + bcr, btnY);
@@ -3629,34 +3663,63 @@ function drawUpgradeBanner() {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Small hex icon
-    const hexX = btnX + 14, hexY = btnY + btnH / 2, hexR = 8;
-    const hp = hexPts(hexX, hexY, hexR);
+    // Large hex icon — vertically centered on left
+    const hexX = btnX + iconR + 6, hexY = btnY + btnH / 2;
+    const hp = hexPts(hexX, hexY, iconR);
     ctx.beginPath(); ctx.moveTo(hp[0][0], hp[0][1]);
     for (let j = 1; j < 6; j++) ctx.lineTo(hp[j][0], hp[j][1]);
     ctx.closePath();
     ctx.fillStyle = pu.color || '#f5c030';
     ctx.fill();
     ctx.strokeStyle = pu.outline || '#7a3d00';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Hex icon letter
-    ctx.font = '5px "Press Start 2P",monospace';
+    // Hex icon letter — large
+    ctx.font = '13px "Press Start 2P",monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillStyle = '#000';
     ctx.fillText(pu.short?.[0] || '', hexX, hexY + 1);
 
-    // Upgrade name
-    ctx.font = '5px "Press Start 2P",monospace';
-    ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    // Text block vertically centred with icon
+    // Name (10px) + gap (4) + desc line(s) (~7px each)
+    // Estimate total text height, then centre on btnH/2
+    const desc = pu.desc || '';
+    const availW = btnW - textLeft - 4;
+    const maxChars = Math.floor(availW / 5.2); // approx chars per line at 6px font
+    const lines = [];
+    let remaining = desc;
+    while (remaining.length > 0) {
+      if (remaining.length <= maxChars) { lines.push(remaining); break; }
+      let split = remaining.lastIndexOf(' ', maxChars);
+      if (split <= 0) split = maxChars;
+      lines.push(remaining.substring(0, split));
+      remaining = remaining.substring(split).trimStart();
+    }
+    const descLines = Math.min(lines.length, 3);
+    const nameH = 10;               // name font height
+    const descLineH = 9;            // desc line spacing
+    const gapBetween = 4;           // gap between name and desc
+    const totalTextH = nameH + gapBetween + descLines * descLineH;
+    const textTopY = btnY + (btnH - totalTextH) / 2;
+
+    // Upgrade name — large bold
+    ctx.font = '10px "Press Start 2P",monospace';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#f0c020';
-    ctx.fillText(pu.short || pu.name, btnX + 26, btnY + btnH / 2 + 1);
+    ctx.fillText(pu.name, btnX + textLeft, textTopY);
+
+    // Description subtext — below name, wrapped
+    ctx.font = '6px "Press Start 2P",monospace';
+    ctx.fillStyle = '#b09050';
+    for (let ln = 0; ln < descLines; ln++) {
+      ctx.fillText(lines[ln], btnX + textLeft, textTopY + nameH + gapBetween + ln * descLineH);
+    }
   }
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
 
   // Store geometry for tap detection
-  upgradeBannerGeom = { bannerX, bannerY, bannerW, bannerH, gap, btnW, btnH, btnY };
+  upgradeBannerGeom = { bannerX, bannerY, bannerW, bannerH, gap: btnGap, btnW, btnH, btnY };
 }
 
 const PAUSE_TAP = { x: W-25, y: HUD_Y, w: 25, h: 22 };
@@ -3680,6 +3743,7 @@ function handleCanvasTap(cx, cy, e) {
           const pu = upgradeBannerChoices[i];
           pu.apply();
           recordUpgrade(pu.id);
+          totalHoney = 0; // spend honey now that upgrade is chosen
           upgradeBannerActive = false;
           upgradeBannerChoices = [];
           upgradeBannerGeom = null;
@@ -4056,6 +4120,15 @@ function spawnChunk(chunkTop, depth, seed) {
     eligible[Math.floor(rng() * eligible.length)].stamp(hexMap, rng);
   }
 
+  // Guarantee a CHARGED cell around depth 30 (chunk depth 6) for an early boost
+  if (depth === 6 && ![...hexMap.values()].some(h => h.type === 'CHARGED')) {
+    const normals = [...hexMap.values()].filter(h => h.type === 'NORMAL' && !isNearEdge(h.x));
+    if (normals.length > 0) {
+      const pick = normals[Math.floor(rng() * normals.length)];
+      pick.type = 'CHARGED'; pick.hp = CELL_TYPES.CHARGED.hp;
+    }
+  }
+
   const newHexes = [...hexMap.values()];
 
   // Update global CHARGED tracking (cross-chunk spacing)
@@ -4402,11 +4475,11 @@ function update() {
     if (tBee) {
       // Only react when bee is in the lower 40% of screen (delayed reaction)
       const screenBeeY = tBee.y - scrollY;
-      if (screenBeeY > H * 0.6) {
+      if (screenBeeY > H * 0.52) {
         // Add random drift so the paddle doesn't center perfectly
-        const wobble = Math.sin(tick * 0.02) * pw * 0.4;
+        const wobble = Math.sin(tick * 0.02) * pw * 0.34;
         const tgt = Math.max(0, Math.min(W - pw, tBee.x - pw / 2 + wobble));
-        paddle.x += (tgt - paddle.x) * 0.045; // very sluggish
+        paddle.x += (tgt - paddle.x) * 0.052; // sluggish but slightly better
       }
     }
   } else if (isSplitActive()) {
@@ -4863,12 +4936,30 @@ function render() {
 
   drawHUD();                         // screen space
   drawUpgradeBanner();               // upgrade choices over HUD
+
+  // ── Hive Depth — top-left corner of screen ──
+  ctx.font = '6px "Press Start 2P",monospace';
+  ctx.textAlign = 'left';
+  ctx.lineWidth = 3;
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#f5d040';
+  ctx.strokeText('HIVE DEPTH', 6, 12);
+  ctx.fillText('HIVE DEPTH', 6, 12);
+  ctx.font = '10px "Press Start 2P",monospace';
+  ctx.strokeText(hiveDepthMax + '', 6, 25);
+  ctx.fillText(hiveDepthMax + '', 6, 25);
+
   } // end !demoMode HUD block
 
   // ── Active powerup HUD timer (global, e.g. honeySurge) ──
   if (!demoMode && activePowerup) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = 4;
     const frac = activePowerup.ticksLeft / (TEMP_POWERUPS.find(t => t.id === activePowerup.id)?.duration || 600);
+    // Flicker HUD bar when expiring
+    const expiring = activePowerup.ticksLeft < 150;
+    const flickHide = expiring && Math.floor(tick / (activePowerup.ticksLeft < 60 ? 4 : 8)) % 2 === 0;
+    ctx.globalAlpha = flickHide ? 0.35 : 1;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 14);
     ctx.fillStyle = activePowerup.color;
@@ -4880,6 +4971,7 @@ function render() {
     ctx.textAlign = 'center';
     ctx.fillText(activePowerup.name, W / 2, by + bh + 9);
     ctx.textAlign = 'left';
+    ctx.globalAlpha = 1;
   }
   // ── Pending per-bee powerup indicator ──
   if (!demoMode && pendingPowerup && powerupBeesRemaining > 0) {
@@ -4928,6 +5020,15 @@ function render() {
 
   // ── HEND OF GOD stored indicator ──
   // Hend of God indicator is now the "BEE>i" wrist tattoo (drawn in drawHand)
+
+  // ── Power-up pickup announcement ──
+  if (puAnnounce && puAnnounce.timer > 0) {
+    drawPuAnnounce();
+    puAnnounce.timer--;
+  }
+
+  // ── CRT post-processing ──
+  if (crtIntensity > 0) drawCRT(crtIntensity);
 
   // Close screen shake transform
   if (sx !== 0 || sy !== 0) ctx.restore();
@@ -5210,7 +5311,7 @@ function buildGuide() {
     gc.translate(20, 20 + bob + extraBob);
     gc.scale(sc, sc);
     // Use PNG bee frames if available
-    const usePNG = beeFrames.length === 3 && beeFrames[0];
+    const usePNG = beeFrames.length === 4 && beeFrames[0];
     if (usePNG) {
       gc.imageSmoothingEnabled = true;
       const img = beeFrames[beeFrameSeq[fIdx]];
@@ -5658,14 +5759,15 @@ toggleHapticsBtn.addEventListener('click', () => {
   if (hapticsEnabled && _canVibrate) navigator.vibrate([10, 5, 10]);
 });
 
-// Dominant Hend toggle
-const toggleDominantBtn = document.getElementById('toggleDominant');
-toggleDominantBtn.textContent = dominantHand === 'right' ? 'RIGHT' : 'LEFT';
-toggleDominantBtn.addEventListener('click', () => {
-  dominantHand = dominantHand === 'right' ? 'left' : 'right';
-  toggleDominantBtn.textContent = dominantHand === 'right' ? 'RIGHT' : 'LEFT';
-  localStorage.setItem('hendsbee_dominant', dominantHand);
-  saveCosmetics();
+// CRT Filter slider — controls both canvas post-processing AND CSS overlay
+const sliderCRT = document.getElementById('sliderCRT');
+const gwEl = document.getElementById('gw');
+sliderCRT.value = Math.round(crtIntensity * 100);
+gwEl.style.setProperty('--crt', crtIntensity);
+sliderCRT.addEventListener('input', () => {
+  crtIntensity = sliderCRT.value / 100;
+  gwEl.style.setProperty('--crt', crtIntensity);
+  localStorage.setItem('hendsbee_crt', crtIntensity);
 });
 
 function showSettings(returnTo) {
@@ -5693,10 +5795,18 @@ const shopPanel = document.getElementById('shopPanel');
 const shopBody = document.getElementById('shopBody');
 let _shopAnimId = 0;
 let _shopTick = 0;
+let _shopBeeX = 60, _shopBeeY = 45;
+let _shopBeeDX = 0.7, _shopBeeDY = 0.7;
+let _shopBeeTrail = []; // array of {x, y}
 let _shopEditHand = 'R'; // which hand is being edited in the shop
 
 function showShop(returnTo) {
   _shopReturnTo = returnTo || 'menu';
+  _shopEditHand = favouriteHend === 'left' ? 'L' : 'R';
+  // Reset bouncing bee state
+  _shopBeeX = 35; _shopBeeY = 45;
+  _shopBeeDX = 0.7; _shopBeeDY = 0.7;
+  _shopBeeTrail = [];
   buildShopDots();
   shopPanel.classList.add('show');
   _startShopAnim();
@@ -5714,71 +5824,115 @@ document.getElementById('shopBackBtn').onclick = () => {
 };
 
 function buildShopDots() {
-  // Hand toggle buttons
+  // Hand selection toggle — pick which hand to view/edit
   const toggle = document.getElementById('shopHandToggle');
   toggle.innerHTML = '';
-  ['L', 'R'].forEach(h => {
+  ['left', 'right'].forEach(h => {
     const btn = document.createElement('button');
-    btn.className = 'shop-hand-btn' + (_shopEditHand === h ? ' active' : '');
-    btn.textContent = h === 'L' ? 'LEFT HEND' : 'RIGHT HEND';
-    btn.onclick = () => { _shopEditHand = h; buildShopDots(); };
+    const isActive = (_shopEditHand === 'L' && h === 'left') || (_shopEditHand === 'R' && h === 'right');
+    btn.className = 'shop-hand-btn' + (isActive ? ' active' : '');
+    btn.textContent = h === 'left' ? 'LEFT' : 'RIGHT';
+    btn.onclick = () => { _shopEditHand = h === 'left' ? 'L' : 'R'; buildShopDots(); };
     toggle.appendChild(btn);
   });
 
-  const curSkin = _shopEditHand === 'L' ? selectedSkinL : selectedSkinR;
-  const curAcc = _shopEditHand === 'L' ? selectedAccessoryL : selectedAccessoryR;
-  const curHendSkin = _shopEditHand === 'L' ? selectedHendSkinL : selectedHendSkinR;
+  // Starting hend checkbox
+  const cb = document.getElementById('shopStartingHendCB');
+  if (cb) {
+    const editingSide = _shopEditHand === 'L' ? 'left' : 'right';
+    cb.checked = (favouriteHend === editingSide);
+    cb.onchange = () => {
+      if (cb.checked) {
+        favouriteHend = editingSide;
+        localStorage.setItem('hendsbee_favourite', favouriteHend);
+        saveCosmetics();
+      } else {
+        // Uncheck means the other hand becomes starting
+        favouriteHend = editingSide === 'left' ? 'right' : 'left';
+        localStorage.setItem('hendsbee_favourite', favouriteHend);
+        saveCosmetics();
+      }
+      buildShopDots();
+    };
+  }
 
-  // Skin tone dots
-  _fillDots('shopDotsSkin', SKIN_TONES.map((t, i) => ({
+  // Bee toggle — LGBTQ buttons (cosmetic only, one active at a time)
+  const beeToggle = document.getElementById('shopBeeToggle');
+  if (beeToggle) {
+    beeToggle.innerHTML = '';
+    const labels = ['L', 'G', 'B', 'T', 'Q'];
+    if (!window._shopBeeToggleSel) window._shopBeeToggleSel = 'L';
+    labels.forEach(lbl => {
+      const btn = document.createElement('button');
+      btn.className = 'shop-hand-btn' + (window._shopBeeToggleSel === lbl ? ' active' : '');
+      btn.style.padding = '3px 5px';
+      btn.textContent = lbl;
+      btn.onclick = () => { window._shopBeeToggleSel = lbl; buildShopDots(); };
+      beeToggle.appendChild(btn);
+    });
+  }
+
+  const curSkin = selectedSkinL;
+  const curAcc = selectedAccessoryL;
+  const curHendSkin = selectedHendSkinL;
+
+  // Skin shade tiles — global (applies to both hends)
+  _fillTiles('shopTilesSkin', SKIN_TONES.map((t, i) => ({
     color: `rgb(${t.base.join(',')})`,
     active: curSkin === i,
+    name: t.name, desc: t.desc, cost: t.cost,
     onClick: () => {
-      if (_shopEditHand === 'L') selectedSkinL = i; else selectedSkinR = i;
+      selectedSkinL = i; selectedSkinR = i; selectedSkin = i;
       generateSkinTones(); saveCosmetics(); buildShopDots();
     }
   })));
 
-  // Hend skin dots
-  _fillDots('shopDotsHendSkin', HEND_SKINS.map(h => ({
+  // Hend skin tiles — global
+  _fillTiles('shopTilesHendSkin', HEND_SKINS.map(h => ({
     color: h.color,
     active: curHendSkin === h.id,
+    name: h.name, desc: h.desc, cost: h.cost,
     onClick: () => {
-      if (_shopEditHand === 'L') selectedHendSkinL = h.id; else selectedHendSkinR = h.id;
+      selectedHendSkinL = h.id; selectedHendSkinR = h.id;
       saveCosmetics(); buildShopDots();
     }
   })));
 
-  // Accessory dots (none + all accessories)
-  const accDots = [{ color: '#333', active: curAcc === null, onClick: () => {
-    if (_shopEditHand === 'L') selectedAccessoryL = null; else selectedAccessoryR = null;
+  // Ring tiles — applied to whichever hend is selected at top
+  const accIsLeft = (_shopEditHand === 'L');
+  const curAccHand = accIsLeft ? selectedAccessoryL : selectedAccessoryR;
+  const accTiles = [{ color: '#333', active: curAccHand === null, name: 'NONE', desc: 'No ring', cost: 0, onClick: () => {
+    if (accIsLeft) selectedAccessoryL = null; else selectedAccessoryR = null;
     saveCosmetics(); buildShopDots();
   }}];
   HEND_ACCESSORIES.forEach(a => {
-    accDots.push({
-      color: a.color, active: curAcc === a.id,
+    accTiles.push({
+      color: a.color, active: curAccHand === a.id,
+      name: a.name, desc: a.desc, cost: a.cost,
       onClick: () => {
-        if (_shopEditHand === 'L') selectedAccessoryL = a.id; else selectedAccessoryR = a.id;
+        if (accIsLeft) selectedAccessoryL = a.id; else selectedAccessoryR = a.id;
         saveCosmetics(); buildShopDots();
       }
     });
   });
-  _fillDots('shopDotsAcc', accDots);
+  _fillTiles('shopTilesAcc', accTiles);
 
-  // Bee skin dots
-  _fillDots('shopDotsBeeSkin', BEE_SKINS.map(s => ({
+  // Bee colour tiles (right column)
+  _fillTiles('shopTilesBeeSkin', BEE_SKINS.map(s => ({
     color: s.tint ? s.tint.replace(/,[0-9.]+\)$/, ',1)') : '#f5c030',
     active: selectedBeeSkin === s.id,
+    name: s.name, desc: s.desc, cost: s.cost || 0,
     onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
   })));
 
-  // Tracer dots
-  _fillDots('shopDotsTracer', BEE_TRACERS.map(t => {
+  // Trail effect tiles (right column)
+  _fillTiles('shopTilesTracer', BEE_TRACERS.map(t => {
     let color;
     if (t.id === 'rainbow') color = 'linear-gradient(90deg,red,orange,yellow,green,blue,violet)';
     else color = t.color ? t.color + '1)' : '#aaa';
     return {
       color, active: selectedTracer === t.id,
+      name: t.name, desc: t.desc, cost: t.cost || 0,
       onClick: () => { selectedTracer = t.id; saveCosmetics(); buildShopDots(); }
     };
   }));
@@ -5797,6 +5951,40 @@ function _fillDots(containerId, dots) {
   });
 }
 
+function _fillTiles(containerId, tiles) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = '';
+  tiles.forEach(t => {
+    const tile = document.createElement('div');
+    tile.className = 'shop-tile' + (t.active ? ' active' : '');
+    tile.onclick = t.onClick;
+    // Color swatch
+    const swatch = document.createElement('div');
+    swatch.className = 'shop-tile-swatch';
+    const isGrad = typeof t.color === 'string' && t.color.startsWith('linear');
+    swatch.style.cssText = isGrad ? `background:${t.color};` : `background-color:${t.color};`;
+    tile.appendChild(swatch);
+    // Info block
+    const info = document.createElement('div');
+    info.className = 'shop-tile-info';
+    const name = document.createElement('div');
+    name.className = 'shop-tile-name';
+    name.textContent = t.name;
+    info.appendChild(name);
+    const desc = document.createElement('div');
+    desc.className = 'shop-tile-desc';
+    desc.textContent = t.desc;
+    info.appendChild(desc);
+    tile.appendChild(info);
+    // Cost
+    const cost = document.createElement('div');
+    cost.className = 'shop-tile-cost';
+    cost.textContent = t.cost + '\uD83C\uDF6F';
+    tile.appendChild(cost);
+    el.appendChild(tile);
+  });
+}
+
 // ── Shop preview animation ──
 function _startShopAnim() {
   if (_shopAnimId) cancelAnimationFrame(_shopAnimId);
@@ -5807,25 +5995,24 @@ function _shopLoop() {
   if (!shopPanel.classList.contains('show')) { _shopAnimId = 0; return; }
   _shopTick++;
 
-  // ── Hend preview ──
+  // ── Hend preview (120×120) ──
   const hc = document.getElementById('shopHendPreview');
   if (hc) {
     const hx = hc.getContext('2d');
-    hx.clearRect(0, 0, 120, 90);
-    const curSkin = _shopEditHand === 'L' ? selectedSkinL : selectedSkinR;
+    hx.clearRect(0, 0, 120, 120);
+    const curSkin = selectedSkinL;
     const curAcc = _shopEditHand === 'L' ? selectedAccessoryL : selectedAccessoryR;
-    const curHS = _shopEditHand === 'L' ? selectedHendSkinL : selectedHendSkinR;
+    const curHS = selectedHendSkinL;
     const hskin = (curHS && curHS !== 'none') ? HEND_SKINS.find(h => h.id === curHS) : null;
 
     if (hskin && hskin.grid) {
-      // Draw pixel grid hend skin
       const rows = hskin.grid.length;
       const cols = Math.max(...hskin.grid.map(r => r.length));
-      const cellW = 80 / cols;
+      const cellW = 90 / cols;
       const cellH = cellW;
       const totalH = rows * cellH;
       const offX = (120 - cols * cellW) / 2;
-      const offY = (90 - totalH) / 2;
+      const offY = (120 - totalH) / 2;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < hskin.grid[r].length; c++) {
           const col = hskin.grid[r][c];
@@ -5835,71 +6022,42 @@ function _shopLoop() {
         }
       }
     } else {
-      // Draw skin-tinted hand
       const src = (hendSkins.length > curSkin) ? hendSkins[curSkin] : hendCanvas;
       if (src) {
         const aspect = src.width / src.height;
-        const dh = 75, dw = Math.round(dh * aspect);
-        const ox = (120 - dw) / 2, oy = (90 - dh) / 2;
-        hx.drawImage(src, ox, oy, dw, dh);
-        // Draw accessory
-        if (curAcc) {
-          const prevA = selectedAccessory;
-          selectedAccessory = curAcc;
-          const prevCtx = window._shopPrevCtx;
-          // Use _drawAccOnCtx helper to draw on hx
-          _drawAccOnCtx(hx, curAcc, ox, oy, dw, dh);
-          selectedAccessory = prevA;
+        const dh = 42, dw = Math.round(dh * aspect);
+        const ox = (120 - dw) / 2, oy = (120 - dh) / 2;
+        hx.save();
+        hx.imageSmoothingEnabled = true;
+        hx.imageSmoothingQuality = 'high';
+        if (_shopEditHand === 'L') {
+          hx.translate(120, 0);
+          hx.scale(-1, 1);
         }
+        hx.drawImage(src, ox, oy, dw, dh);
+        if (curAcc) {
+          _drawAccOnCtx(hx, curAcc, ox, oy, dw, dh);
+        }
+        hx.restore();
       }
     }
   }
 
-  // ── Bee + Tracer combined preview ──
+  // ── Bee preview (120×120, static centered bee at BEE-HEMOTH scale) ──
   const bc = document.getElementById('shopBeePreview');
   if (bc) {
     const bx = bc.getContext('2d');
-    bx.clearRect(0, 0, 280, 70);
+    bx.clearRect(0, 0, 120, 120);
     const skin = BEE_SKINS.find(s => s.id === selectedBeeSkin);
-    const tr = BEE_TRACERS.find(t => t.id === selectedTracer);
-
-    // Draw trail
-    const pts = 20;
-    for (let i = 0; i < pts; i++) {
-      const frac = (i + 1) / pts;
-      const alpha = frac * frac * 0.7;
-      const x = 10 + (i / pts) * 220;
-      const y = 35 + Math.sin(i * 0.4 + _shopTick * 0.05) * 12;
-      const radius = 2;
-
-      if (tr && tr.id === 'rainbow') {
-        const hue = ((_shopTick * 3 + i * 15) % 360);
-        bx.fillStyle = `hsla(${hue},90%,60%,${alpha.toFixed(2)})`;
-      } else if (tr && tr.id === 'stardust') {
-        const sparkle = Math.sin(_shopTick * 0.3 + i * 1.7) * 0.3 + 0.7;
-        bx.fillStyle = tr.color ? `${tr.color}${(alpha * sparkle).toFixed(2)})` : `rgba(255,240,180,${(alpha * sparkle).toFixed(2)})`;
-      } else if (tr && tr.color) {
-        bx.fillStyle = `${tr.color}${alpha.toFixed(2)})`;
-      } else {
-        bx.fillStyle = `rgba(180,180,180,${alpha.toFixed(2)})`;
-      }
-      bx.beginPath();
-      bx.arc(x, y, radius, 0, Math.PI * 2);
-      bx.fill();
-    }
-
-    // Draw bee at end of trail
-    const beeX = 245, beeY = 35 + Math.sin(pts * 0.4 + _shopTick * 0.05) * 12;
-    const usePNG = beeFrames.length === 3 && beeFrames[0];
+    const usePNG = beeFrames.length === 4 && beeFrames[0];
     if (usePNG) {
-      const flap = BEE_FLAP_SPEED || 6;
+      const flap = Math.max(2, Math.round(BEE_FLAP_SPEED / 2));
       const frameIdx = beeFrameSeq[Math.floor(_shopTick / flap) % beeFrameSeq.length];
       const img = beeFrames[frameIdx];
       bx.save();
-      bx.translate(beeX, beeY);
-      const dw = 36, dh = 36;
+      bx.translate(60, 60);
+      const dw = 80, dh = 80;
       if (skin && skin.tint) {
-        // Tint on offscreen canvas to avoid bleeding onto trail
         const ow = dw + 2, oh = dh + 2;
         if (_beeOffCvs.width !== ow || _beeOffCvs.height !== oh) {
           _beeOffCvs.width = ow; _beeOffCvs.height = oh;
@@ -5922,99 +6080,18 @@ function _shopLoop() {
 }
 
 // Draw accessory on an arbitrary 2d context (for shop previews)
+// Rings only — partial arc on ring finger
 function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
-  switch (accId) {
-    case 'goldRing': case 'blackRing': {
-      const rx = ox + dw * 0.62, ry = oy + dh * 0.32;
-      cx2.strokeStyle = accId === 'blackRing' ? '#2a2a2a' : '#d4af37';
-      cx2.lineWidth = Math.max(1, dw * 0.015);
-      cx2.beginPath();
-      cx2.ellipse(rx, ry, dw * 0.07, dh * 0.04, 0, 0, Math.PI * 2);
-      cx2.stroke();
-      break;
-    }
-    case 'diamondRing': {
-      const rx = ox + dw * 0.62, ry = oy + dh * 0.32;
-      cx2.strokeStyle = '#d4af37';
-      cx2.lineWidth = Math.max(1, dw * 0.015);
-      cx2.beginPath();
-      cx2.ellipse(rx, ry, dw * 0.07, dh * 0.04, 0, 0, Math.PI * 2);
-      cx2.stroke();
-      const ds = dw * 0.025;
-      cx2.fillStyle = '#e0f0ff';
-      cx2.beginPath();
-      cx2.moveTo(rx, ry - dh * 0.04 - ds);
-      cx2.lineTo(rx + ds * 0.5, ry - dh * 0.04);
-      cx2.lineTo(rx, ry - dh * 0.04 + ds * 0.4);
-      cx2.lineTo(rx - ds * 0.5, ry - dh * 0.04);
-      cx2.closePath(); cx2.fill();
-      break;
-    }
-    case 'honeyDrip': {
-      cx2.fillStyle = 'rgba(245,160,32,0.8)';
-      [{x:0.22,y:0.04},{x:0.48,y:0.0},{x:0.72,y:0.08}].forEach((t, i) => {
-        const dripLen = dh * 0.04;
-        cx2.beginPath();
-        cx2.arc(ox + dw * t.x, oy + dh * t.y + dripLen, dw * 0.012, 0, Math.PI * 2);
-        cx2.fill();
-      });
-      break;
-    }
-    case 'beeTattoo': {
-      const bx2 = ox + dw * 0.45, by2 = oy + dh * 0.55, bs = dw * 0.06;
-      cx2.fillStyle = 'rgba(245,192,48,0.7)';
-      cx2.beginPath();
-      cx2.ellipse(bx2, by2, bs, bs * 0.7, 0, 0, Math.PI * 2);
-      cx2.fill();
-      cx2.fillStyle = 'rgba(30,20,10,0.6)';
-      cx2.fillRect(bx2 - bs * 0.8, by2 - bs * 0.12, bs * 1.6, bs * 0.22);
-      break;
-    }
-    case 'leatherBracelet': {
-      const wy = oy + dh * 0.78;
-      cx2.fillStyle = '#8b5e3c';
-      cx2.fillRect(ox + dw * 0.15, wy, dw * 0.7, dh * 0.06);
-      cx2.strokeStyle = '#503018';
-      cx2.lineWidth = 0.5;
-      cx2.strokeRect(ox + dw * 0.15, wy, dw * 0.7, dh * 0.06);
-      break;
-    }
-    case 'goldBracelet': {
-      const wy = oy + dh * 0.80;
-      cx2.strokeStyle = '#d4af37';
-      cx2.lineWidth = Math.max(1, dw * 0.012);
-      for (let i = 0; i < 6; i++) {
-        const lx = ox + dw * 0.18 + (i / 6) * dw * 0.64;
-        cx2.beginPath();
-        cx2.ellipse(lx, wy, dw * 0.04, dh * 0.02, 0, 0, Math.PI * 2);
-        cx2.stroke();
-      }
-      break;
-    }
-    case 'sportWatch': {
-      const wx = ox + dw * 0.35, wy = oy + dh * 0.72;
-      const ww = dw * 0.30, whh = dh * 0.12;
-      cx2.fillStyle = '#303030';
-      cx2.fillRect(wx + ww * 0.1, wy - dh * 0.04, ww * 0.8, whh + dh * 0.08);
-      cx2.fillStyle = '#101010';
-      cx2.fillRect(wx, wy, ww, whh);
-      cx2.fillStyle = '#30d050';
-      cx2.font = Math.max(3, dw * 0.04) + 'px monospace';
-      cx2.textAlign = 'center';
-      cx2.fillText('12:34', wx + ww / 2, wy + whh * 0.75);
-      break;
-    }
-    case 'classicWatch': {
-      const cxw = ox + dw * 0.50, cyw = oy + dh * 0.76, wr = dw * 0.09;
-      cx2.fillStyle = '#c0a070';
-      cx2.fillRect(cxw - wr * 0.5, cyw - wr * 1.8, wr, wr * 3.6);
-      cx2.fillStyle = '#d4af37';
-      cx2.beginPath(); cx2.arc(cxw, cyw, wr, 0, Math.PI * 2); cx2.fill();
-      cx2.fillStyle = '#f8f0e0';
-      cx2.beginPath(); cx2.arc(cxw, cyw, wr * 0.8, 0, Math.PI * 2); cx2.fill();
-      break;
-    }
-  }
+  const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
+  const col = colors[accId];
+  if (!col) return;
+  const rx = ox + dw * 0.50 - 2, ry = oy + dh * 0.28 + 1;
+  const rw = dw * 0.06, rh = dh * 0.035;
+  cx2.strokeStyle = col;
+  cx2.lineWidth = Math.max(2, dw * 0.030);
+  cx2.beginPath();
+  cx2.ellipse(rx, ry, rw, rh, 0, Math.PI, Math.PI * 2);
+  cx2.stroke();
 }
 
 function showLose() {
