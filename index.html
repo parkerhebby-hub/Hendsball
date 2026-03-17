@@ -571,18 +571,39 @@ const AC = new (window.AudioContext || window.webkitAudioContext)();
 function acResume() { if (AC.state === 'suspended') AC.resume(); }
 
 // iOS/Android require AC.resume() + Audio.play() inside a direct user gesture handler.
+// We keep retrying on each gesture until the Audio element is truly unlocked.
+let _audioUnlocked = false;
 function _iosUnlock() {
   acResume();
-  // Create and unlock Audio element inside gesture for mobile
+  // Create Audio element inside gesture callstack so mobile allows play()
   music._init();
-  if (!music.playing) { music.el.play().then(() => { if (!music.playing) music.el.pause(); }).catch(()=>{}); }
-  document.removeEventListener('touchstart', _iosUnlock, true);
-  document.removeEventListener('click', _iosUnlock, true);
-  document.removeEventListener('pointerdown', _iosUnlock, true);
+  if (!_audioUnlocked && music.el) {
+    // Set volume to 0 briefly, play to unlock, then restore volume
+    const prevVol = music.el.volume;
+    music.el.volume = 0;
+    const p = music.el.play();
+    if (p && p.then) {
+      p.then(() => {
+        _audioUnlocked = true;
+        // If music isn't supposed to be playing yet, pause but keep unlocked
+        if (!music.playing) {
+          music.el.pause();
+          music.el.currentTime = 0;
+        }
+        music.el.volume = prevVol;
+        document.removeEventListener('touchstart', _iosUnlock, true);
+        document.removeEventListener('click', _iosUnlock, true);
+        document.removeEventListener('pointerdown', _iosUnlock, true);
+      }).catch(() => {
+        music.el.volume = prevVol;
+        // play() was blocked — keep listeners so next gesture retries
+      });
+    }
+  }
 }
-document.addEventListener('touchstart', _iosUnlock, true);
-document.addEventListener('click', _iosUnlock, true);
-document.addEventListener('pointerdown', _iosUnlock, true);
+document.addEventListener('touchstart', _iosUnlock, { capture: true });
+document.addEventListener('click', _iosUnlock, { capture: true });
+document.addEventListener('pointerdown', _iosUnlock, { capture: true });
 
 let sfxVolume = parseFloat(localStorage.getItem('hendsbee_sfx') || '1');
 let musicVolume = parseFloat(localStorage.getItem('hendsbee_music') || '0.5');
@@ -1011,32 +1032,51 @@ const music = {
 
   _init() {
     if (this.el) return;
-    this.el = new Audio(MUSIC_TRACKS[0]);
+    this.el = new Audio();
     this.el.preload = 'auto';
     this.el.loop = false;
-    // On track end → advance to next track
+    this.el.setAttribute('playsinline', '');
+    this.el.setAttribute('webkit-playsinline', '');
+    this.el.src = MUSIC_TRACKS[0];
+    this.el.load();
+    // On track end → advance to next track (uses same unlocked element)
     this.el.addEventListener('ended', () => {
       this.trackIdx = (this.trackIdx + 1) % MUSIC_TRACKS.length;
       this.el.src = MUSIC_TRACKS[this.trackIdx];
       this.el.load();
+      // Android Chrome: play() after src change on an already-unlocked element
+      // is permitted without a new gesture
       this.el.play().catch(() => {});
     });
-    // Route through Web Audio for filter control
-    this.source = AC.createMediaElementSource(this.el);
-    this.filter = AC.createBiquadFilter();
-    this.filter.type = 'lowpass';
-    this.filter.frequency.value = 22000;  // wide open = no muffle
-    this.filter.Q.value = 0.7;
-    this.gain = AC.createGain();
-    this.gain.gain.value = musicVolume;
-    this.source.connect(this.filter);
-    this.filter.connect(this.gain);
-    this.gain.connect(AC.destination);
+    // Route through Web Audio for filter control (deferred until AC is resumed)
+    this._connectWebAudio();
+  },
+
+  _connectWebAudio() {
+    if (this.source) return;  // already connected
+    try {
+      acResume();
+      this.source = AC.createMediaElementSource(this.el);
+      this.filter = AC.createBiquadFilter();
+      this.filter.type = 'lowpass';
+      this.filter.frequency.value = 22000;  // wide open = no muffle
+      this.filter.Q.value = 0.7;
+      this.gain = AC.createGain();
+      this.gain.gain.value = musicVolume;
+      this.source.connect(this.filter);
+      this.filter.connect(this.gain);
+      this.gain.connect(AC.destination);
+    } catch (e) {
+      // Fallback: play without Web Audio filter chain (no muffle, but audio works)
+      this.source = null; this.filter = null; this.gain = null;
+    }
   },
 
   play() {
     acResume();
     this._init();
+    // Ensure Web Audio graph is connected (may have failed during early _init)
+    if (!this.source) this._connectWebAudio();
     if (!this.playing) {
       this.el.play().catch(() => {});
       this.playing = true;
@@ -1096,9 +1136,12 @@ function loadImg(paths) {
     function tryNext() {
       if (i >= paths.length) { resolve(null); return; }
       const img = new Image();
+      img.crossOrigin = 'anonymous';
       img.onload = () => resolve(img);
       img.onerror = () => { i++; tryNext(); };
-      img.src = paths[i];
+      // Cache-bust for mobile browsers that aggressively cache old assets
+      const sep = paths[i].includes('?') ? '&' : '?';
+      img.src = paths[i] + sep + 'v=4';
     }
     tryNext();
   });
@@ -1359,14 +1402,22 @@ const BEE_FLAP_SPEED = 8; // frames per flap step (lower = faster)
 
 function loadBeeSprites() {
   const names = ['1-HI-FLIGHT.png', '2-MID-FLIGHT.png', '3-LOW-FLIGHT.png', '4-LOWEST-FLIGHT.png'];
+  // Mobile: cap sprite size to avoid canvas memory limits
+  const MAX_SPRITE = /Mobi|Android/i.test(navigator.userAgent) ? 512 : 2048;
   return Promise.all(names.map(n => loadImg(['Assets/BEE/' + n, n]).then(img => {
     if (!img) return null;
     // Strip white background via flood-fill from edges — only removes
     // near-white pixels connected to the image border, preserving interior
     const oc = document.createElement('canvas');
-    oc.width = img.naturalWidth; oc.height = img.naturalHeight;
+    // Downscale on mobile to avoid canvas memory limits
+    let srcW = img.naturalWidth, srcH = img.naturalHeight;
+    if (srcW > MAX_SPRITE || srcH > MAX_SPRITE) {
+      const scale = MAX_SPRITE / Math.max(srcW, srcH);
+      srcW = Math.round(srcW * scale); srcH = Math.round(srcH * scale);
+    }
+    oc.width = srcW; oc.height = srcH;
     const ox = oc.getContext('2d');
-    ox.drawImage(img, 0, 0);
+    ox.drawImage(img, 0, 0, srcW, srcH);
     const id = ox.getImageData(0, 0, oc.width, oc.height);
     const d = id.data;
     const w = oc.width, h = oc.height;
@@ -5730,6 +5781,7 @@ sliderSfx.value   = Math.round(sfxVolume * 100);
 sliderMusic.addEventListener('input', () => {
   musicVolume = sliderMusic.value / 100;
   if (music.gain) music.gain.gain.value = musicVolume;
+  else if (music.el) music.el.volume = musicVolume;
   localStorage.setItem('hendsbee_music', musicVolume);
 });
 sliderSfx.addEventListener('input', () => {
