@@ -70,6 +70,19 @@
   .panel.show { opacity:1; pointer-events:all; }
 
   #ov { background:transparent; }
+  .neon-off { opacity:0 !important; }
+  .neon-glow-title {
+    text-shadow:3px 3px 0 #4a2000, 0 0 6px rgba(240,160,32,0.4), 0 0 12px rgba(240,160,32,0.2) !important;
+    transition:text-shadow 0.4s ease-out;
+  }
+  .neon-glow-btn {
+    box-shadow:3px 3px 0 #4a2000, 0 0 4px rgba(240,160,32,0.3), 0 0 8px rgba(192,112,16,0.15) !important;
+    transition:box-shadow 0.4s ease-out;
+  }
+  .neon-glow-sub {
+    text-shadow:1px 1px 0 #3a1800, 0 0 4px rgba(122,80,16,0.4) !important;
+    transition:text-shadow 0.4s ease-out;
+  }
   #settingsPanel { background:#0e0500; }
   #shopPanel { background:#0e0500; }
   #shopBody {
@@ -119,8 +132,8 @@
   }
   .shop-dot-label {
     font-family:'Press Start 2P',monospace;
-    font-size:0.28rem; color:#806030; text-align:center;
-    letter-spacing:1px; padding:2px 0 1px 0;
+    font-size:0.38rem; color:#c8a040; text-align:center;
+    letter-spacing:1px; padding:4px 0 2px 0; text-shadow:1px 1px 0 #2a1400;
   }
   .shop-hand-btn {
     font-family:'Press Start 2P',monospace; font-size:0.32rem;
@@ -139,9 +152,10 @@
     letter-spacing:3px; margin-bottom:8px; text-align:center;
   }
   #ovSub {
-    font-size:0.48rem; color:#7a5010;
+    font-size:0.48rem; color:#d4a030;
     letter-spacing:1px; line-height:2.2;
     text-align:center; margin-bottom:24px;
+    text-shadow:1px 1px 0 #3a1800;
   }
 
   .ob {
@@ -321,6 +335,25 @@
     letter-spacing: 1px; margin-top: 8px;
   }
 
+  /* How to Play section */
+  .htp-item {
+    display:flex; align-items:flex-start; gap:10px;
+    padding:8px 4px; margin-bottom:2px;
+  }
+  .htp-num {
+    font-size:0.65rem; color:#f0a020; flex-shrink:0;
+    width:22px; text-align:center;
+    text-shadow:1px 1px 0 #4a2000;
+  }
+  .htp-content { flex:1; }
+  .htp-title {
+    font-size:0.45rem; color:#f5d040; letter-spacing:1px;
+    margin-bottom:3px; text-shadow:1px 1px 0 #3a1800;
+  }
+  .htp-desc {
+    font-size:0.34rem; color:#a08050; letter-spacing:0.3px;
+    line-height:1.6;
+  }
   #guideBody::-webkit-scrollbar { width:2px; }
   #guideBody::-webkit-scrollbar-track { background:#0a0400; }
   #guideBody::-webkit-scrollbar-thumb { background:#3a1e00; }
@@ -340,6 +373,43 @@
   <div id="pause" class="panel">
     <div id="pauseTitle">PAUSED</div>
     <div id="guideBody">
+      <div class="gsec-title" style="text-align:center;">HOW TO PLAY</div>
+      <div class="htp-item">
+        <div class="htp-num">1</div>
+        <div class="htp-content">
+          <div class="htp-title">CONTROL THE HENDS</div>
+          <div class="htp-desc">USE YOUR FINGER TO SLIDE FROM LEFT TO RIGHT</div>
+        </div>
+      </div>
+      <div class="htp-item">
+        <div class="htp-num">2</div>
+        <div class="htp-content">
+          <div class="htp-title">BREAK CELLS</div>
+          <div class="htp-desc">BOUNCE THE BEES TO CLEAR A PATH UPWARD</div>
+        </div>
+      </div>
+      <div class="htp-item">
+        <div class="htp-num">3</div>
+        <div class="htp-content">
+          <div class="htp-title">COLLECT HONEY</div>
+          <div class="htp-desc">HONEY IS AUTO COLLECTED TO EARN UPGRADES</div>
+        </div>
+      </div>
+      <div class="htp-item">
+        <div class="htp-num">4</div>
+        <div class="htp-content">
+          <div class="htp-title">GRAB POWER-UPS</div>
+          <div class="htp-desc">CATCH FALLING POWER-UPS TO MAXIMIZE THE CHAOS</div>
+        </div>
+      </div>
+      <div class="htp-item">
+        <div class="htp-num">5</div>
+        <div class="htp-content">
+          <div class="htp-title">DON'T FALL</div>
+          <div class="htp-desc">THE GAME ENDS WHEN THE LAST BEE IS DROPPED</div>
+        </div>
+      </div>
+      <div class="gsec-divider"></div>
       <div class="gsec-title">CELLS</div>
       <div id="tab-cells"></div>
       <div class="gsec-divider"></div>
@@ -395,21 +465,21 @@
       <button id="shopBackBtn" class="ob" style="margin:0 auto 6px auto;">BACK</button>
 
       <!-- Two-column split: HEND left, BEE right -->
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;align-items:flex-start;">
         <!-- LEFT COLUMN: HEND -->
         <div style="flex:1;min-width:0;">
           <div class="gsec-title" style="text-align:center;">HENDS</div>
           <div id="shopHandToggle" style="display:flex;gap:6px;margin-bottom:6px;justify-content:center;"></div>
-          <label id="shopStartingHendLabel" style="display:flex;align-items:center;gap:3px;cursor:pointer;margin-bottom:3px;justify-content:center;">
-            <input type="checkbox" id="shopStartingHendCB" style="accent-color:#f0a020;width:10px;height:10px;cursor:pointer;">
-            <span style="font-family:'Press Start 2P',monospace;font-size:0.32rem;color:#f5d040;white-space:nowrap;">STARTING HEND</span>
-          </label>
           <div style="position:relative;margin-bottom:6px;">
             <canvas id="shopHendPreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
+            <label id="shopStartingHendLabel" style="display:flex;align-items:center;gap:3px;cursor:pointer;justify-content:center;position:absolute;bottom:4px;left:0;right:0;">
+              <input type="checkbox" id="shopStartingHendCB" style="accent-color:#f0a020;width:10px;height:10px;cursor:pointer;">
+              <span style="font-family:'Press Start 2P',monospace;font-size:0.32rem;color:#f5d040;white-space:nowrap;">STARTING HEND</span>
+            </label>
           </div>
           <div class="shop-dot-label">SKIN SHADE</div>
           <div id="shopTilesSkin" class="shop-dots"></div>
-          <div class="shop-dot-label">RING</div>
+          <div class="shop-dot-label">ACCESSORIES</div>
           <div id="shopTilesAcc" class="shop-dots"></div>
           <div class="shop-dot-label">HEND STYLE</div>
           <div id="shopTilesHendSkin" class="shop-dots"></div>
@@ -418,10 +488,6 @@
         <div style="flex:1;min-width:0;">
           <div class="gsec-title" style="text-align:center;">BEE</div>
           <div id="shopBeeToggle" style="display:flex;gap:4px;margin-bottom:6px;justify-content:center;"></div>
-          <label style="display:flex;align-items:center;gap:3px;margin-bottom:3px;visibility:hidden;">
-            <input type="checkbox" style="width:10px;height:10px;">
-            <span style="font-family:'Press Start 2P',monospace;font-size:0.22rem;">X</span>
-          </label>
           <div style="position:relative;margin-bottom:6px;">
             <canvas id="shopBeePreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
           </div>
@@ -554,9 +620,9 @@ const CONFIG = {
   HEND_HIT_PAD_X:       6,      // hitbox X padding beyond visual paddle (px)
   HEND_HIT_PAD_Y:       4,      // hitbox Y padding above/below collision zone (px)
   HEND_TOUCH_FOLLOW:    0.38,   // touch smooth-follow factor
-  HEND_VEL_BOOST:       0.28,   // paddle-velocity transfer to bee
-  HEND_SPD_GAIN:        0.005,  // speed boost per unit of paddle velocity
-  HEND_ANGLE_SPREAD:    45,     // base deflection half-angle (degrees)
+  HEND_VEL_BOOST:       0.18,   // paddle-velocity transfer to bee (reduced for consistency)
+  HEND_SPD_GAIN:        0.004,  // speed boost per unit of paddle velocity
+  HEND_ANGLE_SPREAD:    35,     // base deflection half-angle (degrees) — tighter for upward bias
 
   // Hex
   HEX_R:                18,
@@ -992,13 +1058,21 @@ const SaveManager = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// 8-bit master filter — all SFX route through this for retro crunch
+const _sfxMaster = AC.createGain();
+const _sfx8bitLPF = AC.createBiquadFilter();
+_sfx8bitLPF.type = 'lowpass';
+_sfx8bitLPF.frequency.value = 5500; // cut highs for chiptune feel
+_sfx8bitLPF.Q.value = 1.2;          // slight resonance peak
+_sfxMaster.connect(_sfx8bitLPF);
+_sfx8bitLPF.connect(AC.destination);
 
 function _tone(freq, type, vol, dur, freqEnd) {
   if (demoMode) return; // silent during attract mode
   vol *= sfxVolume;
   acResume();
   const o = AC.createOscillator(), g = AC.createGain();
-  o.connect(g); g.connect(AC.destination);
+  o.connect(g); g.connect(_sfxMaster);
   o.type = type;
   o.frequency.setValueAtTime(freq, AC.currentTime);
   if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, AC.currentTime + dur);
@@ -1014,7 +1088,7 @@ function _noise(vol, dur) {
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const src = AC.createBufferSource(), g = AC.createGain();
-  src.buffer = buf; src.connect(g); g.connect(AC.destination);
+  src.buffer = buf; src.connect(g); g.connect(_sfxMaster);
   g.gain.setValueAtTime(vol, AC.currentTime);
   g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
   src.start(); src.stop(AC.currentTime + dur);
@@ -1421,7 +1495,7 @@ function generateSkinTones() {
 let beeFrames = [];      // array of Image objects [HI, MID, LOW, LOWEST]
 let beeFrameSeq = [0, 1, 2, 3, 2, 1]; // HI, MID, LOW, LOWEST, LOW, MID
 let beeFrameTick = 0;
-const BEE_FLAP_SPEED = 5; // frames per flap step (lower = faster)
+const BEE_FLAP_SPEED = 2; // frames per flap step (lower = faster)
 
 function loadBeeSprites() {
   const names = ['1-HI-FLIGHT.png', '2-MID-FLIGHT.png', '3-LOW-FLIGHT.png', '4-LOWEST-FLIGHT.png'];
@@ -1995,6 +2069,28 @@ function updateDroplets() {
   droplets = droplets.filter(d => !d.done);
 }
 
+// ── Falling (non-collectible) honey drops — from side wall cleanup zone ──
+let _fallingDrops = [];
+function updateFallingDrops() {
+  for (const d of _fallingDrops) {
+    d.x += d.vx;
+    d.y += d.vy;
+    d.vy += 0.06; // gravity
+    d.life -= 0.012;
+  }
+  _fallingDrops = _fallingDrops.filter(d => d.life > 0 && d.y < H + 20);
+}
+function drawFallingDrops() {
+  for (const d of _fallingDrops) {
+    ctx.globalAlpha = Math.min(1, d.life * 2);
+    ctx.fillStyle = '#f0a020';
+    ctx.beginPath();
+    ctx.arc(d.x, d.y, 2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
 let pickerPending = false;
 let paused = false;   // true while power-up picker is visible
 
@@ -2011,7 +2107,7 @@ let upgradeBannerGeom = null;   // tap detection geometry
 let jarBounceTimer = 0;         // honeypot bounce animation
 
 function checkMeterFull() {
-  if (demoMode || upgradeBannerActive || pickerPending || paused || pickerTransition) return;
+  if (upgradeBannerActive || pickerPending || paused || pickerTransition) return;
   if (totalHoney >= getMeterCap()) {
     // HONEY SURGE: track jar fills, end early at 2
     if (activePowerup?.id === 'honeySurge') {
@@ -2021,6 +2117,13 @@ function checkMeterFull() {
     upgradeCount++;
     const choices = pickTwo();
     if (choices.length === 0) return; // all upgrades maxed
+    if (demoMode) {
+      // Auto-pick a random upgrade silently in demo mode
+      const pick = choices[Math.floor(Math.random() * choices.length)];
+      pick.apply();
+      totalHoney = 0;
+      return;
+    }
     upgradeBannerActive = true;
     upgradeBannerChoices = choices;
     jarBounceTimer = 0;
@@ -2084,17 +2187,20 @@ function isGameRunning() { return !gameOver && !!animId; }
 
 canvas.addEventListener('touchstart', e => {
   if (!isGameRunning()) return;   // let overlay/shop handle the tap
-  e.preventDefault();
   if (inspectorMode) {
+    e.preventDefault();
     inspectorTouchY = e.touches[0].clientY;
     return;
   }
+
+  // Check which new touches are in the paddle zone vs UI zone
+  let anyPaddle = false;
   if (isSplitActive()) {
-    // Assign new touches to left or right hend by screen position (only in paddle zone)
     const r = canvas.getBoundingClientRect();
     const midScreen = r.left + r.width / 2;
     for (const t of e.changedTouches) {
-      if (!isInPaddleZone(t)) continue; // above paddle zone → UI tap only
+      if (!isInPaddleZone(t)) continue; // above paddle zone → UI tap (upgrades/pause)
+      anyPaddle = true;
       if (t.clientX < midScreen && touchIdLeft === null) {
         touchIdLeft = t.identifier;
         touchX = getCanvasX(t);
@@ -2111,13 +2217,17 @@ canvas.addEventListener('touchstart', e => {
     }
   } else {
     // Single-hend mode: only grab paddle if touch is in paddle zone
-    const t = e.changedTouches[0];
-    if (isInPaddleZone(t) && touchIdPaddle === null) {
-      touchIdPaddle = t.identifier;
-      touchX = getCanvasX(t);
+    for (const t of e.changedTouches) {
+      if (isInPaddleZone(t) && touchIdPaddle === null) {
+        touchIdPaddle = t.identifier;
+        touchX = getCanvasX(t);
+        anyPaddle = true;
+      }
+      // Non-paddle touches fall through to handleCanvasTap (upgrades/pause)
     }
-    // Touches outside paddle zone are left for handleCanvasTap (upgrades/pause)
   }
+  // Only prevent default for paddle touches — let UI taps propagate
+  if (anyPaddle) e.preventDefault();
 }, {passive:false});
 
 canvas.addEventListener('touchmove', e => {
@@ -2146,19 +2256,20 @@ canvas.addEventListener('touchmove', e => {
 
 canvas.addEventListener('touchend', e => {
   if (!isGameRunning()) { touchX = null; touchX2 = null; touchIdLeft = null; touchIdRight = null; touchIdPaddle = null; return; }
-  e.preventDefault();
-  if (inspectorMode) { inspectorTouchY = null; return; }
+  if (inspectorMode) { e.preventDefault(); inspectorTouchY = null; return; }
+  let wasPaddle = false;
   if (isSplitActive()) {
     for (const t of e.changedTouches) {
-      if (t.identifier === touchIdLeft)  { touchX  = null; touchIdLeft  = null; }
-      if (t.identifier === touchIdRight) { touchX2 = null; touchIdRight = null; }
+      if (t.identifier === touchIdLeft)  { touchX  = null; touchIdLeft  = null; wasPaddle = true; }
+      if (t.identifier === touchIdRight) { touchX2 = null; touchIdRight = null; wasPaddle = true; }
     }
   } else {
-    // Only release paddle when the paddle finger lifts
     for (const t of e.changedTouches) {
-      if (t.identifier === touchIdPaddle) { touchX = null; touchIdPaddle = null; break; }
+      if (t.identifier === touchIdPaddle) { touchX = null; touchIdPaddle = null; wasPaddle = true; break; }
     }
   }
+  // Only prevent default for paddle finger releases — let UI taps fire click events
+  if (wasPaddle) e.preventDefault();
 }, {passive:false});
 
 // Mouse wheel scroll for inspector mode
@@ -3060,6 +3171,14 @@ function checkHex(b) {
       if (b.powerupId === 'beeHemoth') dmg = 5;
       h.hp -= dmg; h.flash = 10;
 
+      // Spawn falling debris chunks when high-HP cells take damage
+      const maxHpCell = CELL_TYPES[h.type]?.hp || 1;
+      if (maxHpCell >= 3 && h.hp > 0) {
+        const debrisCols = PAL[CELL_TYPES[h.type].color] || ['#a08050'];
+        const chunkCount = Math.min(3, Math.ceil(dmg));
+        spawnDebris(h.x, h.y, chunkCount, debrisCols);
+      }
+
       if (h.hp <= 0) {
         h.dead = true;
 
@@ -3097,6 +3216,26 @@ function spawnParts(x, y, n, cols) {
   }
 }
 
+// Falling debris chunks — angular armor pieces that tumble with gravity
+let _debris = [];
+function spawnDebris(x, y, n, cols) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const spd = 0.3 + Math.random() * 1.0;
+    _debris.push({
+      x, y,
+      vx: Math.cos(a) * spd,
+      vy: Math.sin(a) * spd - 0.5 - Math.random() * 0.8, // launch upward first
+      rot: Math.random() * Math.PI * 2,
+      rotSpd: (Math.random() - 0.5) * 0.15,
+      w: 2 + Math.random() * 3,
+      h: 1.5 + Math.random() * 2,
+      life: 1.0,
+      col: cols[Math.floor(Math.random() * cols.length)],
+    });
+  }
+}
+
 function drawParts() {
   particles = particles.filter(p=>p.life>0);
   for (const p of particles) {
@@ -3106,6 +3245,22 @@ function drawParts() {
     ctx.fillStyle = p.col;
     const sz = Math.max(1, Math.round(p.r * p.life));
     ctx.fillRect(Math.round(p.x)-sz/2|0, Math.round(p.y)-sz/2|0, sz, sz);
+  }
+  // Debris chunks — angular falling pieces
+  _debris = _debris.filter(d => d.life > 0);
+  for (const d of _debris) {
+    d.vx *= 0.99;
+    d.vy += 0.06; // gravity
+    d.x += d.vx; d.y += d.vy;
+    d.rot += d.rotSpd;
+    d.life -= 0.012;
+    ctx.save();
+    ctx.translate(Math.round(d.x), Math.round(d.y));
+    ctx.rotate(d.rot);
+    ctx.globalAlpha = Math.max(0, d.life);
+    ctx.fillStyle = d.col;
+    ctx.fillRect(-d.w / 2, -d.h / 2, d.w, d.h);
+    ctx.restore();
   }
   ctx.globalAlpha = 1;
 }
@@ -3331,7 +3486,7 @@ function drawCRT(intensity) {
 
   // 0) Barrel distortion — two-pass (horiz + vert) for even radial curvature
   if (intensity > 0.1) {
-    const strength = 0.015 * intensity; // max ~1.5% distortion at full intensity
+    const strength = 0.006 * intensity; // max ~0.6% distortion at full intensity
     const H_STRIPS = 48;
     const V_STRIPS = 64;
     // Lazy-init offscreen buffer
@@ -3554,17 +3709,19 @@ function drawHUD() {
 
   // LV label — moved to top-left of screen (drawn separately below HUD)
 
-  // Pause icon — two bars inside a hex outline, top right
-  const picX = W - 15, picY = HUD_Y + 12, picR = 10;
-  const pp = hexPts(picX, picY, picR);
-  ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
-  for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
-  ctx.closePath();
-  ctx.strokeStyle = '#c8a020'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = '#c8a020';
-  const barW = 2.5, barH = 8, barGap = 3;
-  ctx.fillRect(picX - barGap - barW/2, picY - barH/2, barW, barH);
-  ctx.fillRect(picX + barGap - barW/2, picY - barH/2, barW, barH);
+  // Pause icon — two bars inside a hex outline, top right (hidden in demo mode)
+  if (!demoMode) {
+    const picX = W - 15, picY = HUD_Y + 12, picR = 10;
+    const pp = hexPts(picX, picY, picR);
+    ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
+    for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
+    ctx.closePath();
+    ctx.strokeStyle = '#c8a020'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#c8a020';
+    const barW = 2.5, barH = 8, barGap = 3;
+    ctx.fillRect(picX - barGap - barW/2, picY - barH/2, barW, barH);
+    ctx.fillRect(picX + barGap - barW/2, picY - barH/2, barW, barH);
+  }
 
   // Inspector mode label
   if (inspectorMode) {
@@ -3971,26 +4128,26 @@ const HIVE_CONFIG = {
 // ── Weighted spawn tables ───────────────────────────────
 // depth = (lvl-1) + chunkIndex — increases with both level and chunk depth.
 const DEPTH_TABLE = [
-  { fill:0.30, weights:{NORMAL:92,THICK:8} },                                                                                                              // 0  very open start
-  { fill:0.32, weights:{NORMAL:88,THICK:10,HONEY:1,WAX:1} },                                                                                               // 1  first specials
-  { fill:0.34, weights:{NORMAL:84,THICK:12,HONEY:2,WAX:2,HEAVY:1} },                                                                                       // 2  heavy enters
-  { fill:0.35, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,BROOD:1,HEAVY:2} },                                                                               // 3  brood enters
-  { fill:0.36, weights:{NORMAL:77,THICK:14,HONEY:3,WAX:3,BROOD:1,HEAVY:3} },                                                                               // 4  (charged via stamp only)
-  { fill:0.37, weights:{NORMAL:74,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,BOMB:1} },                                                                        // 5  bomb enters
-  { fill:0.38, weights:{NORMAL:70,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,BOMB:2,ROYAL:1} },                                                                // 6  royal enters
-  { fill:0.39, weights:{NORMAL:65,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:2} },                                                      // 7  charged enters (rare)
-  { fill:0.40, weights:{NORMAL:62,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3,UNBREAKABLE:1} },                                        // 8  unbreakable enters
-  { fill:0.41, weights:{NORMAL:58,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2} },                                        // 9
-  { fill:0.42, weights:{NORMAL:54,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2,ANCIENT:2} },                              // 10 ancient enters
-  { fill:0.43, weights:{NORMAL:52,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:3,ANCIENT:3} },                              // 11
-  { fill:0.44, weights:{NORMAL:50,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:3,TITAN:1} },                      // 12 titan enters
-  { fill:0.45, weights:{NORMAL:48,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:2} },                      // 13
-  { fill:0.46, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 14
-  { fill:0.47, weights:{NORMAL:45,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 15
-  { fill:0.48, weights:{NORMAL:44,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:3} },                      // 16
-  { fill:0.49, weights:{NORMAL:43,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 17
-  { fill:0.50, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 18
-  { fill:0.52, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 19+ cap
+  { fill:0.22, weights:{NORMAL:92,THICK:8} },                                                                                                              // 0  very open start
+  { fill:0.24, weights:{NORMAL:88,THICK:10,HONEY:1,WAX:1} },                                                                                               // 1  first specials
+  { fill:0.25, weights:{NORMAL:84,THICK:12,HONEY:2,WAX:2,HEAVY:1} },                                                                                       // 2  heavy enters
+  { fill:0.26, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,BROOD:1,HEAVY:2} },                                                                               // 3  brood enters
+  { fill:0.27, weights:{NORMAL:77,THICK:14,HONEY:3,WAX:3,BROOD:1,HEAVY:3} },                                                                               // 4  (charged via stamp only)
+  { fill:0.28, weights:{NORMAL:74,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,BOMB:1} },                                                                        // 5  bomb enters
+  { fill:0.29, weights:{NORMAL:70,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,BOMB:2,ROYAL:1} },                                                                // 6  royal enters
+  { fill:0.30, weights:{NORMAL:65,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:2} },                                                      // 7  charged enters (rare)
+  { fill:0.30, weights:{NORMAL:62,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3,UNBREAKABLE:1} },                                        // 8  unbreakable enters
+  { fill:0.31, weights:{NORMAL:58,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2} },                                        // 9
+  { fill:0.32, weights:{NORMAL:54,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2,ANCIENT:2} },                              // 10 ancient enters
+  { fill:0.33, weights:{NORMAL:52,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:3,ANCIENT:3} },                              // 11
+  { fill:0.34, weights:{NORMAL:50,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:3,TITAN:1} },                      // 12 titan enters
+  { fill:0.35, weights:{NORMAL:48,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:2} },                      // 13
+  { fill:0.36, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 14
+  { fill:0.36, weights:{NORMAL:45,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 15
+  { fill:0.37, weights:{NORMAL:44,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:3} },                      // 16
+  { fill:0.37, weights:{NORMAL:43,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 17
+  { fill:0.38, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 18
+  { fill:0.38, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 19+ cap
 ];
 function getDepthEntry(depth) {
   return DEPTH_TABLE[Math.min(Math.max(0, depth), DEPTH_TABLE.length - 1)];
@@ -4150,113 +4307,8 @@ const STRUCTURES = [
       }
     },
   },
-  {
-    // HONEY VAULT — ring of HONEY cells inside UNBREAKABLE walls, portal center + exit portal
-    // Designed in Level Builder, exported 2026-03-18
-    // All positions snapped to the actual hex grid to prevent overlaps
-    id: 'HONEY_VAULT', minDepth: 3, weight: 5,
-    stamp(hexMap, rng) {
-      const rowH = HEX_R * Math.sqrt(3);
-      const colW = HEX_R * 1.5;
-
-      // Snap any world position to the nearest valid hex grid position
-      function snapToGrid(wx, wy) {
-        let bestX = wx, bestY = wy, bestD = Infinity;
-        // Check nearby columns
-        const colApprox = Math.round((wx - HEX_R) / colW);
-        for (let dc = -1; dc <= 1; dc++) {
-          const col = colApprox + dc;
-          const gx = HEX_R + col * colW;
-          const yOff = (col & 1) ? rowH * 0.5 : 0;
-          const rowApprox = Math.round((wy - yOff) / rowH);
-          for (let dr = -1; dr <= 1; dr++) {
-            const gy = yOff + (rowApprox + dr) * rowH;
-            const d = Math.hypot(gx - wx, gy - wy);
-            if (d < bestD) { bestD = d; bestX = gx; bestY = gy; }
-          }
-        }
-        return { x: bestX, y: bestY };
-      }
-
-      // Anchor: use a grid-snapped cell near horizontal center of chunk
-      const vals = [...hexMap.values()];
-      if (vals.length === 0) return;
-      // Find the cell closest to canvas center-X
-      let anchorCell = vals[0];
-      let anchorDist = Math.abs(vals[0].x - W / 2);
-      for (const h of vals) {
-        const d = Math.abs(h.x - W / 2);
-        if (d < anchorDist) { anchorDist = d; anchorCell = h; }
-      }
-      const anchorX = anchorCell.x;
-      const anchorY = anchorCell.y;
-
-      // Blueprint: raw pixel offsets from original design center (x=180, y=374.12)
-      const rawBlueprint = [
-        // UNBREAKABLE outer ring (18 cells)
-        [0, 93.53, 'UNBREAKABLE'], [81, 46.77, 'UNBREAKABLE'],
-        [-81, 46.77, 'UNBREAKABLE'], [-81, -46.77, 'UNBREAKABLE'],
-        [0, -93.53, 'UNBREAKABLE'], [81, -46.77, 'UNBREAKABLE'],
-        [81, -15.59, 'UNBREAKABLE'], [81, 15.59, 'UNBREAKABLE'],
-        [54, 62.35, 'UNBREAKABLE'], [27, 77.94, 'UNBREAKABLE'],
-        [-27, 77.94, 'UNBREAKABLE'], [-54, 62.35, 'UNBREAKABLE'],
-        [-81, 15.59, 'UNBREAKABLE'], [-81, -15.59, 'UNBREAKABLE'],
-        [-54, -62.35, 'UNBREAKABLE'], [-27, -77.94, 'UNBREAKABLE'],
-        [27, -77.94, 'UNBREAKABLE'], [54, -62.35, 'UNBREAKABLE'],
-        // HONEY inner ring (12 cells)
-        [-54, 31.18, 'HONEY'], [-54, 0, 'HONEY'], [-54, -31.18, 'HONEY'],
-        [-27, -46.77, 'HONEY'], [0, -62.35, 'HONEY'], [27, -46.77, 'HONEY'],
-        [54, -31.18, 'HONEY'], [54, 0, 'HONEY'], [54, 31.18, 'HONEY'],
-        [27, 46.77, 'HONEY'], [0, 62.35, 'HONEY'], [-27, 46.77, 'HONEY'],
-        // Center portal
-        [0, 0, 'PORTAL'],
-        // Exit portal (offset outside the ring)
-        [108, 124.71, 'PORTAL'],
-      ];
-
-      // Snap each blueprint cell to the nearest grid position
-      const snapped = [];
-      const usedKeys = new Set();
-      for (const [dx, dy, type] of rawBlueprint) {
-        const s = snapToGrid(anchorX + dx, anchorY + dy);
-        const key = `${Math.round(s.x)},${Math.round(s.y)}`;
-        if (!usedKeys.has(key)) { // prevent duplicate grid positions
-          usedKeys.add(key);
-          snapped.push({ x: s.x, y: s.y, type, key });
-        }
-      }
-
-      // 1) Clear exclusion zone — remove ALL existing cells near the design
-      const clearRadius = 120;
-      for (const [k, h] of hexMap) {
-        if (Math.hypot(h.x - anchorX, h.y - anchorY) < clearRadius) {
-          hexMap.delete(k);
-        }
-      }
-
-      // 2) Inject blueprint cells at grid-snapped positions
-      for (const cell of snapped) {
-        hexMap.set(cell.key, {
-          x: cell.x, y: cell.y, dead: false, flash: 0,
-          type: cell.type, hp: CELL_TYPES[cell.type].hp,
-          ci: Math.floor(rng() * 5),
-          _blueprint: true,
-        });
-      }
-
-      // 3) Downgrade specials in buffer zone — only NORMAL/THICK/HONEY allowed nearby
-      const bufferRadius = 150;
-      const safeTypes = new Set(['NORMAL', 'THICK', 'HONEY']);
-      for (const h of hexMap.values()) {
-        if (h._blueprint) continue;
-        if (Math.hypot(h.x - anchorX, h.y - anchorY) < bufferRadius) {
-          if (!safeTypes.has(h.type)) {
-            h.type = 'NORMAL'; h.hp = CELL_TYPES.NORMAL.hp;
-          }
-        }
-      }
-    },
-  },
+  // Dynamic blueprints from LevelExports/ are injected here by loadBlueprints()
+  // See _loadedBlueprints array and the loadBlueprints() function below
   {
     id: 'BARRIER_WALL', minDepth: 6, weight: 8,
     stamp(hexMap, rng) {
@@ -4294,6 +4346,136 @@ const STRUCTURES = [
     },
   },
 ];
+
+// ── Dynamic Blueprint Loader ─────────────────────────────
+// Fetches all level exports from /api/blueprints and registers them as STRUCTURES
+const _loadedBlueprints = [];   // filled by loadBlueprints()
+let _blueprintsReady = false;
+
+function _makeStampFromCells(cells) {
+  // Pre-compute offsets from the design's center
+  let cx = 0, cy = 0;
+  for (const c of cells) { cx += c.x; cy += c.y; }
+  cx /= cells.length; cy /= cells.length;
+  const offsets = cells.map(c => ({ dx: c.x - cx, dy: c.y - cy, type: c.type }));
+
+  // Compute clear radius from max offset distance + 1 cell gap minimum
+  const maxR = offsets.reduce((m, o) => Math.max(m, Math.hypot(o.dx, o.dy)), 0);
+  const clearRadius = maxR + HEX_R * 4;      // generous clear zone around entire design
+  const bufferRadius = clearRadius + HEX_R * 6; // wider buffer for special downgrade
+
+  return function stamp(hexMap, rng) {
+    const rowH = HEX_R * Math.sqrt(3);
+    const colW = HEX_R * 1.5;
+
+    function snapToGrid(wx, wy) {
+      let bestX = wx, bestY = wy, bestD = Infinity;
+      const colApprox = Math.round((wx - HEX_R) / colW);
+      for (let dc = -1; dc <= 1; dc++) {
+        const col = colApprox + dc;
+        const gx = HEX_R + col * colW;
+        const yOff = (col & 1) ? rowH * 0.5 : 0;
+        const rowApprox = Math.round((wy - yOff) / rowH);
+        for (let dr = -1; dr <= 1; dr++) {
+          const gy = yOff + (rowApprox + dr) * rowH;
+          const d = Math.hypot(gx - wx, gy - wy);
+          if (d < bestD) { bestD = d; bestX = gx; bestY = gy; }
+        }
+      }
+      return { x: bestX, y: bestY };
+    }
+
+    // Find anchor near horizontal center of existing cells
+    const vals = [...hexMap.values()];
+    if (vals.length === 0) return;
+    let anchorCell = vals[0], anchorDist = Math.abs(vals[0].x - W / 2);
+    for (const h of vals) {
+      const d = Math.abs(h.x - W / 2);
+      if (d < anchorDist) { anchorDist = d; anchorCell = h; }
+    }
+    const ax = anchorCell.x, ay = anchorCell.y;
+
+    // Snap each blueprint cell to grid
+    const snapped = [], usedKeys = new Set();
+    for (const o of offsets) {
+      const s = snapToGrid(ax + o.dx, ay + o.dy);
+      const key = `${Math.round(s.x)},${Math.round(s.y)}`;
+      if (!usedKeys.has(key)) {
+        usedKeys.add(key);
+        snapped.push({ x: s.x, y: s.y, type: o.type, key });
+      }
+    }
+
+    // 1) Clear exclusion zone
+    for (const [k, h] of hexMap) {
+      if (Math.hypot(h.x - ax, h.y - ay) < clearRadius) hexMap.delete(k);
+    }
+
+    // 2) Inject blueprint cells
+    for (const cell of snapped) {
+      if (!CELL_TYPES[cell.type]) continue; // skip unknown types
+      hexMap.set(cell.key, {
+        x: cell.x, y: cell.y, dead: false, flash: 0,
+        type: cell.type, hp: CELL_TYPES[cell.type].hp,
+        ci: Math.floor(rng() * 5),
+        _blueprint: true,
+      });
+    }
+
+    // 3) Enforce 1-cell gap: remove any non-blueprint cell within 1 hex of any blueprint cell
+    const gapDist = HEX_R * Math.sqrt(3) * 1.1; // ~1 cell spacing
+    for (const [k, h] of hexMap) {
+      if (h._blueprint) continue;
+      for (const bp of snapped) {
+        if (Math.hypot(h.x - bp.x, h.y - bp.y) < gapDist) {
+          hexMap.delete(k);
+          break;
+        }
+      }
+    }
+
+    // 4) Downgrade specials in buffer zone
+    const safeTypes = new Set(['NORMAL', 'THICK', 'HONEY']);
+    for (const h of hexMap.values()) {
+      if (h._blueprint) continue;
+      if (Math.hypot(h.x - ax, h.y - ay) < bufferRadius) {
+        if (!safeTypes.has(h.type)) {
+          h.type = 'NORMAL'; h.hp = CELL_TYPES.NORMAL.hp;
+        }
+      }
+    }
+  };
+}
+
+function loadBlueprints() {
+  fetch('/api/blueprints')
+    .then(r => r.json())
+    .then(list => {
+      if (!Array.isArray(list)) return;
+      for (let i = 0; i < list.length; i++) {
+        const bp = list[i];
+        if (!bp.cells || bp.cells.length === 0) continue;
+        const struct = {
+          id: 'BP_' + bp.id,
+          minDepth: 1,        // available from depth 1 onward
+          weight: 20,         // high weight to ensure they appear often
+          _isBlueprint: true,
+          stamp: _makeStampFromCells(bp.cells),
+        };
+        STRUCTURES.push(struct);
+        _loadedBlueprints.push(struct);
+      }
+      _blueprintsReady = true;
+      console.log(`[HENDSBEE] Loaded ${_loadedBlueprints.length} blueprint(s) from LevelExports/`);
+    })
+    .catch(e => {
+      console.warn('[HENDSBEE] Could not load blueprints:', e.message);
+      _blueprintsReady = true; // still continue without blueprints
+    });
+}
+
+// Load blueprints on startup
+loadBlueprints();
 
 // ── Spawn validation helpers ─────────────────────────────
 const EDGE_MARGIN = HEX_R * 2.5; // pixels from canvas edge = exclusion zone
@@ -4384,21 +4566,21 @@ function spawnChunk(chunkTop, depth, seed) {
     }
   }
 
-  // Procedural stamps (skip custom blueprints + portal stamps near boss gates)
-  const CUSTOM_STAMPS = new Set(['HONEY_VAULT']);
-  const eligible = STRUCTURES.filter(s =>
-    s.minDepth <= depth && !CUSTOM_STAMPS.has(s.id) &&
+  // Procedural stamps (non-blueprint, skip portal stamps near boss gates)
+  const proceduralEligible = STRUCTURES.filter(s =>
+    s.minDepth <= depth && !s._isBlueprint &&
     !(nearBossGate && s.id === 'PORTAL_PAIR'));
-  const stampCount = eligible.length > 0 ? 1 + Math.floor(rng() * 2) : 0;
-  for (let si = 0; si < stampCount && si < eligible.length; si++) {
-    eligible[Math.floor(rng() * eligible.length)].stamp(hexMap, rng);
+  const stampCount = proceduralEligible.length > 0 ? 1 + Math.floor(rng() * 2) : 0;
+  for (let si = 0; si < stampCount && si < proceduralEligible.length; si++) {
+    proceduralEligible[Math.floor(rng() * proceduralEligible.length)].stamp(hexMap, rng);
   }
 
-  // Custom blueprint stamps run LAST so they override everything
-  // Guarantee a HONEY_VAULT spawns once at depth 2 (early game)
-  if (depth === 2) {
-    const vault = STRUCTURES.find(s => s.id === 'HONEY_VAULT');
-    if (vault) vault.stamp(hexMap, rng);
+  // Blueprint stamps run LAST so they override everything
+  // Spawn blueprints every 10-20 chunks (50-100 cell depths), in random order
+  if (_loadedBlueprints.length > 0 && depth >= _nextBlueprintDepth) {
+    const bp = _loadedBlueprints[Math.floor(rng() * _loadedBlueprints.length)];
+    if (bp) bp.stamp(hexMap, rng);
+    _nextBlueprintDepth = depth + 5 + Math.floor(rng() * 6); // next in 5-10 chunks (25-50 cell depths)
   }
 
   // Guarantee a CHARGED cell around depth 30 (chunk depth 6) for an early boost
@@ -4407,6 +4589,18 @@ function spawnChunk(chunkTop, depth, seed) {
     if (normals.length > 0) {
       const pick = normals[Math.floor(rng() * normals.length)];
       pick.type = 'CHARGED'; pick.hp = CELL_TYPES.CHARGED.hp;
+    }
+  }
+
+  // Remove any cells that fall within a living queen's clear zone
+  const queenClearDist = HEX_R * Math.sqrt(3) * 5;
+  for (const gate of bossGates) {
+    if (gate.dead || !gate.queenCells || gate.queenCells.length === 0) continue;
+    const qc = gate.queenCells[0]; // center queen cell
+    for (const [k, h] of hexMap) {
+      if (Math.hypot(h.x - qc.x, h.y - qc.y) < queenClearDist) {
+        hexMap.delete(k);
+      }
     }
   }
 
@@ -4496,6 +4690,17 @@ function spawnQueenCluster(gateY, gateIndex) {
   // Remove any existing hexes that overlap queen positions
   const queenPositions = new Set(queenCells.map(q => `${Math.round(q.x)},${Math.round(q.y)}`));
   hexes = hexes.filter(h => !queenPositions.has(`${Math.round(h.x)},${Math.round(h.y)}`));
+
+  // Clear zone: remove ALL non-boss-gate cells within 5 cell depths of queen
+  // Only the royal guard barrier (bossGateId cells) survives
+  const clearZone = rowH * 5;
+  hexes = hexes.filter(h => {
+    if (h.bossGateId != null) return true; // keep boss gate cells (royal guards)
+    const dist = Math.hypot(h.x - centerX, h.y - centerY);
+    if (dist < clearZone) return false; // delete everything else in zone
+    return true;
+  });
+
   return queenCells;
 }
 
@@ -4524,7 +4729,7 @@ function triggerBossGateShatter(gate) {
 // ── Main grid builder ────────────────────────────────────
 // Pre-generates the first 4 chunks; streaming continues in update().
 function buildGrid(lvl) {
-  levelSeed            = lvl * 7919;
+  levelSeed            = lvl * 7919 + ((Math.random() * 0xFFFFFF) >>> 0);
   totalDepth           = 0;
   portalChannelCounter = 0;
   lastChargedY         = Infinity;
@@ -4591,6 +4796,7 @@ let scrollYTarget = 0;  // smoothed camera target
 let generatedTop         = 0;   // world y of topmost generated chunk's top edge
 let totalDepth           = 0;   // total chunks generated this run
 let levelSeed            = 0;   // base seed for this level
+let _nextBlueprintDepth  = 3;   // first blueprint spawns around depth 3
 let portalChannelCounter = 0;   // unique portal channel IDs across streaming chunks
 let scrollYMin           = 0;   // highest (most negative) scroll reached — camera floor
 let hiveDepthMax         = 0;   // high-water mark: deepest row reached by any bee
@@ -4618,7 +4824,7 @@ let upgradeCount = 0; // total upgrades picked this run
 
 function resetRun() {
   for (const k of Object.keys(powers)) powers[k] = 0;
-  totalHoney = 0; droplets = []; pickerPending = false; paused = false;
+  totalHoney = 0; droplets = []; _fallingDrops = []; _debris = []; pickerPending = false; paused = false;
   upgradeBannerActive = false; upgradeBannerChoices = []; upgradeBannerGeom = null;
   upgradeSlots = []; levelHoneyEarned = 0; upgradeCount = 0;
   levelHoneyEarned = 0;
@@ -4652,7 +4858,7 @@ function startLevel(lvl) {
   if (!demoMode) music.unmuffle();
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
-  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[];
+  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _nextBlueprintDepth=3;
   timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null;
   particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; honeySurgeFills=0; touchX=null; touchX2=null; touchIdLeft=null; touchIdRight=null;
   paddle=mkPaddle();
@@ -4771,21 +4977,23 @@ function update() {
   if (dt <= 0 && !pickerTransition) return;  // fully frozen, skip physics
 
   tick++;
-  beeFrameTick++;
+  beeFrameTick += 2; // double speed wing flap
   const pw=getPW();
 
   paddle.prevX = paddle.x;
   if (demoMode) {
-    // Attract-mode AI: intentionally bad — reacts late, drifts, sometimes ignores bee
+    // Attract-mode AI: tracks the lowest bee, reacts when in lower 65% of screen
     const tBee = bees.length ? bees.reduce((a, b) => b.y > a.y ? b : a) : null;
     if (tBee) {
-      // Only react when bee is in the lower 40% of screen (delayed reaction)
       const screenBeeY = tBee.y - scrollY;
-      if (screenBeeY > H * 0.52) {
-        // Add random drift so the paddle doesn't center perfectly
-        const wobble = Math.sin(tick * 0.02) * pw * 0.34;
+      if (screenBeeY > H * 0.35) {
+        // Gentle wobble for organic feel
+        const wobble = Math.sin(tick * 0.018) * pw * 0.15;
         const tgt = Math.max(0, Math.min(W - pw, tBee.x - pw / 2 + wobble));
-        paddle.x += (tgt - paddle.x) * 0.052; // sluggish but slightly better
+        // Tracking gets faster as bee approaches paddle
+        const urgency = Math.min(1, Math.max(0, (screenBeeY - H * 0.35) / (H * 0.5)));
+        const speed = 0.06 + urgency * 0.08; // 0.06 far away → 0.14 close
+        paddle.x += (tgt - paddle.x) * speed;
       }
     }
   } else if (isSplitActive()) {
@@ -4837,7 +5045,7 @@ function update() {
     const rowH = CONFIG.HEX_R * Math.sqrt(3);
     // Depth = how many hex rows above the paddle the bee has reached
     const depthNow = Math.max(0, Math.ceil((PADDLE_Y - topBeeY) / rowH));
-    if (!demoMode && depthNow > hiveDepthMax) hiveDepthMax = depthNow;
+    if (depthNow > hiveDepthMax) hiveDepthMax = depthNow;
     // Camera only progresses upward — never backpedals
     scrollYTarget = Math.max(HIVE_CONFIG.CAMERA_MIN ?? -Infinity, Math.min(scrollYMin, rawTarget));
     scrollY += (scrollYTarget - scrollY) * HIVE_CONFIG.CAMERA_LERP;
@@ -4891,6 +5099,88 @@ function update() {
   const hiveTopY     = (HIVE_CONFIG.CAMERA_MIN ?? scrollY - H) - BALL_R;
   const paddleWorldY = scrollY + PADDLE_Y;
 
+  // ── Side Wall Cleanup Zone (3 tiers) ──
+  // Tiered invisible zones above the paddle that weaken side wall cells.
+  // Tier 1 (edge cells):         3 cell heights, 34% maxHP/sec
+  // Tier 2 (one column inward):  2 cell heights, 34% maxHP/sec
+  // Tier 3 (two columns inward): 1 cell height,  34% maxHP/sec
+  {
+    const rowH_cz = HEX_R * Math.sqrt(3);
+    const czBottom = paddleWorldY;
+    const czTop1 = czBottom - rowH_cz * 3; // tier 1: 3 rows
+    const czTop2 = czBottom - rowH_cz * 2; // tier 2: 2 rows
+    const czTop3 = czBottom - rowH_cz * 1; // tier 3: 1 row
+    const tier3Margin = EDGE_MARGIN + HEX_R * 1.5 * 2; // two columns inward from edge
+
+    for (const h of hexes) {
+      if (h.dead) continue;
+      // Instantly kill any cell that has fallen below the play line (past the paddle)
+      if (h.y > czBottom + HEX_R) {
+        if (h.type !== 'PORTAL' && h.type !== 'ROYAL_GUARD' && h.type !== 'QUEEN') {
+          h.dead = true;
+        }
+        continue;
+      }
+      if (h.type === 'PORTAL' || h.type === 'UNBREAKABLE' || h.type === 'ROYAL_GUARD' || h.type === 'QUEEN') continue;
+
+      // Determine which tier this cell falls into
+      let inZone = false;
+      const czBottomRow = czBottom - rowH_cz * 0.5; // bottom row: last half-cell above paddle
+      if (h.y >= czBottomRow) {
+        inZone = true; // bottom row cleanup: ALL cells at hend level
+      } else if (isEdgeCell(h.x) && h.y >= czTop1) {
+        inZone = true; // tier 1: edge cells, 3 rows
+      } else if (isNearEdge(h.x) && h.y >= czTop2) {
+        inZone = true; // tier 2: one column inward, 2 rows
+      } else if ((h.x < tier3Margin || h.x > W - tier3Margin) && h.y >= czTop3) {
+        inZone = true; // tier 3: two columns inward, 1 row
+      }
+
+      if (!inZone) continue;
+
+      const maxHp = CELL_TYPES[h.type].hp;
+      const dmgPerSec = maxHp * 0.34;
+      const prevHp = h.hp;
+      h.hp -= dmgPerSec * dt;
+      if (Math.random() < 0.08) h.flash = Math.max(h.flash, 3);
+
+      // Spawn falling debris chunks as HP drops past thresholds
+      if (maxHp >= 2) {
+        const prevFrac = prevHp / maxHp;
+        const currFrac = h.hp / maxHp;
+        // Spawn debris at each 25% HP threshold crossed
+        for (const thresh of [0.75, 0.50, 0.25]) {
+          if (prevFrac > thresh && currFrac <= thresh) {
+            const debrisCols = PAL[CELL_TYPES[h.type]?.color] || ['#8a7050','#6a5030'];
+            spawnDebris(h.x, h.y, 2, debrisCols);
+          }
+        }
+      }
+
+      if (h.hp <= 0) {
+        h.dead = true;
+        spawnParts(h.x, h.y, 6, ['#8a7050','#6a5030','#4a3020']);
+        // Final death debris burst
+        const deathCols = PAL[CELL_TYPES[h.type]?.color] || ['#8a7050','#6a5030'];
+        spawnDebris(h.x, h.y, 3, deathCols);
+        // Honey cells: spawn falling (non-collectible) drips that fall to the ground
+        const honeyVal = CELL_TYPES[h.type]?.honey || 0;
+        if (honeyVal > 0) {
+          const screenY = h.y - scrollY;
+          for (let d = 0; d < Math.min(honeyVal, 3); d++) {
+            _fallingDrops.push({
+              x: h.x + (Math.random() - 0.5) * 10,
+              y: screenY,
+              vx: (Math.random() - 0.5) * 0.8,
+              vy: 0.5 + Math.random() * 0.5,
+              life: 1.0,
+            });
+          }
+        }
+      }
+    }
+  }
+
   const newBees=[];
 
   for (const b of bees) {
@@ -4928,15 +5218,24 @@ function update() {
       if (b.vy>0 && b.y+BALL_R>=paddleWorldY-CONFIG.HEND_HIT_PAD_Y && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+CONFIG.HEND_HIT_PAD_Y+4
           && b.x>=p.x-CONFIG.HEND_HIT_PAD_X && b.x<=p.x+hendW+CONFIG.HEND_HIT_PAD_X) {
         b.y=paddleWorldY-4-BALL_R; p.squish=7;
-        const rel=(b.x-(p.x+hendW/2))/(hendW/2);
-        const tiltedRel = rel * (1.0 - 0.25 * rel * rel); // inward tilt at thumb edges
-        const ang = tiltedRel * (CONFIG.HEND_ANGLE_SPREAD * Math.PI/180);
+        const rel = Math.max(-1, Math.min(1, (b.x-(p.x+hendW/2))/(hendW/2)));
+        // Soft center bias: compress angles toward center (cubic ease)
+        // rel² near center is small → more vertical; edges still deflect
+        const biased = rel * (0.7 + 0.3 * rel * rel);
+        const ang = biased * (CONFIG.HEND_ANGLE_SPREAD * Math.PI/180);
         b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
+        // Paddle movement adds horizontal push (reduced for predictability)
         const pv = dt > 0 ? (p.x - p.prevX) / dt : 0;
         b.vx += pv * CONFIG.HEND_VEL_BOOST;
         b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
         sfx.paddle(); haptic(HAPTIC.paddle);
         normSpd(b,b.speed);
+        // Guarantee minimum upward component — prevent flat skimming
+        const minVy = b.speed * 0.45;
+        if (Math.abs(b.vy) < minVy) {
+          b.vy = -minVy;
+          normSpd(b, b.speed);
+        }
         if (pendingPowerup && powerupBeesRemaining > 0) {
           b.powerupId = pendingPowerup.id;
           b.powerupColor = pendingPowerup.color;
@@ -5044,6 +5343,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
   broodMsgs=broodMsgs.filter(m=>m.life>0);
   for (const m of broodMsgs){m.y-=0.35;m.life--;}
   updateDroplets();
+  updateFallingDrops();
 
   // ── Powerup drops: gravity, paddle catch, off-screen removal ──
   const pw2 = getPW();
@@ -5220,8 +5520,9 @@ function render() {
     ctx.restore();
   }
 
-  if (!demoMode) {
+  {
   drawDroplets();                    // screen space — travels to HUD jar
+  drawFallingDrops();                // screen space — gravity drops from cleanup zone
 
   // ── Translucent blurred HUD backdrop ──
   // Cells scrolling behind the HUD area show through, blurred
@@ -5256,10 +5557,10 @@ function render() {
   ctx.strokeText(hiveDepthMax + '', 6, 25);
   ctx.fillText(hiveDepthMax + '', 6, 25);
 
-  } // end !demoMode HUD block
+  } // end HUD block
 
   // ── Active powerup HUD timer (global, e.g. honeySurge) ──
-  if (!demoMode && activePowerup) {
+  if (activePowerup) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = 4;
     const frac = activePowerup.ticksLeft / (TEMP_POWERUPS.find(t => t.id === activePowerup.id)?.duration || 600);
     // Flicker HUD bar when expiring
@@ -5280,7 +5581,7 @@ function render() {
     ctx.globalAlpha = 1;
   }
   // ── Pending per-bee powerup indicator ──
-  if (!demoMode && pendingPowerup && powerupBeesRemaining > 0) {
+  if (pendingPowerup && powerupBeesRemaining > 0) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = activePowerup ? 22 : 4;
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 14);
@@ -5295,7 +5596,7 @@ function render() {
     ctx.textAlign = 'left';
   }
   // ── Boss HP bar — shown when camera is near a living boss gate ──
-  if (!demoMode) {
+  {
     const activeBoss = bossGates.find(g => !g.dead &&
       scrollY < g.gateY + HIVE_CONFIG.CHUNK_HEIGHT * 4 &&
       scrollY > g.gateY - H * 2);
@@ -5569,8 +5870,8 @@ function buildGuide() {
     if (pId === 'beeGer') sc = 1.5;
     if (pId === 'beeHemoth') sc = 2.4;
     if (pId === 'booBee') gc.globalAlpha = 0.3;
-    const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 14 : 8; // BEE-HEMOTH & BEE-R flap slower
-    const fIdx = [0,1,2,1][Math.floor(ft / flapSpeed) % 4];
+    const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 14 : BEE_FLAP_SPEED;
+    const fIdx = beeFrameSeq[Math.floor(ft / flapSpeed) % beeFrameSeq.length];
     const bob = 0; // frames are now vertically aligned at load time
     const extraBob = (pId === 'booBee') ? Math.sin(ft * 0.02) * 2 : 0;
     // BOO-BEE teal ghost aura glow (slow, sleepy pulse)
@@ -5899,7 +6200,7 @@ function hidePause() { pausePanel.classList.remove('show'); }
   rb.textContent = 'RESUME';
   rb.onclick = () => {
     hidePause();
-    if (demoMode) { showOv(); return; } // return to menu overlay
+    if (demoMode) { showOv(); return; }
     if (inspectorMode) {
       inspectorMode = false;
       inspectorTouchY = null;
@@ -5907,10 +6208,16 @@ function hidePause() { pausePanel.classList.remove('show'); }
     if (!gameOver && !pickerPending) {
       music.play(); music.unmuffle();
       lastTime = 0;
-      startCountdown(() => loop());
+      setTimeout(() => startCountdown(() => loop()), 150);
     }
   };
   container.appendChild(rb);
+
+  const shopBtn = document.createElement('button');
+  shopBtn.className = 'ob';
+  shopBtn.textContent = 'SHOP';
+  shopBtn.onclick = () => { hidePause(); showShop('pause'); };
+  container.appendChild(shopBtn);
 
   const gb = document.createElement('button');
   gb.className = 'ob';
@@ -5924,11 +6231,16 @@ function hidePause() { pausePanel.classList.remove('show'); }
   sb.onclick = () => { hidePause(); showSettings('pause'); };
   container.appendChild(sb);
 
-  const shopBtn = document.createElement('button');
-  shopBtn.className = 'ob';
-  shopBtn.textContent = 'SHOP';
-  shopBtn.onclick = () => { hidePause(); showShop('pause'); };
-  container.appendChild(shopBtn);
+  const quitBtn = document.createElement('button');
+  quitBtn.className = 'ob';
+  quitBtn.textContent = 'QUIT TO MENU';
+  quitBtn.onclick = () => {
+    hidePause();
+    if (animId) { cancelAnimationFrame(animId); animId = 0; }
+    gameOver = true;
+    showMenu();
+  };
+  container.appendChild(quitBtn);
 
   pausePanel.appendChild(container);
 
@@ -5955,7 +6267,7 @@ function mkBtn(lbl,pr,cb) {
   ov.appendChild(b);
 }
 function showOv()  { ov.classList.add('show'); }
-function hideOv()  { ov.classList.remove('show'); }
+function hideOv()  { ov.classList.remove('show'); ov.style.opacity = ''; stopPowerSurge(); }
 
 let menuBGActive = false;
 let menuBGScrollY = 0;
@@ -5964,7 +6276,7 @@ function showMenu() {
   music.play(); music.muffle();
   ovTitle.textContent='HENDSBEE';
   const meta = SaveManager.loadMeta();
-  ovSub.innerHTML = meta.bestDepth > 0 ? 'HIGH SCORE: DEPTH ' + meta.bestDepth : '';
+  ovSub.innerHTML = meta.bestDepth > 0 ? 'HIGHEST CLIMB: ' + meta.bestDepth : '';
   clearBtns();
   const hasSave = SaveManager.hasSavedRun();
   const s = hasSave ? SaveManager.getSummary() : null;
@@ -6076,6 +6388,25 @@ let _builderAnimId = 0;
 const DEV_CODE = '612833';
 let _passcodeDigits = [];
 
+function _handlePasscodeDigit(n) {
+  if (_passcodeDigits.length >= 6) return;
+  _passcodeDigits.push(n);
+  _updateSlots();
+  if (_passcodeDigits.length === 6) {
+    const entered = _passcodeDigits.join('');
+    if (entered === DEV_CODE) {
+      devUnlocked = true;
+      document.getElementById('devPasscode').classList.remove('show');
+      showDevMenu();
+    } else {
+      const slots = document.getElementById('passcodeSlots');
+      slots.style.transition = 'none';
+      slots.style.outline = '2px solid #ff2020';
+      setTimeout(() => { slots.style.outline = ''; _passcodeDigits = []; _updateSlots(); }, 400);
+    }
+  }
+}
+
 function _buildPasscodeUI() {
   const slots = document.getElementById('passcodeSlots');
   const keys = document.getElementById('passcodeKeys');
@@ -6107,24 +6438,7 @@ function _mkKey(container, n) {
   b.className = 'ob';
   b.style.cssText = 'font-size:0.4rem;padding:8px;min-width:0;margin:0;';
   b.textContent = String(n);
-  b.onclick = () => {
-    if (_passcodeDigits.length >= 6) return;
-    _passcodeDigits.push(n);
-    _updateSlots();
-    if (_passcodeDigits.length === 6) {
-      const entered = _passcodeDigits.join('');
-      if (entered === DEV_CODE) {
-        devUnlocked = true;
-        document.getElementById('devPasscode').classList.remove('show');
-        showDevMenu();
-      } else {
-        // Wrong code — flash red and clear
-        const slots = document.getElementById('passcodeSlots');
-        slots.style.transition = 'none';
-        slots.style.outline = '2px solid #ff2020';
-        setTimeout(() => { slots.style.outline = ''; _passcodeDigits = []; _updateSlots(); }, 400);
-      }
-    }
+  b.onclick = () => { _handlePasscodeDigit(n);
   };
   container.appendChild(b);
 }
@@ -6159,6 +6473,23 @@ document.getElementById('passcodeBack').onclick = () => {
   document.getElementById('devPasscode').classList.remove('show');
   showSettings(_settingsReturnTo);
 };
+
+// Keyboard support for passcode entry (desktop numpad/number keys)
+document.addEventListener('keydown', e => {
+  const pc = document.getElementById('devPasscode');
+  if (!pc || !pc.classList.contains('show')) return;
+  if (e.key >= '0' && e.key <= '9') {
+    e.preventDefault();
+    _handlePasscodeDigit(parseInt(e.key));
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    if (_passcodeDigits.length > 0) { _passcodeDigits.pop(); _updateSlots(); }
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    pc.classList.remove('show');
+    showSettings(_settingsReturnTo);
+  }
+});
 
 // Dev menu buttons
 document.getElementById('devInspect').onclick = () => {
@@ -6859,7 +7190,8 @@ function _shopLoop() {
       const frameIdx = beeFrameSeq[Math.floor(_shopTick / flap) % beeFrameSeq.length];
       const img = beeFrames[frameIdx];
       bx.save();
-      bx.translate(60, 60);
+      const bob = Math.sin(_shopTick * 0.06) * 3;
+      bx.translate(60, 60 + bob);
       const dw = 80, dh = 80;
       if (skin && skin.tint) {
         const ow = dw + 2, oh = dh + 2;
@@ -6914,7 +7246,7 @@ function showLose() {
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
   ovTitle.textContent='PLAY AGAIN';
-  ovSub.innerHTML='HIVE DEPTH '+hiveDepthMax;
+  ovSub.innerHTML='HIVE DEPTH REACHED: '+hiveDepthMax;
   clearBtns();
   mkBtn('PLAY AGAIN',   true,  ()=>{hideOv();resetRun();startLevel(1);});
   mkBtn('QUIT TO MENU', false, ()=>{hideOv();showMenu();});
@@ -7005,7 +7337,7 @@ window.addEventListener('keydown', e => {
       hidePause();
       if (!gameOver && !pickerPending) {
         music.play(); music.unmuffle();
-        startCountdown(() => loop());
+        setTimeout(() => startCountdown(() => loop()), 150);
       }
     } else if (!gameOver && !pickerPending && animId) {
       paused = true;
@@ -7043,10 +7375,112 @@ function startCountdown(cb) {
 // ═══════════════════════════════════════════════════════
 // CRT POWER-ON BOOT ANIMATION
 // ═══════════════════════════════════════════════════════
+function playBootSFX() {
+  // All boot sounds respect SFX volume
+  const vol = sfxVolume;
+  if (vol <= 0) return;
+  acResume();
+  const now = AC.currentTime;
+
+  // 1) Power relay CLICK at 0.4s — sharp transient
+  const clickTime = now + 0.4;
+  const clickOsc = AC.createOscillator();
+  const clickGain = AC.createGain();
+  clickOsc.connect(clickGain); clickGain.connect(AC.destination);
+  clickOsc.type = 'square';
+  clickOsc.frequency.setValueAtTime(80, clickTime);
+  clickOsc.frequency.exponentialRampToValueAtTime(20, clickTime + 0.03);
+  clickGain.gain.setValueAtTime(0, now);
+  clickGain.gain.setValueAtTime(vol * 0.35, clickTime);
+  clickGain.gain.exponentialRampToValueAtTime(0.0001, clickTime + 0.06);
+  clickOsc.start(now); clickOsc.stop(clickTime + 0.07);
+
+  // Click noise burst (mechanical contact sound)
+  const clickBuf = AC.createBuffer(1, Math.ceil(AC.sampleRate * 0.04), AC.sampleRate);
+  const clickData = clickBuf.getChannelData(0);
+  for (let i = 0; i < clickData.length; i++) clickData[i] = (Math.random() * 2 - 1) * Math.exp(-i / (AC.sampleRate * 0.008));
+  const clickSrc = AC.createBufferSource();
+  const clickNG = AC.createGain();
+  clickSrc.buffer = clickBuf; clickSrc.connect(clickNG); clickNG.connect(AC.destination);
+  clickNG.gain.setValueAtTime(0, now);
+  clickNG.gain.setValueAtTime(vol * 0.25, clickTime);
+  clickNG.gain.exponentialRampToValueAtTime(0.0001, clickTime + 0.04);
+  clickSrc.start(now); clickSrc.stop(clickTime + 0.05);
+
+  // 2) Low transformer hum building (0.5s – 1.7s) — 60Hz buzz
+  const humOsc = AC.createOscillator();
+  const humGain = AC.createGain();
+  humOsc.connect(humGain); humGain.connect(AC.destination);
+  humOsc.type = 'sawtooth';
+  humOsc.frequency.setValueAtTime(60, now + 0.5);
+  humOsc.frequency.linearRampToValueAtTime(120, now + 1.7);
+  humGain.gain.setValueAtTime(0, now);
+  humGain.gain.linearRampToValueAtTime(0, now + 0.5);
+  humGain.gain.linearRampToValueAtTime(vol * 0.06, now + 0.9);
+  humGain.gain.linearRampToValueAtTime(vol * 0.12, now + 1.7);
+  humGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
+  humOsc.start(now + 0.5); humOsc.stop(now + 2.1);
+
+  // 3) Low bee-like buzz hum (1.7s – 3.5s) — warm drone, not a whine
+  const whineOsc = AC.createOscillator();
+  const whineGain = AC.createGain();
+  const whineLPF = AC.createBiquadFilter();
+  whineLPF.type = 'lowpass';
+  whineLPF.frequency.setValueAtTime(400, now + 1.7); // heavily filtered for low hum
+  whineLPF.Q.value = 2.0; // slight resonance for buzz character
+  whineOsc.connect(whineLPF); whineLPF.connect(whineGain); whineGain.connect(AC.destination);
+  whineOsc.type = 'sawtooth'; // sawtooth = rich harmonics for buzz
+  whineOsc.frequency.setValueAtTime(110, now + 1.7); // low A — bee wing frequency range
+  whineOsc.frequency.linearRampToValueAtTime(165, now + 2.5); // rises gently to E
+  whineGain.gain.setValueAtTime(0, now);
+  whineGain.gain.linearRampToValueAtTime(0, now + 1.7);
+  whineGain.gain.linearRampToValueAtTime(vol * 0.06, now + 2.2);   // gentle ramp up
+  whineGain.gain.linearRampToValueAtTime(vol * 0.04, now + 3.0);   // sustain
+  whineGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.0);   // slow fade
+  whineOsc.start(now + 1.7); whineOsc.stop(now + 4.1);
+
+  // 4) Static buzz ramping with screen expansion (1.7s – 3.5s)
+  const staticDur = 2.0;
+  const staticBuf = AC.createBuffer(1, Math.ceil(AC.sampleRate * staticDur), AC.sampleRate);
+  const sd = staticBuf.getChannelData(0);
+  for (let i = 0; i < sd.length; i++) sd[i] = Math.random() * 2 - 1;
+  const staticSrc = AC.createBufferSource();
+  const staticGain = AC.createGain();
+  // Bandpass filter to make it sound like CRT static, not pure white noise
+  const staticFilter = AC.createBiquadFilter();
+  staticFilter.type = 'bandpass';
+  staticFilter.frequency.setValueAtTime(3000, now + 1.7);
+  staticFilter.Q.setValueAtTime(0.8, now + 1.7);
+  staticSrc.buffer = staticBuf;
+  staticSrc.connect(staticFilter); staticFilter.connect(staticGain); staticGain.connect(AC.destination);
+  staticGain.gain.setValueAtTime(0, now);
+  staticGain.gain.linearRampToValueAtTime(0, now + 1.7);
+  staticGain.gain.linearRampToValueAtTime(vol * 0.15, now + 2.0);   // ramp up with screen fill
+  staticGain.gain.linearRampToValueAtTime(vol * 0.10, now + 2.5);   // peak during screen fill
+  staticGain.gain.linearRampToValueAtTime(vol * 0.03, now + 3.2);   // fade as picture focuses
+  staticGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.7);
+  staticSrc.start(now + 1.7); staticSrc.stop(now + 3.8);
+
+  // 5) Warm "tube warming up" low resonance (0.9s – 2.5s)
+  const tubeOsc = AC.createOscillator();
+  const tubeGain = AC.createGain();
+  tubeOsc.connect(tubeGain); tubeGain.connect(AC.destination);
+  tubeOsc.type = 'sine';
+  tubeOsc.frequency.setValueAtTime(100, now + 0.9);
+  tubeOsc.frequency.linearRampToValueAtTime(180, now + 2.5);
+  tubeGain.gain.setValueAtTime(0, now);
+  tubeGain.gain.linearRampToValueAtTime(0, now + 0.9);
+  tubeGain.gain.linearRampToValueAtTime(vol * 0.08, now + 1.5);
+  tubeGain.gain.linearRampToValueAtTime(vol * 0.04, now + 2.5);
+  tubeGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
+  tubeOsc.start(now + 0.9); tubeOsc.stop(now + 3.1);
+}
+
 function playBootAnimation(callback) {
   const bootStart = performance.now();
-  const BOOT_DUR = 4200; // slow, sleepy boot
+  const BOOT_DUR = 5000; // slow, sleepy boot — Phase 4 white fade is 2.5s
   let callbackFired = false;
+  playBootSFX();
 
   function bootFrame(now) {
     const t = now - bootStart;
@@ -7100,25 +7534,25 @@ function playBootAnimation(callback) {
       ctx.fillRect(cx - hw, cy - lh, hw * 2, lh * 2);
 
     } else if (t < 2500) {
-      // Phase 3: vertical expansion fills the full screen, then transitions to game
+      // Phase 3: vertical expansion fills the full screen
       const p = (t - 1700) / 800;
       const eased = p * p * (3 - 2 * p);
 
-      // Fire callback right as the fill touches top and bottom edges
-      if (p > 0.72 && !callbackFired) {
+      // Fire callback right as fill reaches the edges (~95% expanded)
+      if (eased > 0.95 && !callbackFired) {
         callbackFired = true;
         callback();
       }
 
-      // Draw the expanding bright fill on black
+      // Draw the expanding bright fill — stays near-white throughout
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, W, H);
-      const hh = eased * (H * 0.5 + 4); // +4 for slight overshoot to ensure full coverage
-      const brightness = 0.95 - eased * 0.65;
+      const hh = eased * (H * 0.5 + 4);
+      const brightness = 0.95 - eased * 0.10; // barely dims: 0.95 → 0.85
       ctx.fillStyle = `rgba(255,248,224,${brightness.toFixed(3)})`;
       ctx.fillRect(0, cy - hh, W, hh * 2);
       // Bloom wash
-      const bloomA = 0.4 * (1 - eased);
+      const bloomA = 0.2 * (1 - eased);
       if (bloomA > 0.01) {
         const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.6);
         wash.addColorStop(0, `rgba(255,220,120,${bloomA.toFixed(3)})`);
@@ -7128,27 +7562,8 @@ function playBootAnimation(callback) {
       }
 
     } else {
-      // Phase 4: dark wash + bloom slowly fade out together as game comes into focus
-      const p = (t - 2500) / 1700;
-      const fade = Math.max(0, 1 - p * p); // quadratic ease-out: 1 → 0
-
-      // Dark overlay — starts heavy, fades to transparent (prevents brightness flash)
-      const darkA = 0.7 * fade;
-      if (darkA > 0.005) {
-        ctx.fillStyle = `rgba(0,0,0,${darkA.toFixed(3)})`;
-        ctx.fillRect(0, 0, W, H);
-      }
-
-      // Warm bloom on top of the dark wash — same fade curve
-      const bloomA = 0.30 * fade;
-      if (bloomA > 0.005) {
-        const wash = ctx.createRadialGradient(cx, cy, W * 0.1, cx, cy, W * 0.9);
-        wash.addColorStop(0, `rgba(255,200,80,${bloomA.toFixed(3)})`);
-        wash.addColorStop(0.5, `rgba(240,160,32,${(bloomA * 0.5).toFixed(3)})`);
-        wash.addColorStop(1, 'rgba(240,160,32,0)');
-        ctx.fillStyle = wash;
-        ctx.fillRect(0, 0, W, H);
-      }
+      // Phase 4: boot animation loop ends — white fade handled by CSS overlay
+      // (see _bootWhiteOverlay created below)
     }
 
     // Apply CRT effects during pre-game phases
@@ -7157,6 +7572,218 @@ function playBootAnimation(callback) {
     requestAnimationFrame(bootFrame);
   }
   requestAnimationFrame(bootFrame);
+}
+
+// ═══════════════════════════════════════════════════════
+// NEON FLICKER BOOT SEQUENCE
+// ═══════════════════════════════════════════════════════
+
+// Neon buzz SFX — small procedural "tzzz" on each flicker-on
+function _neonBuzz(volume) {
+  if (!sfxVolume) return;
+  acResume();
+  const v = (volume || 0.08) * sfxVolume;
+  const freq = 1800 + Math.random() * 2200;
+  const dur = 0.015 + Math.random() * 0.015;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.connect(g); g.connect(AC.destination);
+  o.type = 'square';
+  o.frequency.setValueAtTime(freq, AC.currentTime);
+  g.gain.setValueAtTime(v, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.01);
+  // Tiny noise crackle
+  const buf = AC.createBuffer(1, Math.ceil(AC.sampleRate * 0.012), AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (AC.sampleRate * 0.004));
+  const ns = AC.createBufferSource(), ng = AC.createGain();
+  ns.buffer = buf; ns.connect(ng); ng.connect(AC.destination);
+  ng.gain.setValueAtTime(v * 0.6, AC.currentTime);
+  ng.gain.exponentialRampToValueAtTime(0.0001, AC.currentTime + 0.02);
+  ns.start(); ns.stop(AC.currentTime + 0.03);
+}
+
+// Flicker an element with a neon sign pattern, then apply glow class
+function neonFlickerElement(el, pattern, glowClass, buzzVol) {
+  let i = 0;
+  function step() {
+    if (i >= pattern.length) {
+      // Final: steady ON + glow ramp
+      el.classList.remove('neon-off');
+      el.style.opacity = '1';
+      if (glowClass) el.classList.add(glowClass);
+      return;
+    }
+    const p = pattern[i++];
+    if (p.on) {
+      // Flicker ON
+      el.classList.remove('neon-off');
+      el.style.opacity = '1';
+      _neonBuzz(buzzVol);
+      setTimeout(step, p.on);
+    } else if (p.off) {
+      // Flicker OFF
+      el.classList.add('neon-off');
+      el.style.opacity = '';
+      setTimeout(step, p.off);
+    }
+  }
+  step();
+}
+
+// Power surge living energy — random brightness pulses while menu is visible
+let _powerSurgeTimer = null;
+function startPowerSurge(elements) {
+  stopPowerSurge();
+  function surge() {
+    if (!ov.classList.contains('show')) { _powerSurgeTimer = null; return; }
+    // Pick a random element to brighten
+    const idx = Math.floor(Math.random() * elements.length);
+    const el = elements[idx];
+    if (!el) { scheduleSurge(); return; }
+    el.style.filter = 'brightness(1.15)';
+    const origShadow = el.style.boxShadow || '';
+    if (el.tagName === 'BUTTON') {
+      el.style.boxShadow = '3px 3px 0 #4a2000, 0 0 6px rgba(240,160,32,0.5), 0 0 12px rgba(192,112,16,0.25)';
+    } else {
+      el.style.textShadow = '3px 3px 0 #4a2000, 0 0 8px rgba(240,160,32,0.5), 0 0 16px rgba(240,160,32,0.25)';
+    }
+    _neonBuzz(0.01);
+    // Restore after brief flash
+    const flashDur = 80 + Math.random() * 60;
+    setTimeout(() => {
+      el.style.filter = '';
+      el.style.boxShadow = '';
+      el.style.textShadow = '';
+    }, flashDur);
+
+    // Secondary quick flicker on a different element
+    const idx2 = (idx + 1 + Math.floor(Math.random() * (elements.length - 1))) % elements.length;
+    const el2 = elements[idx2];
+    if (el2) {
+      setTimeout(() => {
+        el2.classList.add('neon-off');
+        setTimeout(() => { el2.classList.remove('neon-off'); _neonBuzz(0.005); }, 20);
+      }, Math.random() * flashDur * 0.5);
+    }
+
+    scheduleSurge();
+  }
+  function scheduleSurge() {
+    const delay = 3000 + Math.random() * 5000; // 3-8 seconds
+    _powerSurgeTimer = setTimeout(surge, delay);
+  }
+  scheduleSurge();
+}
+function stopPowerSurge() {
+  if (_powerSurgeTimer) { clearTimeout(_powerSurgeTimer); _powerSurgeTimer = null; }
+}
+
+let _isFirstBoot = true;
+
+function playNeonBootSequence() {
+  showMenu();
+
+  if (!_isFirstBoot) return; // only flicker on first boot
+  _isFirstBoot = false;
+
+  // Gather all the elements we need to flicker
+  const title = ovTitle;
+  const sub = ovSub;
+  const buttons = [...ov.querySelectorAll('.ob')];
+
+  // Create a white CSS overlay that sits on top of everything and fades slowly
+  // This ensures the white fill persists reliably across both rAF loops
+  let _bootWhite = document.getElementById('_bootWhite');
+  if (!_bootWhite) {
+    _bootWhite = document.createElement('div');
+    _bootWhite.id = '_bootWhite';
+    _bootWhite.style.cssText = 'position:absolute;inset:0;background:#fff8e0;z-index:9999;pointer-events:none;opacity:0.9;transition:none;';
+    document.getElementById('gw').appendChild(_bootWhite);
+  }
+  _bootWhite.style.opacity = '0.9';
+  _bootWhite.style.transition = 'none';
+  _bootWhite.offsetHeight; // force reflow
+  // Start the slow fade after a brief hold
+  setTimeout(() => {
+    _bootWhite.style.transition = 'opacity 3.0s ease-out';
+    _bootWhite.style.opacity = '0';
+    // Remove from DOM after fade completes
+    setTimeout(() => { if (_bootWhite.parentNode) _bootWhite.parentNode.removeChild(_bootWhite); }, 3200);
+  }, 200);
+
+  // Hide everything initially — including the game canvas behind
+  title.classList.add('neon-off');
+  sub.classList.add('neon-off');
+  buttons.forEach(b => b.classList.add('neon-off'));
+
+  // Hide the game canvas (cells) initially — fade in later
+  canvas.style.opacity = '0';
+  canvas.style.transition = 'none';
+
+  // Make overlay visible immediately (children are individually hidden)
+  ov.style.transition = 'none';
+  ov.classList.add('show');
+  ov.style.opacity = '1';
+  ov.offsetHeight; // force reflow
+
+  // Phase 1 (immediate): Title starts dim, flickers on as white fill hits edges
+  const titlePattern = [
+    { on: 60 }, { off: 100 },   // short dim flicker 1
+    { on: 60 }, { off: 80 },    // short dim flicker 2
+    { on: 150 }, { off: 160 },  // medium flicker
+    { on: 999 },                 // steady ON
+  ];
+  title.style.opacity = '0.3';
+  title.style.transition = 'opacity 1.5s ease-in, text-shadow 1.5s ease-in';
+  neonFlickerElement(title, titlePattern, 'neon-glow-title', 0.025);
+  // After flicker completes (~670ms), ramp to full brightness
+  setTimeout(() => {
+    title.style.opacity = '1';
+  }, 700);
+
+  // Phase 2 (delay 1.8s): Entire canvas (cells + HUD + upgrade slots + honey jar) fades in together
+  setTimeout(() => {
+    canvas.style.transition = 'opacity 2.0s ease-in';
+    canvas.style.opacity = '1';
+  }, 1800);
+
+  // Phase 3 (delay 2.8s): Buttons + subtitle power on together
+  setTimeout(() => {
+    // Subtitle flickers
+    const subPattern = [
+      { on: 40 }, { off: 60 },
+      { on: 999 },
+    ];
+    neonFlickerElement(sub, subPattern, 'neon-glow-sub', 0.012);
+
+    // Each button flickers with slightly randomized pattern
+    buttons.forEach((btn, i) => {
+      setTimeout(() => {
+        const flickCount = 2 + Math.floor(Math.random() * 2);
+        const pattern = [];
+        for (let f = 0; f < flickCount; f++) {
+          pattern.push({ on: 30 + Math.random() * 40 });
+          pattern.push({ off: 50 + Math.random() * 60 });
+        }
+        pattern.push({ on: 999 });
+        neonFlickerElement(btn, pattern, 'neon-glow-btn', 0.015 + Math.random() * 0.01);
+      }, i * 50);
+    });
+
+    // Start power surge after elements settle
+    setTimeout(() => {
+      startPowerSurge([title, sub, ...buttons]);
+    }, 1000);
+
+  }, 2800);
+
+  // Reset transitions after full sequence
+  setTimeout(() => {
+    ov.style.transition = '';
+    canvas.style.transition = '';
+    title.style.transition = '';
+  }, 5500);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7171,12 +7798,8 @@ document.addEventListener('visibilitychange', () => {
 });
 
 Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() => {
-  // Slow fade for boot sequence only
-  ov.style.transition = 'opacity 1.4s ease-in';
   playBootAnimation(() => {
-    showMenu();
-    // Reset to instant after boot fade completes
-    setTimeout(() => { ov.style.transition = ''; }, 1500);
+    playNeonBootSequence();
   });
 });
 </script>
