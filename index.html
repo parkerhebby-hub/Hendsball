@@ -106,15 +106,15 @@
   .shop-tile-info { flex:1; min-width:0; }
   .shop-tile-name {
     font-family:'Press Start 2P',monospace;
-    font-size:0.32rem; color:#f0a020;
+    font-size:0.38rem; color:#f0a020;
   }
   .shop-tile-desc {
     font-family:'Press Start 2P',monospace;
-    font-size:0.22rem; color:#806030; margin-top:1px;
+    font-size:0.28rem; color:#806030; margin-top:1px; text-transform:uppercase;
   }
   .shop-tile-cost {
     font-family:'Press Start 2P',monospace;
-    font-size:0.26rem; color:#f5c030;
+    font-size:0.52rem; color:#f5c030;
     flex-shrink:0;
   }
   .shop-dot-label {
@@ -369,6 +369,24 @@
         <button id="toggleHaptics" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
       </div>
     </div>
+    <button id="btnDevOptions" class="ob" style="margin-top:20px;font-size:0.35rem;opacity:0.5;">DEV OPTIONS</button>
+  </div>
+
+  <!-- Passcode Lock Panel -->
+  <div id="devPasscode" class="panel" style="background:rgba(0,0,0,0.92);">
+    <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">ENTER CODE</div>
+    <div id="passcodeSlots" style="display:flex;gap:8px;margin-bottom:24px;"></div>
+    <div id="passcodeKeys" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:180px;"></div>
+    <button id="passcodeBack" class="ob" style="margin-top:16px;font-size:0.35rem;">BACK</button>
+  </div>
+
+  <!-- Developer Menu Panel -->
+  <div id="devPanel" class="panel" style="background:rgba(0,0,0,0.92);">
+    <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">DEV OPTIONS</div>
+    <button id="devInspect" class="ob">INSPECT</button>
+    <button id="devBuilder" class="ob">LEVEL BUILDER</button>
+    <button id="devClearSave" class="ob" style="margin-top:16px;font-size:0.35rem;">CLEAR SAVE</button>
+    <button id="devBack" class="ob" style="margin-top:10px;font-size:0.35rem;">BACK</button>
   </div>
 
   <div id="shopPanel" class="panel">
@@ -1161,44 +1179,44 @@ let lifetimeHoney = 0; // loaded from SaveManager meta
 ;(function() { const m = SaveManager.loadMeta(); lifetimeHoney = m.totalLifetimeHoney || 0; })();
 
 const SKIN_TONES = [
-  { id:'porcelain', name:'PORCELAIN', cost:0, desc:'Lightest shade', base:[240,200,168], light:[255,224,200], shadow:[200,148,106] },
-  { id:'peach',     name:'PEACH',     cost:0, desc:'Default shade',  base:[230,190,148], light:[245,216,188], shadow:[170,120,72]  },
-  { id:'honey',     name:'HONEY',     cost:0, desc:'Warm golden',    base:[200,152,80],  light:[216,176,104], shadow:[144,104,40]  },
-  { id:'caramel',   name:'CARAMEL',   cost:0, desc:'Rich brown',     base:[160,112,64],  light:[184,136,88],  shadow:[112,72,32]   },
-  { id:'espresso',  name:'ESPRESSO',  cost:0, desc:'Deep tone',      base:[112,72,48],   light:[136,96,72],   shadow:[74,40,24]    },
-  { id:'cocoa',     name:'SEYMOUR',   cost:0, desc:'Darkest shade',  base:[80,48,32],    light:[104,72,56],   shadow:[48,24,16]    },
+  { id:'porcelain', name:'PORCELAIN', cost:0, desc:'', base:[240,200,168], light:[255,224,200], shadow:[200,148,106] },
+  { id:'peach',     name:'PEACH',     cost:0, desc:'', base:[230,190,148], light:[245,216,188], shadow:[170,120,72]  },
+  { id:'honey',     name:'HONEY',     cost:0, desc:'', base:[200,152,80],  light:[216,176,104], shadow:[144,104,40]  },
+  { id:'caramel',   name:'CARAMEL',   cost:0, desc:'', base:[160,112,64],  light:[184,136,88],  shadow:[112,72,32]   },
+  { id:'espresso',  name:'ESPRESSO',  cost:0, desc:'', base:[112,72,48],   light:[136,96,72],   shadow:[74,40,24]    },
+  { id:'cocoa',     name:'SEYMOUR',   cost:0, desc:'', base:[80,48,32],    light:[104,72,56],   shadow:[48,24,16]    },
 ];
 const DEFAULT_SKIN = 1; // Peach
 
 const HEND_ACCESSORIES = [
-  { id:'goldRing',       name:'GOLD RING',       cost:0, color:'#d4af37', desc:'Classic gold band' },
-  { id:'silverRing',     name:'SILVER RING',     cost:0, color:'#b0c0d0', desc:'Silver band' },
-  { id:'blackRing',      name:'BLACK RING',      cost:0, color:'#2a2a2a', desc:'Matte black band' },
+  { id:'goldRing',       name:'GOLD RING',       cost:0, color:'#d4af37', desc:'' },
+  { id:'silverRing',     name:'SILVER RING',     cost:0, color:'#b0c0d0', desc:'' },
+  { id:'blackRing',      name:'BLACK RING',      cost:0, color:'#2a2a2a', desc:'' },
 ];
 
 const BEE_SKINS = [
-  { id:'classic', name:'CLASSIC',  cost:0, tint:null,                     desc:'Default bee' },
-  { id:'royal',   name:'ROYAL',    cost:0, tint:'rgba(180,140,255,0.35)', desc:'Purple royalty' },
-  { id:'neon',    name:'NEON',     cost:0, tint:'rgba(60,255,80,0.30)',   desc:'Toxic green' },
-  { id:'shadow',  name:'SHADOW',   cost:0, tint:'rgba(60,40,80,0.45)',    desc:'Dark spectre' },
-  { id:'crystal', name:'CRYSTAL',  cost:0, tint:'rgba(140,220,255,0.30)', desc:'Ice blue' },
-  { id:'inferno', name:'INFERNO',  cost:0, tint:'rgba(255,100,30,0.40)',  desc:'Fire ember' },
+  { id:'classic', name:'CLASSIC',  cost:0, tint:null,                     desc:'' },
+  { id:'royal',   name:'ROYAL',    cost:0, tint:'rgba(180,140,255,0.85)', desc:'' },
+  { id:'neon',    name:'NEON',     cost:0, tint:'rgba(60,255,80,0.85)',   desc:'' },
+  { id:'shadow',  name:'SHADOW',   cost:0, tint:'rgba(60,40,80,0.85)',    desc:'' },
+  { id:'crystal', name:'CRYSTAL',  cost:0, tint:'rgba(140,220,255,0.85)', desc:'' },
+  { id:'inferno', name:'INFERNO',  cost:0, tint:'rgba(255,100,30,0.85)',  desc:'' },
 ];
 
 const BEE_TRACERS = [
-  { id:'classic',   name:'CLASSIC',   cost:0, color:'rgba(180,180,180,', desc:'Default trail' },
-  { id:'honeyDrip', name:'HONEY DRIP',cost:0, color:'rgba(245,192,48,',  desc:'Golden droplets' },
-  { id:'stardust',  name:'STARDUST',  cost:0, color:'rgba(255,240,180,', desc:'Sparkle trail' },
-  { id:'neon',      name:'NEON',      cost:0, color:'rgba(80,255,120,',  desc:'Glow trail' },
-  { id:'rainbow',   name:'RAINBOW',   cost:0, color:null,               desc:'HSL rainbow' },
-  { id:'smoky',     name:'SHADOW',    cost:0, color:'rgba(40,20,60,',    desc:'Dark smoke' },
+  { id:'classic',   name:'CLASSIC',   cost:0, color:'rgba(180,180,180,', desc:'' },
+  { id:'honeyDrip', name:'HONEY DRIP',cost:0, color:'rgba(245,192,48,',  desc:'' },
+  { id:'stardust',  name:'STARDUST',  cost:0, color:'rgba(255,240,180,', desc:'' },
+  { id:'neon',      name:'NEON',      cost:0, color:'rgba(80,255,120,',  desc:'' },
+  { id:'rainbow',   name:'RAINBOW',   cost:0, color:null,               desc:'' },
+  { id:'smoky',     name:'SHADOW',    cost:0, color:'rgba(40,20,60,',    desc:'' },
 ];
 
 // ── Hend Skins (full sprite overrides) ──
 // Note: use 0 for empty cells (not _ variable, which is declared later for BEE_G)
 const HEND_SKINS = [
   { id:'none', name:'DEFAULT', cost:0, desc:'Natural hend', color:'#ddb870', grid:null },
-  { id:'classic', name:'CLASSIC', cost:0, desc:'Red pattern', color:'#e04030',
+  { id:'classic', name:'CLASSIC', cost:0, desc:'Retro paddle', color:'#e04030',
     grid:[
       ['#a02020','#c03030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#e04030','#c03030','#a02020'],
       ['#c03030','#e04030','#f06050','#e04030','#f06050','#e04030','#f06050','#e04030','#f06050','#e04030','#c03030'],
@@ -1403,7 +1421,7 @@ function generateSkinTones() {
 let beeFrames = [];      // array of Image objects [HI, MID, LOW, LOWEST]
 let beeFrameSeq = [0, 1, 2, 3, 2, 1]; // HI, MID, LOW, LOWEST, LOW, MID
 let beeFrameTick = 0;
-const BEE_FLAP_SPEED = 8; // frames per flap step (lower = faster)
+const BEE_FLAP_SPEED = 5; // frames per flap step (lower = faster)
 
 function loadBeeSprites() {
   const names = ['1-HI-FLIGHT.png', '2-MID-FLIGHT.png', '3-LOW-FLIGHT.png', '4-LOWEST-FLIGHT.png'];
@@ -2039,10 +2057,19 @@ let touchX = null;
 let touchX2 = null;          // second hend (split mode only)
 let touchIdLeft = null;      // finger identifier for left hend
 let touchIdRight = null;     // finger identifier for right hend
+let touchIdPaddle = null;    // finger controlling paddle in single-hend mode
 
 function getCanvasX(touch) {
   const r = canvas.getBoundingClientRect();
   return (touch.clientX - r.left) * (canvas.width / r.width);
+}
+function getCanvasY(touch) {
+  const r = canvas.getBoundingClientRect();
+  return (touch.clientY - r.top) * (canvas.height / r.height);
+}
+// Touch in the bottom 40% of screen → paddle zone
+function isInPaddleZone(touch) {
+  return getCanvasY(touch) >= H * 0.6;
 }
 
 // Is split hend active this frame? Requires setting ON + upgrade acquired
@@ -2063,10 +2090,11 @@ canvas.addEventListener('touchstart', e => {
     return;
   }
   if (isSplitActive()) {
-    // Assign new touches to left or right hend by screen position
+    // Assign new touches to left or right hend by screen position (only in paddle zone)
     const r = canvas.getBoundingClientRect();
     const midScreen = r.left + r.width / 2;
     for (const t of e.changedTouches) {
+      if (!isInPaddleZone(t)) continue; // above paddle zone → UI tap only
       if (t.clientX < midScreen && touchIdLeft === null) {
         touchIdLeft = t.identifier;
         touchX = getCanvasX(t);
@@ -2082,7 +2110,13 @@ canvas.addEventListener('touchstart', e => {
       }
     }
   } else {
-    touchX = getCanvasX(e.touches[0]);
+    // Single-hend mode: only grab paddle if touch is in paddle zone
+    const t = e.changedTouches[0];
+    if (isInPaddleZone(t) && touchIdPaddle === null) {
+      touchIdPaddle = t.identifier;
+      touchX = getCanvasX(t);
+    }
+    // Touches outside paddle zone are left for handleCanvasTap (upgrades/pause)
   }
 }, {passive:false});
 
@@ -2103,12 +2137,15 @@ canvas.addEventListener('touchmove', e => {
       if (t.identifier === touchIdRight) touchX2 = getCanvasX(t);
     }
   } else {
-    touchX = getCanvasX(e.touches[0]);
+    // Only update paddle for the finger that owns it
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchIdPaddle) { touchX = getCanvasX(t); break; }
+    }
   }
 }, {passive:false});
 
 canvas.addEventListener('touchend', e => {
-  if (!isGameRunning()) { touchX = null; touchX2 = null; touchIdLeft = null; touchIdRight = null; return; }
+  if (!isGameRunning()) { touchX = null; touchX2 = null; touchIdLeft = null; touchIdRight = null; touchIdPaddle = null; return; }
   e.preventDefault();
   if (inspectorMode) { inspectorTouchY = null; return; }
   if (isSplitActive()) {
@@ -2117,7 +2154,10 @@ canvas.addEventListener('touchend', e => {
       if (t.identifier === touchIdRight) { touchX2 = null; touchIdRight = null; }
     }
   } else {
-    touchX = e.touches.length ? getCanvasX(e.touches[0]) : null;
+    // Only release paddle when the paddle finger lifts
+    for (const t of e.changedTouches) {
+      if (t.identifier === touchIdPaddle) { touchX = null; touchIdPaddle = null; break; }
+    }
   }
 }, {passive:false});
 
@@ -2242,9 +2282,12 @@ function drawHand(ox, oy, side, targetW) {
     const cellW = dw / cols;
     const cellH = cellW; // square cells
     const totalH = rows * cellH;
+    // Bottom-align grid with the sprite area so it sits on the collision zone
+    const spriteH = getHandSpriteH(dw);
+    const yOff = spriteH - totalH; // push grid down to bottom of sprite area
     ctx.save();
     if (isLeft) {
-      ctx.translate(Math.round(ox) + dw, Math.round(oy));
+      ctx.translate(Math.round(ox) + dw, Math.round(oy + yOff));
       ctx.scale(-1, 1);
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < hskin.grid[r].length; c++) {
@@ -2260,7 +2303,7 @@ function drawHand(ox, oy, side, targetW) {
           const col = hskin.grid[r][c];
           if (!col) continue;
           ctx.fillStyle = col;
-          ctx.fillRect(Math.round(ox) + Math.floor(c * cellW), Math.round(oy) + Math.floor(r * cellH), Math.ceil(cellW) + 1, Math.ceil(cellH) + 1);
+          ctx.fillRect(Math.round(ox) + Math.floor(c * cellW), Math.round(oy + yOff) + Math.floor(r * cellH), Math.ceil(cellW) + 1, Math.ceil(cellH) + 1);
         }
       }
     }
@@ -2292,12 +2335,8 @@ function drawHand(ox, oy, side, targetW) {
         ctx.fillStyle = 'rgba(20,15,10,0.75)';
         ctx.fillText('BEE>i', dw * 0.5, dh * 0.75);
       }
-      // Counter-flip so accessories don't mirror
-      ctx.save();
-      ctx.scale(-1, 1);
-      ctx.translate(-dw, 0);
+      // Draw accessory in the same flipped space as the hand (matches shop preview)
       drawAccessory(0, 0, dw, dh, -1);
-      ctx.restore();
     } else {
       ctx.drawImage(skinCanvas, Math.round(ox), Math.round(oy), dw, dh);
       // BEE>i wrist tattoo
@@ -2340,8 +2379,8 @@ function drawAccessory(ox, oy, dw, dh, side) {
   const acc = HEND_ACCESSORIES.find(a => a.id === selectedAccessory);
   if (!acc) return;
 
-  // Ring finger position — shifted down 1px and toward pinky 2px
-  const rx = ox + dw * 0.50 - 2, ry = oy + dh * 0.28 + 1;
+  // Ring finger position — proportional offsets so position scales with sprite size
+  const rx = ox + dw * 0.47, ry = oy + dh * 0.30 + 1;
   const rw = dw * 0.06, rh = dh * 0.035;
   const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
   const col = colors[acc.id];
@@ -2350,7 +2389,6 @@ function drawAccessory(ox, oy, dw, dh, side) {
   ctx.strokeStyle = col;
   ctx.lineWidth = Math.max(2, dw * 0.030);
   ctx.beginPath();
-  // Draw only the visible top arc — implies ring wraps behind finger
   ctx.ellipse(rx, ry, rw, rh, 0, Math.PI, Math.PI * 2);
   ctx.stroke();
 }
@@ -2509,20 +2547,24 @@ function drawBee(b) {
     const hasTint = needsBeeRTint || (bskin && bskin.tint && lifetimeHoney >= bskin.cost);
 
     if (hasTint) {
-      // Draw bee + tint on offscreen canvas to avoid source-atop bleeding
+      // Draw bee + tint on offscreen canvas — color blend preserves luminance (black stays black)
       const ow = Math.ceil(dw) + 2, oh = Math.ceil(dh) + 2;
       if (_beeOffCvs.width !== ow || _beeOffCvs.height !== oh) {
         _beeOffCvs.width = ow; _beeOffCvs.height = oh;
       }
       _beeOffCtx.clearRect(0, 0, ow, oh);
       _beeOffCtx.drawImage(img, 1, 1, dw, dh);
-      _beeOffCtx.globalCompositeOperation = 'source-atop';
+      // Color blend: replaces hue/saturation, preserves luminance — black stays black, yellow becomes tint colour
+      _beeOffCtx.globalCompositeOperation = 'color';
       if (needsBeeRTint) {
         _beeOffCtx.fillStyle = 'rgba(60,180,70,0.45)';
       } else {
         _beeOffCtx.fillStyle = bskin.tint;
       }
       _beeOffCtx.fillRect(0, 0, ow, oh);
+      // Clip back to original bee shape (discard tint outside bee pixels)
+      _beeOffCtx.globalCompositeOperation = 'destination-in';
+      _beeOffCtx.drawImage(img, 1, 1, dw, dh);
       _beeOffCtx.globalCompositeOperation = 'source-over';
       // Stamp offscreen result onto main canvas
       ctx.drawImage(_beeOffCvs, -dw/2 - 1, -dh/2 - 1);
@@ -3281,9 +3323,55 @@ function drawBGScanlines() {
 
 // ── CRT Post-Processing Filter ──────────────────────────────────
 let _crtScanY = 0; // scrolling refresh band position
+let _crtBarrelCvs = null;
+let _crtBarrelCtx = null;
 function drawCRT(intensity) {
   if (intensity <= 0) return;
   ctx.save();
+
+  // 0) Barrel distortion — two-pass (horiz + vert) for even radial curvature
+  if (intensity > 0.1) {
+    const strength = 0.015 * intensity; // max ~1.5% distortion at full intensity
+    const H_STRIPS = 48;
+    const V_STRIPS = 64;
+    // Lazy-init offscreen buffer
+    if (!_crtBarrelCvs || _crtBarrelCvs.width !== W || _crtBarrelCvs.height !== H) {
+      _crtBarrelCvs = document.createElement('canvas');
+      _crtBarrelCvs.width = W;
+      _crtBarrelCvs.height = H;
+      _crtBarrelCtx = _crtBarrelCvs.getContext('2d');
+    }
+    // Pass 1: horizontal barrel — scale strip widths based on vertical position
+    _crtBarrelCtx.clearRect(0, 0, W, H);
+    _crtBarrelCtx.drawImage(canvas, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const stripH = H / H_STRIPS;
+    for (let i = 0; i < H_STRIPS; i++) {
+      const dy = (i + 0.5) / H_STRIPS - 0.5;     // -0.5..+0.5
+      const scale = 1 + strength * (1 - 4 * dy * dy);
+      const srcY = Math.round(i * stripH);
+      const srcH = Math.round((i + 1) * stripH) - srcY;
+      if (srcH <= 0) continue;
+      const dstW = W * scale;
+      const dstX = (W - dstW) / 2;
+      ctx.drawImage(_crtBarrelCvs, 0, srcY, W, srcH, dstX, srcY, dstW, srcH);
+    }
+    // Pass 2: vertical barrel — scale strip heights based on horizontal position
+    _crtBarrelCtx.clearRect(0, 0, W, H);
+    _crtBarrelCtx.drawImage(canvas, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    const stripW = W / V_STRIPS;
+    for (let i = 0; i < V_STRIPS; i++) {
+      const dx = (i + 0.5) / V_STRIPS - 0.5;     // -0.5..+0.5
+      const scale = 1 + strength * (1 - 4 * dx * dx);
+      const srcX = Math.round(i * stripW);
+      const srcW = Math.round((i + 1) * stripW) - srcX;
+      if (srcW <= 0) continue;
+      const dstH = H * scale;
+      const dstY = (H - dstH) / 2;
+      ctx.drawImage(_crtBarrelCvs, srcX, 0, srcW, H, srcX, dstY, srcW, dstH);
+    }
+  }
 
   // 1) Scanlines — every 2nd row darkened
   ctx.fillStyle = `rgba(0,0,0,${(0.18 * intensity).toFixed(3)})`;
@@ -3298,18 +3386,23 @@ function drawCRT(intensity) {
     ctx.globalCompositeOperation = 'source-over';
   }
 
-  // 3) Scrolling refresh band — bright line that drifts down like a real CRT
-  _crtScanY = (_crtScanY + 1.2) % H;
-  const bandH = 60;
-  const bandAlpha = 0.18 * intensity;
+  // 3) Scrolling refresh band — bright band that drifts down like a real CRT
+  _crtScanY = (_crtScanY + 0.75) % H;
+  const bandH = 90;
+  const bandAlpha = 0.70 * intensity;
   const bg = ctx.createLinearGradient(0, _crtScanY - bandH, 0, _crtScanY + bandH);
   bg.addColorStop(0, 'rgba(255,255,255,0)');
-  bg.addColorStop(0.4, `rgba(255,255,255,${(bandAlpha * 0.5).toFixed(3)})`);
+  bg.addColorStop(0.3, `rgba(255,255,255,${(bandAlpha * 0.3).toFixed(3)})`);
+  bg.addColorStop(0.45, `rgba(255,255,255,${(bandAlpha * 0.7).toFixed(3)})`);
   bg.addColorStop(0.5, `rgba(255,255,255,${bandAlpha.toFixed(3)})`);
-  bg.addColorStop(0.6, `rgba(255,255,255,${(bandAlpha * 0.5).toFixed(3)})`);
+  bg.addColorStop(0.55, `rgba(255,255,255,${(bandAlpha * 0.7).toFixed(3)})`);
+  bg.addColorStop(0.7, `rgba(255,255,255,${(bandAlpha * 0.3).toFixed(3)})`);
   bg.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = bg;
   ctx.fillRect(0, _crtScanY - bandH, W, bandH * 2);
+  // Thin bright core line at center of band for sharpness
+  ctx.fillStyle = `rgba(255,255,255,${(0.24 * intensity).toFixed(3)})`;
+  ctx.fillRect(0, _crtScanY - 1, W, 2);
 
   // 4) Slight screen curvature highlight — thin bright line at top
   if (intensity > 0.2) {
@@ -3324,7 +3417,7 @@ function drawCRT(intensity) {
   // 5) Rounded corner vignette — dark corners mimicking CRT tube curvature
   {
     const r = 38 * intensity;  // corner radius scales with CRT intensity
-    const a = 0.85 * intensity; // max darkness at corners
+    const a = 0.55 * intensity; // max darkness at corners
     // Draw four corner shadows using radial gradients
     const corners = [[0, 0], [W, 0], [0, H], [W, H]];
     for (const [cx, cy] of corners) {
@@ -3335,6 +3428,23 @@ function drawCRT(intensity) {
       ctx.fillStyle = rg;
       const sz = r * 2.5;
       ctx.fillRect(cx === 0 ? 0 : W - sz, cy === 0 ? 0 : H - sz, sz, sz);
+    }
+    // Edge darkening — subtle gradient along left and right edges
+    if (intensity > 0.2) {
+      const edgeA = 0.08 * intensity;
+      const edgeW = W * 0.08;
+      // Left edge
+      const lg = ctx.createLinearGradient(0, 0, edgeW, 0);
+      lg.addColorStop(0, `rgba(0,0,0,${edgeA.toFixed(3)})`);
+      lg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = lg;
+      ctx.fillRect(0, 0, edgeW, H);
+      // Right edge
+      const rg2 = ctx.createLinearGradient(W, 0, W - edgeW, 0);
+      rg2.addColorStop(0, `rgba(0,0,0,${edgeA.toFixed(3)})`);
+      rg2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = rg2;
+      ctx.fillRect(W - edgeW, 0, edgeW, H);
     }
   }
 
@@ -3753,14 +3863,14 @@ function drawUpgradeBanner() {
       remaining = remaining.substring(split).trimStart();
     }
     const descLines = Math.min(lines.length, 3);
-    const nameH = 10;               // name font height
+    const nameH = 8;                // name font height
     const descLineH = 9;            // desc line spacing
     const gapBetween = 4;           // gap between name and desc
     const totalTextH = nameH + gapBetween + descLines * descLineH;
     const textTopY = btnY + (btnH - totalTextH) / 2;
 
-    // Upgrade name — large bold
-    ctx.font = '10px "Press Start 2P",monospace';
+    // Upgrade name — bold, sized to fit
+    ctx.font = '8px "Press Start 2P",monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#f0c020';
     ctx.fillText(pu.name, btnX + textLeft, textTopY);
@@ -4040,8 +4150,113 @@ const STRUCTURES = [
       }
     },
   },
-  // TODO: QUEEN_CHAMBER  — fortified center cluster, minDepth: 8
-  // TODO: SECRET_ROOM    — hollow cavity ringed by wax, minDepth: 5
+  {
+    // HONEY VAULT — ring of HONEY cells inside UNBREAKABLE walls, portal center + exit portal
+    // Designed in Level Builder, exported 2026-03-18
+    // All positions snapped to the actual hex grid to prevent overlaps
+    id: 'HONEY_VAULT', minDepth: 3, weight: 5,
+    stamp(hexMap, rng) {
+      const rowH = HEX_R * Math.sqrt(3);
+      const colW = HEX_R * 1.5;
+
+      // Snap any world position to the nearest valid hex grid position
+      function snapToGrid(wx, wy) {
+        let bestX = wx, bestY = wy, bestD = Infinity;
+        // Check nearby columns
+        const colApprox = Math.round((wx - HEX_R) / colW);
+        for (let dc = -1; dc <= 1; dc++) {
+          const col = colApprox + dc;
+          const gx = HEX_R + col * colW;
+          const yOff = (col & 1) ? rowH * 0.5 : 0;
+          const rowApprox = Math.round((wy - yOff) / rowH);
+          for (let dr = -1; dr <= 1; dr++) {
+            const gy = yOff + (rowApprox + dr) * rowH;
+            const d = Math.hypot(gx - wx, gy - wy);
+            if (d < bestD) { bestD = d; bestX = gx; bestY = gy; }
+          }
+        }
+        return { x: bestX, y: bestY };
+      }
+
+      // Anchor: use a grid-snapped cell near horizontal center of chunk
+      const vals = [...hexMap.values()];
+      if (vals.length === 0) return;
+      // Find the cell closest to canvas center-X
+      let anchorCell = vals[0];
+      let anchorDist = Math.abs(vals[0].x - W / 2);
+      for (const h of vals) {
+        const d = Math.abs(h.x - W / 2);
+        if (d < anchorDist) { anchorDist = d; anchorCell = h; }
+      }
+      const anchorX = anchorCell.x;
+      const anchorY = anchorCell.y;
+
+      // Blueprint: raw pixel offsets from original design center (x=180, y=374.12)
+      const rawBlueprint = [
+        // UNBREAKABLE outer ring (18 cells)
+        [0, 93.53, 'UNBREAKABLE'], [81, 46.77, 'UNBREAKABLE'],
+        [-81, 46.77, 'UNBREAKABLE'], [-81, -46.77, 'UNBREAKABLE'],
+        [0, -93.53, 'UNBREAKABLE'], [81, -46.77, 'UNBREAKABLE'],
+        [81, -15.59, 'UNBREAKABLE'], [81, 15.59, 'UNBREAKABLE'],
+        [54, 62.35, 'UNBREAKABLE'], [27, 77.94, 'UNBREAKABLE'],
+        [-27, 77.94, 'UNBREAKABLE'], [-54, 62.35, 'UNBREAKABLE'],
+        [-81, 15.59, 'UNBREAKABLE'], [-81, -15.59, 'UNBREAKABLE'],
+        [-54, -62.35, 'UNBREAKABLE'], [-27, -77.94, 'UNBREAKABLE'],
+        [27, -77.94, 'UNBREAKABLE'], [54, -62.35, 'UNBREAKABLE'],
+        // HONEY inner ring (12 cells)
+        [-54, 31.18, 'HONEY'], [-54, 0, 'HONEY'], [-54, -31.18, 'HONEY'],
+        [-27, -46.77, 'HONEY'], [0, -62.35, 'HONEY'], [27, -46.77, 'HONEY'],
+        [54, -31.18, 'HONEY'], [54, 0, 'HONEY'], [54, 31.18, 'HONEY'],
+        [27, 46.77, 'HONEY'], [0, 62.35, 'HONEY'], [-27, 46.77, 'HONEY'],
+        // Center portal
+        [0, 0, 'PORTAL'],
+        // Exit portal (offset outside the ring)
+        [108, 124.71, 'PORTAL'],
+      ];
+
+      // Snap each blueprint cell to the nearest grid position
+      const snapped = [];
+      const usedKeys = new Set();
+      for (const [dx, dy, type] of rawBlueprint) {
+        const s = snapToGrid(anchorX + dx, anchorY + dy);
+        const key = `${Math.round(s.x)},${Math.round(s.y)}`;
+        if (!usedKeys.has(key)) { // prevent duplicate grid positions
+          usedKeys.add(key);
+          snapped.push({ x: s.x, y: s.y, type, key });
+        }
+      }
+
+      // 1) Clear exclusion zone — remove ALL existing cells near the design
+      const clearRadius = 120;
+      for (const [k, h] of hexMap) {
+        if (Math.hypot(h.x - anchorX, h.y - anchorY) < clearRadius) {
+          hexMap.delete(k);
+        }
+      }
+
+      // 2) Inject blueprint cells at grid-snapped positions
+      for (const cell of snapped) {
+        hexMap.set(cell.key, {
+          x: cell.x, y: cell.y, dead: false, flash: 0,
+          type: cell.type, hp: CELL_TYPES[cell.type].hp,
+          ci: Math.floor(rng() * 5),
+          _blueprint: true,
+        });
+      }
+
+      // 3) Downgrade specials in buffer zone — only NORMAL/THICK/HONEY allowed nearby
+      const bufferRadius = 150;
+      const safeTypes = new Set(['NORMAL', 'THICK', 'HONEY']);
+      for (const h of hexMap.values()) {
+        if (h._blueprint) continue;
+        if (Math.hypot(h.x - anchorX, h.y - anchorY) < bufferRadius) {
+          if (!safeTypes.has(h.type)) {
+            h.type = 'NORMAL'; h.hp = CELL_TYPES.NORMAL.hp;
+          }
+        }
+      }
+    },
+  },
   {
     id: 'BARRIER_WALL', minDepth: 6, weight: 8,
     stamp(hexMap, rng) {
@@ -4152,28 +4367,38 @@ function spawnChunk(chunkTop, depth, seed) {
   }
 
   // Post-roll spacing enforcement: downgrade specials that are too close together
+  // Skip blueprint cells (marked with _blueprint flag)
   for (const h of hexMap.values()) {
+    if (h._blueprint) continue;
     if (!SPECIAL_TYPES.has(h.type)) continue;
     const minD = h.type === 'PORTAL'  ? MIN_PORTAL_DIST
                : h.type === 'BOMB'    ? MIN_BOMB_DIST
                : h.type === 'CHARGED' ? MIN_CHARGED_DIST
                : MIN_SPECIAL_DIST;
-    // Check against all previously-seen specials of same type
     for (const other of hexMap.values()) {
       if (other === h || other.type !== h.type) continue;
       if (hexDist(h, other) < minD) {
-        // Downgrade this one to NORMAL (keep the earlier one)
         h.type = 'NORMAL'; h.hp = CELL_TYPES.NORMAL.hp;
         break;
       }
     }
   }
 
-  // Stamps (skip portal stamps near boss gates)
-  const eligible   = STRUCTURES.filter(s => s.minDepth <= depth && !(nearBossGate && s.id === 'PORTAL_PAIR'));
+  // Procedural stamps (skip custom blueprints + portal stamps near boss gates)
+  const CUSTOM_STAMPS = new Set(['HONEY_VAULT']);
+  const eligible = STRUCTURES.filter(s =>
+    s.minDepth <= depth && !CUSTOM_STAMPS.has(s.id) &&
+    !(nearBossGate && s.id === 'PORTAL_PAIR'));
   const stampCount = eligible.length > 0 ? 1 + Math.floor(rng() * 2) : 0;
   for (let si = 0; si < stampCount && si < eligible.length; si++) {
     eligible[Math.floor(rng() * eligible.length)].stamp(hexMap, rng);
+  }
+
+  // Custom blueprint stamps run LAST so they override everything
+  // Guarantee a HONEY_VAULT spawns once at depth 2 (early game)
+  if (depth === 2) {
+    const vault = STRUCTURES.find(s => s.id === 'HONEY_VAULT');
+    if (vault) vault.stamp(hexMap, rng);
   }
 
   // Guarantee a CHARGED cell around depth 30 (chunk depth 6) for an early boost
@@ -4193,10 +4418,14 @@ function spawnChunk(chunkTop, depth, seed) {
   }
 
   // Pair portals within this chunk (globally unique channels)
+  // Never downgrade blueprint portals — only remove non-blueprint ones if odd count
   const portals = newHexes.filter(h => h.type === 'PORTAL');
   if (portals.length % 2 !== 0 && portals.length > 0) {
-    portals[portals.length - 1].type = 'NORMAL';
-    portals[portals.length - 1].hp   = CELL_TYPES.NORMAL.hp;
+    const nonBP = portals.filter(p => !p._blueprint);
+    if (nonBP.length > 0) {
+      nonBP[nonBP.length - 1].type = 'NORMAL';
+      nonBP[nonBP.length - 1].hp   = CELL_TYPES.NORMAL.hp;
+    }
   }
   const paired = newHexes.filter(h => h.type === 'PORTAL');
   for (let i = 0; i < paired.length; i += 2) {
@@ -4441,10 +4670,31 @@ function startLevel(lvl) {
 let lastTime = 0;
 let dt = 1/60; // delta time in seconds, default one frame
 
+// Lightweight CRT-only animation loop — keeps scan line rolling when paused
+let _crtLoopId = 0;
+function _crtPausedLoop() {
+  if (!paused && !gameOver) { _crtLoopId = 0; return; } // main loop resumed
+  if (crtIntensity > 0) {
+    render();  // redraw the static scene so CRT overlay updates
+  }
+  _crtLoopId = requestAnimationFrame(_crtPausedLoop);
+}
+function _startCrtLoop() {
+  if (_crtLoopId || crtIntensity <= 0) return;
+  _crtLoopId = requestAnimationFrame(_crtPausedLoop);
+}
+
 function loop(ts=0) {
-  if (gameOver && !inspectorMode) return;
+  if (gameOver && !inspectorMode) {
+    _startCrtLoop(); // keep CRT rolling on game-over screen
+    return;
+  }
   // Hard-stop for manual pause; keep running during picker transition
-  if (paused && !pickerTransition) return;
+  if (paused && !pickerTransition) {
+    _startCrtLoop(); // keep CRT rolling while paused
+    return;
+  }
+  if (_crtLoopId) { cancelAnimationFrame(_crtLoopId); _crtLoopId = 0; }
   dt = Math.min((ts - lastTime) / 1000, 1/20); // cap at 50ms to avoid spiral
   if (lastTime === 0) dt = 1/60; // first frame
   lastTime = ts;
@@ -5680,29 +5930,6 @@ function hidePause() { pausePanel.classList.remove('show'); }
   shopBtn.onclick = () => { hidePause(); showShop('pause'); };
   container.appendChild(shopBtn);
 
-  const ib = document.createElement('button');
-  ib.className = 'ob';
-  ib.textContent = 'INSPECT';
-  ib.onclick = () => {
-    inspectorMode = true;
-    inspectorTouchY = null;
-    hidePause();
-    paused = false;
-    lastTime = 0;
-    loop();
-  };
-  container.appendChild(ib);
-
-  const csb = document.createElement('button');
-  csb.className = 'ob';
-  csb.textContent = 'CLEAR SAVE';
-  csb.onclick = () => {
-    SaveManager.clearAll();
-    csb.textContent = 'CLEARED \u2713';
-    setTimeout(() => { csb.textContent = 'CLEAR SAVE'; }, 1500);
-  };
-  container.appendChild(csb);
-
   pausePanel.appendChild(container);
 
   // BACK button at top of pause panel (below title), only visible in guide view
@@ -5757,14 +5984,13 @@ function showMenu() {
   }
   mkBtn('PLAY', !hasSave, () => {
     hideOv();
-    // Stop demo loop, exit demo mode
     if (animId) cancelAnimationFrame(animId);
     demoMode = false; menuBGActive = false;
     SaveManager.clearRun(); resetRun(); startLevel(1);
   });
+  mkBtn('SHOP',     false, ()=>{hideOv(); showShop('menu');});
   mkBtn('GUIDE',    false, ()=>{showPause(true);});
   mkBtn('SETTINGS', false, ()=>{hideOv(); showSettings('menu');});
-  mkBtn('SHOP',     false, ()=>{hideOv(); showShop('menu');});
   showOv();
   // Start attract-mode demo: real gameplay behind the title screen
   if (animId) cancelAnimationFrame(animId);
@@ -5821,9 +6047,11 @@ const sliderCRT = document.getElementById('sliderCRT');
 const gwEl = document.getElementById('gw');
 sliderCRT.value = Math.round(crtIntensity * 100);
 gwEl.style.setProperty('--crt', crtIntensity);
+document.getElementById('c').style.borderRadius = crtIntensity > 0 ? (8 * crtIntensity) + 'px' : '';
 sliderCRT.addEventListener('input', () => {
   crtIntensity = sliderCRT.value / 100;
   gwEl.style.setProperty('--crt', crtIntensity);
+  document.getElementById('c').style.borderRadius = crtIntensity > 0 ? (8 * crtIntensity) + 'px' : '';
   localStorage.setItem('hendsbee_crt', crtIntensity);
 });
 
@@ -5832,6 +6060,519 @@ function showSettings(returnTo) {
   settingsPanel.classList.add('show');
 }
 function hideSettings() { settingsPanel.classList.remove('show'); }
+
+// ═══════════════════════════════════════════════════════
+// DEVELOPER OPTIONS — Passcode + Dev Menu + Level Builder
+// ═══════════════════════════════════════════════════════
+let devUnlocked = false;
+let levelBuilderMode = false;
+let builderSelectedType = 'NORMAL';
+let builderHexes = [];
+let builderScrollY = 0;
+let builderTouchY = null;
+let _builderAnimId = 0;
+
+// Passcode system
+const DEV_CODE = '612833';
+let _passcodeDigits = [];
+
+function _buildPasscodeUI() {
+  const slots = document.getElementById('passcodeSlots');
+  const keys = document.getElementById('passcodeKeys');
+  slots.innerHTML = '';
+  keys.innerHTML = '';
+  // 6 digit slots
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    s.style.cssText = 'width:28px;height:36px;border:2px solid #f0a020;border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.5rem;color:#f5d040;background:#120700;';
+    s.id = 'pcSlot' + i;
+    slots.appendChild(s);
+  }
+  // Number keys 1-9, then 0
+  for (let n = 1; n <= 9; n++) _mkKey(keys, n);
+  _mkKey(keys, null); // spacer
+  _mkKey(keys, 0);
+  // Delete key
+  const del = document.createElement('button');
+  del.className = 'ob';
+  del.style.cssText = 'font-size:0.3rem;padding:8px;min-width:0;margin:0;';
+  del.textContent = '⌫';
+  del.onclick = () => { if (_passcodeDigits.length > 0) { _passcodeDigits.pop(); _updateSlots(); } };
+  keys.appendChild(del);
+}
+
+function _mkKey(container, n) {
+  if (n === null) { const sp = document.createElement('div'); container.appendChild(sp); return; }
+  const b = document.createElement('button');
+  b.className = 'ob';
+  b.style.cssText = 'font-size:0.4rem;padding:8px;min-width:0;margin:0;';
+  b.textContent = String(n);
+  b.onclick = () => {
+    if (_passcodeDigits.length >= 6) return;
+    _passcodeDigits.push(n);
+    _updateSlots();
+    if (_passcodeDigits.length === 6) {
+      const entered = _passcodeDigits.join('');
+      if (entered === DEV_CODE) {
+        devUnlocked = true;
+        document.getElementById('devPasscode').classList.remove('show');
+        showDevMenu();
+      } else {
+        // Wrong code — flash red and clear
+        const slots = document.getElementById('passcodeSlots');
+        slots.style.transition = 'none';
+        slots.style.outline = '2px solid #ff2020';
+        setTimeout(() => { slots.style.outline = ''; _passcodeDigits = []; _updateSlots(); }, 400);
+      }
+    }
+  };
+  container.appendChild(b);
+}
+
+function _updateSlots() {
+  for (let i = 0; i < 6; i++) {
+    const s = document.getElementById('pcSlot' + i);
+    s.textContent = i < _passcodeDigits.length ? '●' : '';
+  }
+}
+
+function showPasscode() {
+  _passcodeDigits = [];
+  _buildPasscodeUI();
+  document.getElementById('devPasscode').classList.add('show');
+}
+
+function showDevMenu() {
+  document.getElementById('devPanel').classList.add('show');
+}
+function hideDevMenu() { document.getElementById('devPanel').classList.remove('show'); }
+
+// DEV OPTIONS button in settings
+document.getElementById('btnDevOptions').onclick = () => {
+  hideSettings();
+  if (devUnlocked) showDevMenu();
+  else showPasscode();
+};
+
+// Passcode BACK button
+document.getElementById('passcodeBack').onclick = () => {
+  document.getElementById('devPasscode').classList.remove('show');
+  showSettings(_settingsReturnTo);
+};
+
+// Dev menu buttons
+document.getElementById('devInspect').onclick = () => {
+  hideDevMenu();
+  inspectorMode = true;
+  inspectorTouchY = null;
+  if (paused) { paused = false; lastTime = 0; loop(); }
+};
+
+document.getElementById('devClearSave').onclick = () => {
+  SaveManager.clearAll();
+  const btn = document.getElementById('devClearSave');
+  btn.textContent = 'CLEARED \u2713';
+  setTimeout(() => { btn.textContent = 'CLEAR SAVE'; }, 1500);
+};
+
+document.getElementById('devBack').onclick = () => {
+  hideDevMenu();
+  showSettings(_settingsReturnTo);
+};
+
+// ── Level Builder ──────────────────────────────────────
+document.getElementById('devBuilder').onclick = () => {
+  hideDevMenu();
+  enterLevelBuilder();
+};
+
+function enterLevelBuilder() {
+  levelBuilderMode = true;
+  builderHexes = [];
+  builderScrollY = 0;
+  builderSelectedType = 'NORMAL';
+  // Stop any running game loop
+  if (animId) { cancelAnimationFrame(animId); animId = 0; }
+  // Hide any overlays
+  hideOv();
+  hidePause();
+  hideSettings();
+  _builderLoop();
+}
+
+function exitLevelBuilder() {
+  levelBuilderMode = false;
+  if (_builderAnimId) { cancelAnimationFrame(_builderAnimId); _builderAnimId = 0; }
+  showDevMenu();
+}
+
+const _BUILDER_CELL_TYPES = Object.keys(CELL_TYPES);
+const _BUILDER_PAL_H = H - HUD_Y; // palette starts at HUD_Y — matches gameplay divider
+
+function _builderLoop() {
+  if (!levelBuilderMode) return;
+  _builderRender();
+  _builderAnimId = requestAnimationFrame(_builderLoop);
+}
+
+function _builderRender() {
+  ctx.fillStyle = '#080300';
+  ctx.fillRect(0, 0, W, H);
+
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+  const gridTop = -builderScrollY;
+  const visTop = -20;
+  const visBot = H - _BUILDER_PAL_H + 20;
+
+  ctx.save();
+  ctx.translate(0, gridTop);
+
+  // Draw hairline grid
+  const startRow = Math.floor((builderScrollY + visTop) / rowH) - 1;
+  const endRow = Math.ceil((builderScrollY + visBot) / rowH) + 1;
+  const numCols = Math.ceil(W / colW) + 1;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c < numCols; c++) {
+    for (let r = startRow; r <= endRow; r++) {
+      const cx = HEX_R + c * colW;
+      const cy = r * rowH + (c % 2 ? rowH * 0.5 : 0);
+      const pts = hexPts(cx, cy, HEX_R);
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < 6; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  // Draw placed cells
+  for (const h of builderHexes) {
+    if (!h.dead) drawHex(h);
+  }
+
+  ctx.restore();
+
+  // Draw palette bar at bottom
+  _builderDrawPalette();
+
+  // Draw exit button hint
+  ctx.font = '6px "Press Start 2P",monospace';
+  ctx.fillStyle = '#f0a020';
+  ctx.textAlign = 'center';
+  ctx.fillText('TAP HERE TO EXIT', W / 2, 12);
+  ctx.textAlign = 'left';
+
+  // CRT
+  if (crtIntensity > 0) drawCRT(crtIntensity);
+}
+
+function _builderDrawPalette() {
+  const palY = H - _BUILDER_PAL_H;
+
+  // Background
+  ctx.fillStyle = 'rgba(10,6,2,0.95)';
+  ctx.fillRect(0, palY, W, _BUILDER_PAL_H);
+  ctx.strokeStyle = '#4a2200';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, palY);
+  ctx.lineTo(W, palY);
+  ctx.stroke();
+
+  // Cell type buttons — two rows
+  const cols = Math.ceil(_BUILDER_CELL_TYPES.length / 2);
+  const btnW = Math.floor((W - 4) / cols);
+  const btnH = 34;
+
+  for (let i = 0; i < _BUILDER_CELL_TYPES.length; i++) {
+    const type = _BUILDER_CELL_TYPES[i];
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const bx = 2 + col * btnW;
+    const by = palY + 4 + row * (btnH + 2);
+
+    // Swatch
+    const palKey = CELL_TYPES[type].color;
+    const swatchColor = PAL[palKey] ? (Array.isArray(PAL[palKey]) ? PAL[palKey][0] : PAL[palKey]) : '#888';
+    ctx.fillStyle = swatchColor;
+    ctx.fillRect(bx + 2, by + 2, btnW - 4, btnH - 4);
+
+    // Selected highlight
+    if (builderSelectedType === type) {
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx + 1, by + 1, btnW - 2, btnH - 2);
+    } else {
+      ctx.strokeStyle = '#4a2200';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(bx + 1, by + 1, btnW - 2, btnH - 2);
+    }
+
+    // Label
+    ctx.font = '7px "Press Start 2P",monospace';
+    ctx.fillStyle = '#fff';
+    ctx.textAlign = 'center';
+    const label = type.length > 5 ? type.substring(0, 4) : type;
+    ctx.fillText(label, bx + btnW / 2, by + btnH / 2 + 3);
+    ctx.textAlign = 'left';
+  }
+
+  // Clear button — bottom-left corner
+  const cbW = 40, cbH = 24;
+  const cbX = 4, cbY = H - cbH - 4;
+  ctx.fillStyle = '#1a0e04';
+  ctx.fillRect(cbX, cbY, cbW, cbH);
+  ctx.strokeStyle = '#f04020';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(cbX, cbY, cbW, cbH);
+  ctx.font = '5px "Press Start 2P",monospace';
+  ctx.fillStyle = '#f04020';
+  ctx.textAlign = 'center';
+  ctx.fillText('CLEAR', cbX + cbW / 2, cbY + cbH / 2 + 2);
+
+  // Export button — bottom-right corner
+  const ebW = 40, ebH = 24;
+  const ebX = W - ebW - 4, ebY = H - ebH - 4;
+  ctx.fillStyle = '#1a0e04';
+  ctx.fillRect(ebX, ebY, ebW, ebH);
+  ctx.strokeStyle = '#f0a020';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(ebX, ebY, ebW, ebH);
+  ctx.font = '5px "Press Start 2P",monospace';
+  ctx.fillStyle = '#f0a020';
+  ctx.fillText('EXPORT', ebX + ebW / 2, ebY + ebH / 2 + 2);
+  ctx.textAlign = 'left';
+}
+
+// ── Level Builder Export ──
+const _EXPORT_BTN = { w: 40, h: 24, margin: 4 };
+const _CLEAR_BTN = { w: 40, h: 24, margin: 4 };
+
+function _builderExport() {
+  // Render a clean frame (grid + cells only) on the main canvas
+  ctx.fillStyle = '#080300';
+  ctx.fillRect(0, 0, W, H);
+
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+
+  ctx.save();
+  ctx.translate(0, -builderScrollY);
+
+  // Draw hairline grid
+  const startRow = Math.floor(builderScrollY / rowH) - 1;
+  const endRow = Math.ceil((builderScrollY + HUD_Y) / rowH) + 1;
+  const numCols = Math.ceil(W / colW) + 1;
+
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.lineWidth = 0.5;
+  for (let c = 0; c < numCols; c++) {
+    for (let r = startRow; r <= endRow; r++) {
+      const hx = HEX_R + c * colW;
+      const hy = r * rowH + (c % 2 ? rowH * 0.5 : 0);
+      const pts = hexPts(hx, hy, HEX_R);
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < 6; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  // Draw placed cells using drawHex (uses global ctx)
+  for (const h of builderHexes) {
+    if (!h.dead) drawHex(h);
+  }
+
+  ctx.restore();
+
+  // Copy just the play area (0,0 → W,HUD_Y) to an export canvas
+  const expCvs = document.createElement('canvas');
+  expCvs.width = W;
+  expCvs.height = HUD_Y;
+  expCvs.getContext('2d').drawImage(canvas, 0, 0, W, HUD_Y, 0, 0, W, HUD_Y);
+
+  // Export PNG + JSON
+  const pngData = expCvs.toDataURL('image/png');
+  const cellData = builderHexes.filter(h => !h.dead).map(h => ({
+    type: h.type, x: h.x, y: h.y
+  }));
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
+
+  // Try server POST first (writes directly to LevelExports/)
+  fetch('/api/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ png: pngData, cells: cellData })
+  }).then(r => {
+    if (!r.ok) throw new Error('Server returned ' + r.status);
+    return r.json();
+  }).then(result => {
+    if (result.ok) {
+      ctx.fillStyle = 'rgba(0,255,0,0.25)';
+      ctx.fillRect(0, 0, W, H);
+      console.log('Level exported to LevelExports/', result.timestamp);
+    } else { throw new Error('Server error'); }
+  }).catch(() => {
+    // Fallback: download both files via browser
+    // PNG
+    const a = document.createElement('a');
+    a.href = pngData;
+    a.download = `level-export-${ts}.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    // JSON
+    const jsonBlob = new Blob([JSON.stringify(cellData, null, 2)], { type: 'application/json' });
+    const b = document.createElement('a');
+    b.href = URL.createObjectURL(jsonBlob);
+    b.download = `level-export-${ts}.json`;
+    document.body.appendChild(b); b.click(); document.body.removeChild(b);
+    URL.revokeObjectURL(b.href);
+    // Flash confirmation
+    ctx.fillStyle = 'rgba(0,255,0,0.25)';
+    ctx.fillRect(0, 0, W, H);
+    console.log('Level exported via download:', ts);
+  });
+}
+
+function _builderHandleTap(clientX, clientY) {
+  const r = canvas.getBoundingClientRect();
+  const cx = (clientX - r.left) * (canvas.width / r.width);
+  const cy = (clientY - r.top) * (canvas.height / r.height);
+
+  // Exit zone (top bar)
+  if (cy < 20) { exitLevelBuilder(); return; }
+
+  // Clear button zone (bottom-left corner)
+  const clW = _CLEAR_BTN.w, clH = _CLEAR_BTN.h, clM = _CLEAR_BTN.margin;
+  if (cx >= clM && cx <= clM + clW && cy >= H - clH - clM && cy <= H - clM) {
+    builderHexes = [];
+    builderScrollY = 0;
+    return;
+  }
+
+  // Export button zone (bottom-right corner)
+  const ebW = _EXPORT_BTN.w, ebH = _EXPORT_BTN.h, ebM = _EXPORT_BTN.margin;
+  const ebX = W - ebW - ebM, ebY = H - ebH - ebM;
+  if (cx >= ebX && cx <= ebX + ebW && cy >= ebY && cy <= ebY + ebH) {
+    _builderExport();
+    return;
+  }
+
+  // Palette zone
+  const palY = H - _BUILDER_PAL_H;
+  if (cy >= palY) {
+    const cols = Math.ceil(_BUILDER_CELL_TYPES.length / 2);
+    const btnW = Math.floor((W - 4) / cols);
+    const btnH = 34;
+    const col = Math.floor((cx - 2) / btnW);
+    const row = Math.floor((cy - palY - 4) / (btnH + 2));
+    const idx = row * cols + col;
+    if (idx >= 0 && idx < _BUILDER_CELL_TYPES.length) {
+      builderSelectedType = _BUILDER_CELL_TYPES[idx];
+    }
+    return;
+  }
+
+  // Grid zone — find nearest hex
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+  const worldY = cy + builderScrollY;
+
+  let bestDist = Infinity, bestX = 0, bestY = 0;
+  const numCols = Math.ceil(W / colW) + 1;
+  const approxRow = Math.round(worldY / rowH);
+
+  for (let c = 0; c < numCols; c++) {
+    for (let rr = approxRow - 2; rr <= approxRow + 2; rr++) {
+      const hx = HEX_R + c * colW;
+      const hy = rr * rowH + (c % 2 ? rowH * 0.5 : 0);
+      const dx = cx - hx, dy = (cy + builderScrollY) - hy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < bestDist) { bestDist = dist; bestX = hx; bestY = hy; }
+    }
+  }
+
+  if (bestDist > HEX_R * 1.2) return; // too far from any cell
+
+  // Check if cell already exists at this position
+  const existing = builderHexes.findIndex(h => Math.abs(h.x - bestX) < 2 && Math.abs(h.y - bestY) < 2);
+  if (existing >= 0) {
+    if (builderHexes[existing].type === builderSelectedType) {
+      // Toggle off — remove
+      builderHexes.splice(existing, 1);
+    } else {
+      // Replace with selected type
+      builderHexes[existing].type = builderSelectedType;
+      builderHexes[existing].hp = CELL_TYPES[builderSelectedType].hp;
+      builderHexes[existing].flash = 0;
+      builderHexes[existing].ci = Math.floor(Math.random() * 5);
+    }
+  } else {
+    // Place new cell
+    builderHexes.push({
+      x: bestX, y: bestY,
+      type: builderSelectedType,
+      hp: CELL_TYPES[builderSelectedType].hp,
+      dead: false, flash: 0,
+      ci: Math.floor(Math.random() * 5),
+    });
+  }
+}
+
+// Builder touch/mouse handlers
+let _builderTouchStartX = 0, _builderTouchStartY = 0;
+let _builderTouchMoved = false;
+
+canvas.addEventListener('touchstart', e => {
+  if (!levelBuilderMode) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const r = canvas.getBoundingClientRect();
+  const cy = (t.clientY - r.top) * (canvas.height / r.height);
+  const palY = H - _BUILDER_PAL_H;
+  _builderTouchStartX = t.clientX;
+  _builderTouchStartY = t.clientY;
+  _builderTouchMoved = false;
+  if (cy < palY && cy >= 20) {
+    builderTouchY = t.clientY; // potential scroll
+  } else {
+    builderTouchY = null;
+    _builderHandleTap(t.clientX, t.clientY);
+  }
+}, {passive: false, capture: false});
+
+canvas.addEventListener('touchmove', e => {
+  if (!levelBuilderMode || builderTouchY === null) return;
+  e.preventDefault();
+  const dy = e.touches[0].clientY - builderTouchY;
+  if (Math.abs(e.touches[0].clientY - _builderTouchStartY) > 8 ||
+      Math.abs(e.touches[0].clientX - _builderTouchStartX) > 8) {
+    _builderTouchMoved = true;
+  }
+  const r = canvas.getBoundingClientRect();
+  const scale = canvas.height / r.height;
+  builderScrollY -= dy * scale;
+  builderTouchY = e.touches[0].clientY;
+}, {passive: false, capture: false});
+
+canvas.addEventListener('touchend', e => {
+  if (!levelBuilderMode) return;
+  e.preventDefault();
+  // If touch didn't move much, treat as a tap (place/remove cell)
+  if (builderTouchY !== null && !_builderTouchMoved) {
+    _builderHandleTap(_builderTouchStartX, _builderTouchStartY);
+  }
+  builderTouchY = null;
+  _builderTouchMoved = false;
+}, {passive: false, capture: false});
+
+canvas.addEventListener('click', e => {
+  if (!levelBuilderMode) return;
+  _builderHandleTap(e.clientX, e.clientY);
+});
 
 ;(function() {
   const bb = document.createElement('button');
@@ -5958,7 +6699,7 @@ function buildShopDots() {
   // Ring tiles — applied to whichever hend is selected at top
   const accIsLeft = (_shopEditHand === 'L');
   const curAccHand = accIsLeft ? selectedAccessoryL : selectedAccessoryR;
-  const accTiles = [{ color: '#333', active: curAccHand === null, name: 'NONE', desc: 'No ring', cost: 0, onClick: () => {
+  const accTiles = [{ color: '#333', active: curAccHand === null, name: 'NONE', desc: '', cost: 0, onClick: () => {
     if (accIsLeft) selectedAccessoryL = null; else selectedAccessoryR = null;
     saveCosmetics(); buildShopDots();
   }}];
@@ -6028,10 +6769,16 @@ function _fillTiles(containerId, tiles) {
     name.className = 'shop-tile-name';
     name.textContent = t.name;
     info.appendChild(name);
-    const desc = document.createElement('div');
-    desc.className = 'shop-tile-desc';
-    desc.textContent = t.desc;
-    info.appendChild(desc);
+    if (t.desc) {
+      const desc = document.createElement('div');
+      desc.className = 'shop-tile-desc';
+      desc.textContent = t.desc;
+      info.appendChild(desc);
+    } else {
+      info.style.display = 'flex';
+      info.style.flexDirection = 'column';
+      info.style.justifyContent = 'center';
+    }
     tile.appendChild(info);
     // Cost
     const cost = document.createElement('div');
@@ -6121,9 +6868,11 @@ function _shopLoop() {
         }
         _beeOffCtx.clearRect(0, 0, ow, oh);
         _beeOffCtx.drawImage(img, 1, 1, dw, dh);
-        _beeOffCtx.globalCompositeOperation = 'source-atop';
+        _beeOffCtx.globalCompositeOperation = 'color';
         _beeOffCtx.fillStyle = skin.tint;
         _beeOffCtx.fillRect(0, 0, ow, oh);
+        _beeOffCtx.globalCompositeOperation = 'destination-in';
+        _beeOffCtx.drawImage(img, 1, 1, dw, dh);
         _beeOffCtx.globalCompositeOperation = 'source-over';
         bx.drawImage(_beeOffCvs, -dw/2 - 1, -dh/2 - 1);
       } else {
@@ -6142,7 +6891,7 @@ function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
   const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
   const col = colors[accId];
   if (!col) return;
-  const rx = ox + dw * 0.50 - 2, ry = oy + dh * 0.28 + 1;
+  const rx = ox + dw * 0.47, ry = oy + dh * 0.30 + 1;
   const rw = dw * 0.06, rh = dh * 0.035;
   cx2.strokeStyle = col;
   cx2.lineWidth = Math.max(2, dw * 0.030);
@@ -6292,9 +7041,128 @@ function startCountdown(cb) {
 }
 
 // ═══════════════════════════════════════════════════════
+// CRT POWER-ON BOOT ANIMATION
+// ═══════════════════════════════════════════════════════
+function playBootAnimation(callback) {
+  const bootStart = performance.now();
+  const BOOT_DUR = 4200; // slow, sleepy boot
+  let callbackFired = false;
+
+  function bootFrame(now) {
+    const t = now - bootStart;
+    if (t >= BOOT_DUR) {
+      if (!callbackFired) { callbackFired = true; callback(); }
+      return;
+    }
+
+    const cx = W / 2, cy = H / 2;
+
+    if (t < 900) {
+      // Phase 1: black screen, then a sleepy dot slowly blooms
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      if (t > 400) {
+        const p = (t - 400) / 500;
+        const r = 1 + p * 4;
+        const a = p * p * 0.9; // slow ease-in
+        // Large warm bloom
+        const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 18);
+        glow.addColorStop(0, `rgba(240,160,32,${(a * 0.5).toFixed(3)})`);
+        glow.addColorStop(0.3, `rgba(240,160,32,${(a * 0.25).toFixed(3)})`);
+        glow.addColorStop(1, 'rgba(240,160,32,0)');
+        ctx.fillStyle = glow;
+        ctx.fillRect(0, 0, W, H);
+        // Core bright dot
+        ctx.fillStyle = `rgba(255,248,224,${a.toFixed(3)})`;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, r, r * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+    } else if (t < 1700) {
+      // Phase 2: dot lazily stretches into horizontal line with big bloom
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      const p = (t - 900) / 800;
+      const eased = p * p * (3 - 2 * p);
+      const hw = eased * W * 0.54;
+      const lh = 1.0 + eased * 2;
+      // Large bloom glow around the line
+      const bloomR = Math.max(hw * 1.8, 40);
+      const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, bloomR);
+      glow.addColorStop(0, `rgba(240,160,32,${(0.35 * (0.5 + eased * 0.5)).toFixed(3)})`);
+      glow.addColorStop(0.4, `rgba(240,160,32,${(0.15 * (0.5 + eased * 0.5)).toFixed(3)})`);
+      glow.addColorStop(1, 'rgba(240,160,32,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+      // Bright horizontal line
+      ctx.fillStyle = '#fff8e0';
+      ctx.fillRect(cx - hw, cy - lh, hw * 2, lh * 2);
+
+    } else if (t < 2500) {
+      // Phase 3: vertical expansion fills the full screen, then transitions to game
+      const p = (t - 1700) / 800;
+      const eased = p * p * (3 - 2 * p);
+
+      // Fire callback right as the fill touches top and bottom edges
+      if (p > 0.72 && !callbackFired) {
+        callbackFired = true;
+        callback();
+      }
+
+      // Draw the expanding bright fill on black
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+      const hh = eased * (H * 0.5 + 4); // +4 for slight overshoot to ensure full coverage
+      const brightness = 0.95 - eased * 0.65;
+      ctx.fillStyle = `rgba(255,248,224,${brightness.toFixed(3)})`;
+      ctx.fillRect(0, cy - hh, W, hh * 2);
+      // Bloom wash
+      const bloomA = 0.4 * (1 - eased);
+      if (bloomA > 0.01) {
+        const wash = ctx.createRadialGradient(cx, cy, 0, cx, cy, H * 0.6);
+        wash.addColorStop(0, `rgba(255,220,120,${bloomA.toFixed(3)})`);
+        wash.addColorStop(1, 'rgba(255,220,120,0)');
+        ctx.fillStyle = wash;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+    } else {
+      // Phase 4: dark wash + bloom slowly fade out together as game comes into focus
+      const p = (t - 2500) / 1700;
+      const fade = Math.max(0, 1 - p * p); // quadratic ease-out: 1 → 0
+
+      // Dark overlay — starts heavy, fades to transparent (prevents brightness flash)
+      const darkA = 0.7 * fade;
+      if (darkA > 0.005) {
+        ctx.fillStyle = `rgba(0,0,0,${darkA.toFixed(3)})`;
+        ctx.fillRect(0, 0, W, H);
+      }
+
+      // Warm bloom on top of the dark wash — same fade curve
+      const bloomA = 0.30 * fade;
+      if (bloomA > 0.005) {
+        const wash = ctx.createRadialGradient(cx, cy, W * 0.1, cx, cy, W * 0.9);
+        wash.addColorStop(0, `rgba(255,200,80,${bloomA.toFixed(3)})`);
+        wash.addColorStop(0.5, `rgba(240,160,32,${(bloomA * 0.5).toFixed(3)})`);
+        wash.addColorStop(1, 'rgba(240,160,32,0)');
+        ctx.fillStyle = wash;
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    // Apply CRT effects during pre-game phases
+    if (crtIntensity > 0 && t < 2500) drawCRT(crtIntensity);
+
+    requestAnimationFrame(bootFrame);
+  }
+  requestAnimationFrame(bootFrame);
+}
+
+// ═══════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════
-ctx.fillStyle=PAL.bg; ctx.fillRect(0,0,W,H);
+ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); // start with black screen for boot animation
 // Save on tab-switch / phone lock
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && !gameOver && !menuBGActive) {
@@ -6302,7 +7170,15 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() => showMenu());
+Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() => {
+  // Slow fade for boot sequence only
+  ov.style.transition = 'opacity 1.4s ease-in';
+  playBootAnimation(() => {
+    showMenu();
+    // Reset to instant after boot fade completes
+    setTimeout(() => { ov.style.transition = ''; }, 1500);
+  });
+});
 </script>
 <script>
 if ('serviceWorker' in navigator) {
