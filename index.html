@@ -70,6 +70,35 @@
   .panel.show { opacity:1; pointer-events:all; }
 
   #ov { background:transparent; }
+
+  /* Power-On splash screen */
+  #powerOnScreen {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    background:#000; z-index:10000;
+    display:flex; align-items:center; justify-content:center;
+    transition: opacity 0.3s ease-out;
+  }
+  .power-hex-btn {
+    width:80px; height:80px;
+    background:#1a1a1a;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: transform 0.12s ease-out, background 0.12s ease-out;
+    box-shadow: 0 0 20px rgba(240,160,32,0.15);
+  }
+  .power-hex-btn:active, .power-hex-btn.pressed {
+    transform: scale(0.90);
+    background: #111;
+  }
+  /* Outer glow ring around hex (since clip-path clips box-shadow) */
+  .power-hex-wrap {
+    width:90px; height:90px;
+    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    background: rgba(240,160,32,0.12);
+    display:flex; align-items:center; justify-content:center;
+  }
+
   .neon-off { opacity:0 !important; }
   .neon-glow-title {
     text-shadow:3px 3px 0 #4a2000, 0 0 6px rgba(240,160,32,0.4), 0 0 12px rgba(240,160,32,0.2) !important;
@@ -363,6 +392,17 @@
 </head>
 <body>
 <div id="gw">
+  <!-- Power-On gate: ensures user gesture before boot for mobile audio sync -->
+  <div id="powerOnScreen">
+    <div class="power-hex-wrap">
+      <div class="power-hex-btn">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" stroke-linecap="round">
+          <path d="M12 2v8" stroke-width="2.5"/>
+          <path d="M6.34 6.34a8 8 0 1 0 11.32 0" stroke-width="2"/>
+        </svg>
+      </div>
+    </div>
+  </div>
   <canvas id="c" width="360" height="680"></canvas>
 
   <div id="ov" class="panel">
@@ -455,7 +495,8 @@
     <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">DEV OPTIONS</div>
     <button id="devInspect" class="ob">INSPECT</button>
     <button id="devBuilder" class="ob">LEVEL BUILDER</button>
-    <button id="devClearSave" class="ob" style="margin-top:16px;font-size:0.35rem;">CLEAR SAVE</button>
+    <button id="devUnlockAll" class="ob" style="margin-top:16px;font-size:0.35rem;">UNLOCK ALL</button>
+    <button id="devClearSave" class="ob" style="margin-top:6px;font-size:0.35rem;">CLEAR SAVE</button>
     <button id="devBack" class="ob" style="margin-top:10px;font-size:0.35rem;">BACK</button>
   </div>
 
@@ -603,8 +644,8 @@ function darkenCol(hex, amt) {
 // ═══════════════════════════════════════════════════════
 const CONFIG = {
   // Physics
-  BASE_SPD:             3.6,
-  MAX_SPD:              9.0,
+  BASE_SPD:             2.92,
+  MAX_SPD:              8.1,
   MIN_AXIS:             1.0,
   BLEND_F:              0.15,   // 15% raw-centre blend in hex reflection
   WALL_FRICTION:        0.82,
@@ -620,7 +661,7 @@ const CONFIG = {
   HEND_HIT_PAD_X:       6,      // hitbox X padding beyond visual paddle (px)
   HEND_HIT_PAD_Y:       4,      // hitbox Y padding above/below collision zone (px)
   HEND_TOUCH_FOLLOW:    0.38,   // touch smooth-follow factor
-  HEND_VEL_BOOST:       0.18,   // paddle-velocity transfer to bee (reduced for consistency)
+  HEND_VEL_BOOST:       0.12,   // paddle-velocity transfer to bee (reduced for consistency)
   HEND_SPD_GAIN:        0.004,  // speed boost per unit of paddle velocity
   HEND_ANGLE_SPREAD:    35,     // base deflection half-angle (degrees) — tighter for upward bias
 
@@ -768,9 +809,32 @@ const SaveManager = {
       bestLevel: 0,
       totalLifetimeHoney: 0,
       runsCompleted: 0,
-      savedAt: 0
-      // future: unlocked cosmetics, achievements
+      savedAt: 0,
+      discovered: []  // cell type keys + powerup IDs the player has encountered
     };
+  },
+
+  discover(id) {
+    const meta = this.loadMeta();
+    if (!meta.discovered) meta.discovered = [];
+    if (!meta.discovered.includes(id)) {
+      meta.discovered.push(id);
+      localStorage.setItem(SAVE_KEYS.META, JSON.stringify(meta));
+    }
+  },
+
+  isDiscovered(id) {
+    const meta = this.loadMeta();
+    return (meta.discovered || []).includes(id);
+  },
+
+  unlockAll() {
+    const meta = this.loadMeta();
+    if (!meta.discovered) meta.discovered = [];
+    const allIds = Object.keys(CELL_TYPES)
+      .concat(TEMP_POWERUPS.map(p => p.id));
+    meta.discovered = allIds;
+    localStorage.setItem(SAVE_KEYS.META, JSON.stringify(meta));
   },
 
   saveMeta() {
@@ -1211,7 +1275,7 @@ const music = {
 // ═══════════════════════════════════════════════════════
 // PHYSICS
 // ═══════════════════════════════════════════════════════
-function getMaxSpd() { return Math.max(4.5, CONFIG.MAX_SPD); }
+function getMaxSpd() { return Math.max(4.05, CONFIG.MAX_SPD); }
 
 function normSpd(b, tgt) {
   if (Math.abs(b.vx) < CONFIG.MIN_AXIS) b.vx = CONFIG.MIN_AXIS * Math.sign(b.vx || 1);
@@ -1888,6 +1952,7 @@ const PER_BEE_POWERUPS = new Set(['beeGer','beeHemoth','booBee','beeR']);
 
 function activatePowerup(type, px, py) {
   sfx.powerup();
+  SaveManager.discover(type.id); // track powerup discovery for guide
   // Large centered text announcement
   puAnnounce = { text: type.name, color: type.color, timer: 120, maxTimer: 120 };
   if (type.duration > 0 && PER_BEE_POWERUPS.has(type.id)) {
@@ -2515,7 +2580,7 @@ const HEND_VISUAL_SCALE = 0.60;  // 40% reduction
 
 function drawPaddle(p, p2) {
   const pw = getPW();
-  const bottomY = HUD_Y - 2;
+  const bottomY = demoMode ? H - 2 : HUD_Y - 2;
 
   if (isSplitActive() && p2) {
     // ── Split mode: two independent hends ──
@@ -2567,53 +2632,153 @@ const BC = BEE_G[0].length, BR = BEE_G.length;  // 10 cols, 9 rows
 const BP = 2;  // 2 canvas px per sprite cell
 const BOX = BC*BP, BOY = BR*BP;                  // sprite bounding box: 20×18
 
-// Bee trail — stores recent positions per bee
-// TRAIL_LEN moved to CONFIG.TRAIL_LEN
+// Bee trail — dashed flight-path system (Indiana Jones style)
+// Dashes are stamped at fixed distance intervals along the bee's path,
+// anchored in world space, and fade out over time.
+
+const DASH_SPACING   = 16;   // pixels between dash spawns
+const DASH_LENGTH    = 2.5;  // length of each dash segment (px)
+const DASH_WIDTH     = 1.8;  // width/thickness of each dash
+const DASH_LIFETIME  = 1.2;  // seconds before a dash fully fades
+const MAX_DASHES     = 80;   // max dashes per bee (ring buffer)
 
 function pushTrail(b) {
+  // Initialize dash trail system on first call
+  if (!b._dashes) {
+    b._dashes = [];
+    b._dashAccum = 0;   // accumulated distance since last dash
+    b._prevX = b.x;
+    b._prevY = b.y;
+    return;
+  }
+
+  // Calculate distance moved this frame
+  const dx = b.x - b._prevX;
+  const dy = b.y - b._prevY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  b._dashAccum += dist;
+  b._prevX = b.x;
+  b._prevY = b.y;
+
+  // Spawn dashes at fixed distance intervals
+  if (b._dashAccum >= DASH_SPACING && dist > 0.01) {
+    // Direction angle of movement
+    const angle = Math.atan2(dy, dx);
+
+    // Offset spawn position to bee's rear/stinger area
+    const beeR = 6; // approx half-bee-size
+    const spawnX = b.x - Math.cos(angle) * beeR;
+    const spawnY = b.y - Math.sin(angle) * beeR;
+
+    b._dashes.push({
+      x: spawnX,
+      y: spawnY,
+      angle: angle,
+      born: performance.now() / 1000
+    });
+
+    // Ring buffer — remove oldest if over limit
+    if (b._dashes.length > MAX_DASHES) b._dashes.shift();
+
+    b._dashAccum = 0;
+  }
+
+  // Keep old trail array empty for compatibility (pushTrail called externally)
   if (!b.trail) b.trail = [];
-  b.trail.push({x:b.x, y:b.y});
-  if (b.trail.length > CONFIG.TRAIL_LEN) b.trail.shift();
+  b.trail.length = 0;
 }
 
-// Flight-path trail: square retro pixels, clearly visible, fading toward oldest.
+// Dashed flight-path renderer
 function drawTrail(b) {
-  if (!b.trail || b.trail.length < 2) return;
-  const n = b.trail.length;
+  if (!b._dashes || b._dashes.length === 0) return;
+  const now = performance.now() / 1000;
 
-  // Resolve active tracer
+  // Resolve active tracer for color
   let tracerObj = null;
   if (selectedTracer !== 'classic') {
     tracerObj = BEE_TRACERS.find(t => t.id === selectedTracer);
     if (tracerObj && lifetimeHoney < tracerObj.cost) tracerObj = null;
   }
 
-  for (let i = 0; i < n; i += 4) {
-    const t = b.trail[i];
-    const frac = (i + 1) / n;
-    const alpha = frac * frac * 0.55;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineWidth = DASH_WIDTH;
 
+  // First pass: compact — remove expired dashes
+  let writeIdx = 0;
+  for (let i = 0; i < b._dashes.length; i++) {
+    if (now - b._dashes[i].born <= DASH_LIFETIME) {
+      b._dashes[writeIdx++] = b._dashes[i];
+    }
+  }
+  b._dashes.length = writeIdx;
+
+  // Second pass: draw dashes as connected segments
+  // Instead of drawing each dash along its own angle, draw a line FROM
+  // the midpoint between prev/current TO the midpoint between current/next.
+  // At corners this creates a natural fold/bend like a dashed polyline.
+  for (let i = 0; i < b._dashes.length; i++) {
+    const d = b._dashes[i];
+    const age = now - d.born;
+
+    // Fade: full opacity at birth, zero at DASH_LIFETIME
+    const fade = 1 - (age / DASH_LIFETIME);
+    const alpha = fade * fade * 0.65; // quadratic ease-out
+
+    // Determine color
     if (tracerObj) {
       if (tracerObj.id === 'rainbow') {
-        // HSL-cycling rainbow
-        const hue = ((tick * 3 + i * 8) % 360);
-        ctx.fillStyle = `hsla(${hue},90%,60%,${alpha.toFixed(2)})`;
+        const hue = ((now * 120 + i * 30) % 360);
+        ctx.strokeStyle = `hsla(${hue},90%,60%,${alpha.toFixed(3)})`;
       } else if (tracerObj.id === 'stardust') {
-        // Sparkle particles — flicker alpha
-        const sparkle = Math.sin(tick * 0.3 + i * 1.7) * 0.3 + 0.7;
-        ctx.fillStyle = `${tracerObj.color}${(alpha * sparkle).toFixed(2)})`;
+        const sparkle = Math.sin(now * 2 + i * 1.7) * 0.2 + 0.8;
+        ctx.strokeStyle = `${tracerObj.color}${(alpha * sparkle).toFixed(3)})`;
       } else {
-        ctx.fillStyle = `${tracerObj.color}${alpha.toFixed(2)})`;
+        ctx.strokeStyle = `${tracerObj.color}${alpha.toFixed(3)})`;
       }
     } else {
-      ctx.fillStyle = `rgba(180,180,180,${alpha.toFixed(2)})`;
+      ctx.strokeStyle = `rgba(200,190,160,${alpha.toFixed(3)})`;
     }
 
-    const radius = (tracerObj && tracerObj.id === 'stardust') ? 1.2 + Math.sin(tick * 0.5 + i) * 0.6 : 1.5;
+    // Compute full midpoints between consecutive dashes
+    let mx0x, mx0y; // midpoint toward previous
+    if (i > 0) {
+      const p = b._dashes[i - 1];
+      mx0x = (p.x + d.x) * 0.5;
+      mx0y = (p.y + d.y) * 0.5;
+    } else {
+      mx0x = d.x - Math.cos(d.angle) * DASH_SPACING * 0.5;
+      mx0y = d.y - Math.sin(d.angle) * DASH_SPACING * 0.5;
+    }
+
+    let mx1x, mx1y; // midpoint toward next
+    if (i + 1 < b._dashes.length) {
+      const n = b._dashes[i + 1];
+      mx1x = (d.x + n.x) * 0.5;
+      mx1y = (d.y + n.y) * 0.5;
+    } else {
+      mx1x = d.x + Math.cos(d.angle) * DASH_SPACING * 0.5;
+      mx1y = d.y + Math.sin(d.angle) * DASH_SPACING * 0.5;
+    }
+
+    // Inset from midpoints toward center to create visible gaps
+    // GAP_RATIO: higher = shorter dashes, more gap
+    // 0.65 = dash covers ~35% of spacing, gap covers ~65%
+    const GAP_RATIO = 0.65;
+    const sx = mx0x + (d.x - mx0x) * GAP_RATIO;
+    const sy = mx0y + (d.y - mx0y) * GAP_RATIO;
+    const ex = mx1x + (d.x - mx1x) * GAP_RATIO;
+    const ey = mx1y + (d.y - mx1y) * GAP_RATIO;
+
+    // Draw: start → center → end (bends naturally at corners)
     ctx.beginPath();
-    ctx.arc(t.x, t.y, radius, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(d.x, d.y);
+    ctx.lineTo(ex, ey);
+    ctx.stroke();
   }
+
+  ctx.restore();
 }
 
 // Offscreen canvas for bee tinting (avoids source-atop bleeding onto main canvas)
@@ -2837,52 +3002,59 @@ function drawHex(h) {
   if (!h.flash && (h.type === 'NORMAL' || h.type === 'HONEY' || h.type === 'THICK'
       || h.type === 'HEAVY' || h.type === 'ROYAL' || h.type === 'REINFORCED'
       || h.type === 'ANCIENT')) {
-    // Count living neighbours to determine cluster density
-    let nCount = 0;
+    // Skip drips if a living cell sits directly below (prevents overlap)
+    const rowH = HEX_R * Math.sqrt(3);
+    let hasBelow = false;
     for (const n of hexes) {
-      if (!n.dead && n !== h && Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 2.4) nCount++;
+      if (!n.dead && n !== h && Math.abs(n.x - h.x) < HEX_R * 1.2 && n.y > h.y && n.y - h.y < rowH * 1.2) {
+        hasBelow = true; break;
+      }
     }
-    // More neighbours = more / bigger drips
+    if (!hasBelow) {
+    // Single drip per cell — seeded variant determines drip stage
+    // Stages progress: tiny blob → emerging drip → full teardrop
     const isHoney = h.type === 'HONEY';
     const baseY = h.y + HEX_R * 0.866;       // bottom edge center
     const seed = h.ci;
-    // Drip variant table: [xOffset, lengthMul, widthMul]
-    // Variant chosen per-cell by seed; cluster size adds extra drips
-    const variants = [
-      { dx: 0,   lenMul: 1.0, wMul: 1.0 },   // center drop
-      { dx: -3,  lenMul: 0.6, wMul: 0.7 },   // small left
-      { dx: 3.5, lenMul: 0.75, wMul: 0.8 },  // small right
-      { dx: -1,  lenMul: 1.3, wMul: 1.2 },   // large off-center
-      { dx: 2,   lenMul: 0.5, wMul: 0.6 },   // tiny right
-    ];
-    // Determine how many drips: 0 neighbours = maybe 1 small, 6 = up to 3 fat ones
-    let dripCount;
-    if (nCount >= 5)      dripCount = 3 + (seed % 2);      // 3-4 drips
-    else if (nCount >= 3) dripCount = 2 + (seed % 2);      // 2-3 drips
-    else if (nCount >= 1) dripCount = 1 + (seed % 2);      // 1-2 drips
-    else                  dripCount = (seed % 3 < 2) ? 1 : 0;  // sometimes 1
-    // Cluster scale: bigger clusters = fatter, longer drips
-    const clusterScale = 0.7 + Math.min(nCount, 6) * 0.15;
-    const dripCol = isHoney ? '#ffaa00' : '#b07000';
+    // Slight X offset based on seed for natural variation
+    const dripX = h.x + ((seed % 5) - 2) * 1.2;
+    const dripCol = isHoney ? '#ffaa00' : '#e8a020';
     const dripAlpha = isHoney ? 0.75 : 0.6;
+    // Drip stage: 0=tiny blob, 1=small bulge, 2=medium drip, 3=long teardrop, 4=full drop
+    const stage = seed % 5;
     ctx.fillStyle = dripCol;
-    for (let d = 0; d < dripCount; d++) {
-      const v = variants[(seed + d * 3) % variants.length];
-      const dripX = h.x + v.dx + ((seed + d) % 3 - 1) * 0.5;
-      const dripLen = (3.5 + (seed % 4)) * v.lenMul * clusterScale;
-      const dripW = 1.5 * v.wMul * clusterScale;
-      // Animated slow elongation pulse
-      const pulse = 0.9 + 0.1 * Math.sin(tick * 0.04 + seed * 1.7 + d * 2.1);
-      const len = dripLen * pulse;
-      ctx.globalAlpha = dripAlpha;
-      ctx.beginPath();
-      ctx.moveTo(dripX - dripW, baseY);
-      ctx.quadraticCurveTo(dripX - dripW * 0.4, baseY + len, dripX, baseY + len + dripW * 0.8);
-      ctx.quadraticCurveTo(dripX + dripW * 0.4, baseY + len, dripX + dripW, baseY);
-      ctx.closePath();
-      ctx.fill();
+    ctx.globalAlpha = dripAlpha;
+    ctx.beginPath();
+    if (stage === 0) {
+      // Tiny half-circle blob just peeking out
+      ctx.arc(dripX, baseY, 2.2, 0, Math.PI);
+    } else if (stage === 1) {
+      // Small bulge — wider half-circle starting to hang
+      ctx.arc(dripX, baseY + 0.5, 3, -0.15, Math.PI + 0.15);
+    } else if (stage === 2) {
+      // Emerging drip — oval shape, wider at top, rounding at bottom
+      ctx.moveTo(dripX - 3, baseY);
+      ctx.quadraticCurveTo(dripX - 3.2, baseY + 4, dripX, baseY + 6);
+      ctx.quadraticCurveTo(dripX + 3.2, baseY + 4, dripX + 3, baseY);
+    } else if (stage === 3) {
+      // Medium teardrop — widens gradually from attachment, rounds at bottom
+      ctx.moveTo(dripX - 2.5, baseY);
+      ctx.quadraticCurveTo(dripX - 3.5, baseY + 5, dripX - 3.5, baseY + 7);
+      ctx.quadraticCurveTo(dripX - 3.5, baseY + 10, dripX, baseY + 11);
+      ctx.quadraticCurveTo(dripX + 3.5, baseY + 10, dripX + 3.5, baseY + 7);
+      ctx.quadraticCurveTo(dripX + 3.5, baseY + 5, dripX + 2.5, baseY);
+    } else {
+      // Full teardrop — longest, starts narrow and widens smoothly into round tip
+      ctx.moveTo(dripX - 2, baseY);
+      ctx.quadraticCurveTo(dripX - 2.8, baseY + 4, dripX - 3.8, baseY + 9);
+      ctx.quadraticCurveTo(dripX - 4, baseY + 13, dripX, baseY + 15);
+      ctx.quadraticCurveTo(dripX + 4, baseY + 13, dripX + 3.8, baseY + 9);
+      ctx.quadraticCurveTo(dripX + 2.8, baseY + 4, dripX + 2, baseY);
     }
+    ctx.closePath();
+    ctx.fill();
     ctx.globalAlpha = 1;
+    } // end !hasBelow
   }
 
   if (h.flash > 0) return;
@@ -3089,6 +3261,7 @@ function checkHex(b) {
           b.x += nx*ov2; b.y += ny*ov2;
           return {dead:false, h};
         }
+        SaveManager.discover('PORTAL');
         const dest = hexes.find(q => q.type === 'PORTAL' && q !== h && q.portalChannel === h.portalChannel);
         if (dest) {
           b.x = dest.x; b.y = dest.y;
@@ -3170,6 +3343,7 @@ function checkHex(b) {
       if (b.powerupId === 'beeGer') dmg *= 2;
       if (b.powerupId === 'beeHemoth') dmg = 5;
       h.hp -= dmg; h.flash = 10;
+      SaveManager.discover(h.type); // track cell discovery for guide
 
       // Spawn falling debris chunks when high-HP cells take damage
       const maxHpCell = CELL_TYPES[h.type]?.hp || 1;
@@ -3356,7 +3530,7 @@ function drawBGBase(blend) {
   const { a, b, t } = blend;
   const tc = lerpCol(a.topCol, b.topCol, t);
   const bc = lerpCol(a.botCol, b.botCol, t);
-  const cb = H * PLAY_BOTTOM;
+  const cb = demoMode ? H : H * PLAY_BOTTOM;
 
   // Solid base fill
   ctx.fillStyle = `rgb(${tc[0]},${tc[1]},${tc[2]})`;
@@ -3373,7 +3547,7 @@ function drawBGBase(blend) {
 
 function drawBGLayers(blend) {
   const { a, b, t } = blend;
-  const cb = H * PLAY_BOTTOM;
+  const cb = demoMode ? H : H * PLAY_BOTTOM;
   const baseAlpha = a.gridAlpha + (b.gridAlpha - a.gridAlpha) * t;
   const gc = lerpCol(a.gridCol, b.gridCol, t);
   const ac = lerpCol(a.accentCol, b.accentCol, t);
@@ -3638,7 +3812,7 @@ function drawPuAnnounce() {
 }
 
 function drawBGVignette() {
-  const cb = H * PLAY_BOTTOM;
+  const cb = demoMode ? H : H * PLAY_BOTTOM;
   // Left cave edge
   const lG = ctx.createLinearGradient(0, 0, W * 0.18, 0);
   lG.addColorStop(0, 'rgba(4,2,0,0.75)');
@@ -3677,11 +3851,11 @@ function drawBG() {
 // Jar constants
 const JAR_CX  = W - 46;        // jar centre x
 const JAR_BW  = 59;            // max belly width (~-5%)
-const JAR_BH  = 56;            // body height (shortened to fit HUD)
-const JAR_NW  = 27;            // neck width
-const JAR_NH  = 9;             // neck height
-const JAR_RW  = 34;            // rim width
-const JAR_RH  = 7;             // rim height
+const JAR_BH  = 62;            // body height (raised shoulders into lid area)
+const JAR_NW  = 36;            // neck width (widened mouth)
+const JAR_NH  = 0;             // neck height (absorbed into lid)
+const JAR_RW  = 59;            // rim width (matches jar body width)
+const JAR_RH  = 10;            // rim height (lowered)
 const JAR_NY  = H - JAR_NH - JAR_BH - 12;   // neck top y — 12px above canvas bottom
 const JAR_RY  = JAR_NY - JAR_RH; // rim top y
 const JAR_BY  = JAR_NY + JAR_NH; // body top y
@@ -3693,7 +3867,7 @@ const JAR_RX  = JAR_CX - JAR_RW / 2;
 const SLOT_R   = 22;
 const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center (~35.6)
 const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols (~19)
-const SLOT_Y   = HUD_Y + 48;                 // base row center y
+const SLOT_Y   = HUD_Y + 42;                 // base row center y (raised)
 const SLOT0_X  = 30;
 
 function drawHexOutline(cx, cy, r) {
@@ -3711,7 +3885,7 @@ function drawHUD() {
 
   // Pause icon — two bars inside a hex outline, top right (hidden in demo mode)
   if (!demoMode) {
-    const picX = W - 15, picY = HUD_Y + 12, picR = 10;
+    const picX = W - 15, picY = 15, picR = 10;
     const pp = hexPts(picX, picY, picR);
     ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
     for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
@@ -3809,17 +3983,36 @@ function drawHUD() {
     ctx.fillRect(bx + bw * 0.6, by, bw * 0.25, bh);
     ctx.restore();
 
-    // 3b) "HONEY" label — hand-written cozy style
+    // 3b) "HONEY" label — hand-written style with per-letter variation
     ctx.save();
     jarBodyPath(); ctx.clip();
     ctx.font = 'italic 9px "Press Start 2P"';
-    ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
     const labelY = by + bh * 0.45;
-    ctx.fillStyle = 'rgba(40,20,5,0.55)';
-    ctx.fillText('HONEY', JAR_CX, labelY + 0.5);
-    ctx.fillStyle = '#d4a030';
-    ctx.fillText('HONEY', JAR_CX, labelY);
+    const letters = ['H','O','N','E','Y'];
+    // Per-letter rotation/scale offsets (seeded for consistency)
+    const rotations = [-0.06, 0.04, -0.03, 0.05, -0.04];
+    const scales    = [1.0, 0.95, 1.05, 0.97, 1.02];
+    const yOffsets  = [0, -0.5, 0.5, -0.3, 0.4];
+    const totalW = 40; // approximate total text width
+    const startX = JAR_CX - totalW / 2 + 4;
+    const spacing = 8;
+    for (let li = 0; li < letters.length; li++) {
+      const lx = startX + li * spacing;
+      const ly = labelY + yOffsets[li];
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(rotations[li]);
+      ctx.scale(scales[li], scales[li]);
+      // Shadow
+      ctx.fillStyle = 'rgba(40,20,5,0.55)';
+      ctx.fillText(letters[li], 0, 0.5);
+      // Main
+      ctx.fillStyle = '#d4a030';
+      ctx.fillText(letters[li], 0, 0);
+      ctx.restore();
+    }
     ctx.restore();
 
     // 4) Neck — connects body to lid
@@ -3829,22 +4022,35 @@ function drawHUD() {
     ctx.strokeStyle = '#6a3800'; ctx.lineWidth = 1.5;
     ctx.strokeRect(nx, ny, nw, nh);
 
-    // 5) Lid / rim — golden cap
+    // 5) Lid / rim — red & white checker pattern
     const rx = JAR_RX, ry = JAR_RY, rw = JAR_RW, rh = JAR_RH;
-    const lidGrad = ctx.createLinearGradient(0, ry, 0, ry + rh);
-    lidGrad.addColorStop(0, '#d4a030');
-    lidGrad.addColorStop(0.5, '#f0c040');
-    lidGrad.addColorStop(1, '#a07020');
-    ctx.fillStyle = lidGrad;
-    ctx.beginPath();
-    ctx.moveTo(rx + 2, ry + rh);
-    ctx.lineTo(rx, ry + 2);
-    ctx.quadraticCurveTo(rx, ry, rx + 2, ry);
-    ctx.lineTo(rx + rw - 2, ry);
-    ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + 2);
-    ctx.lineTo(rx + rw - 2, ry + rh);
-    ctx.closePath();
+    // Lid shape path
+    function lidPath() {
+      ctx.beginPath();
+      ctx.moveTo(rx + 2, ry + rh);
+      ctx.lineTo(rx, ry + 2);
+      ctx.quadraticCurveTo(rx, ry, rx + 2, ry);
+      ctx.lineTo(rx + rw - 2, ry);
+      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + 2);
+      ctx.lineTo(rx + rw - 2, ry + rh);
+      ctx.closePath();
+    }
+    // White base
+    lidPath();
+    ctx.fillStyle = '#f0e8e0';
     ctx.fill();
+    // Red checker squares clipped to lid shape
+    ctx.save();
+    lidPath();
+    ctx.clip();
+    ctx.fillStyle = '#c03020';
+    const checkSize = 4;
+    for (let cx2 = rx; cx2 < rx + rw; cx2 += checkSize * 2) {
+      ctx.fillRect(cx2, ry, checkSize, rh);
+    }
+    ctx.restore();
+    // Lid outline
+    lidPath();
     ctx.strokeStyle = '#6a3800'; ctx.lineWidth = 1;
     ctx.stroke();
     // Lid highlight
@@ -4045,7 +4251,7 @@ function drawUpgradeBanner() {
   upgradeBannerGeom = { bannerX, bannerY, bannerW, bannerH, gap: btnGap, btnW, btnH, btnY };
 }
 
-const PAUSE_TAP = { x: W-25, y: HUD_Y, w: 25, h: 22 };
+const PAUSE_TAP = { x: W-25, y: 2, w: 25, h: 26 };
 
 function getCanvasXY(clientX, clientY) {
   const r = canvas.getBoundingClientRect();
@@ -4088,7 +4294,9 @@ function handleCanvasTap(cx, cy, e) {
 }
 
 canvas.addEventListener('touchstart', e => {
-  const {x,y} = getCanvasXY(e.touches[0].clientX, e.touches[0].clientY);
+  // Use changedTouches (the NEW finger) not touches[0] (which may be the paddle finger)
+  const newTouch = e.changedTouches[0];
+  const {x,y} = getCanvasXY(newTouch.clientX, newTouch.clientY);
   handleCanvasTap(x, y, e);
 }, {passive:false, capture:true});
 
@@ -4136,18 +4344,18 @@ const DEPTH_TABLE = [
   { fill:0.28, weights:{NORMAL:74,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,BOMB:1} },                                                                        // 5  bomb enters
   { fill:0.29, weights:{NORMAL:70,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,BOMB:2,ROYAL:1} },                                                                // 6  royal enters
   { fill:0.30, weights:{NORMAL:65,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:2} },                                                      // 7  charged enters (rare)
-  { fill:0.30, weights:{NORMAL:62,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3,UNBREAKABLE:1} },                                        // 8  unbreakable enters
-  { fill:0.31, weights:{NORMAL:58,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2} },                                        // 9
-  { fill:0.32, weights:{NORMAL:54,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:2,ANCIENT:2} },                              // 10 ancient enters
-  { fill:0.33, weights:{NORMAL:52,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,UNBREAKABLE:3,ANCIENT:3} },                              // 11
-  { fill:0.34, weights:{NORMAL:50,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:3,TITAN:1} },                      // 12 titan enters
-  { fill:0.35, weights:{NORMAL:48,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:2} },                      // 13
-  { fill:0.36, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 14
-  { fill:0.36, weights:{NORMAL:45,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:3,ANCIENT:4,TITAN:3} },                      // 15
-  { fill:0.37, weights:{NORMAL:44,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:3} },                      // 16
-  { fill:0.37, weights:{NORMAL:43,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 17
-  { fill:0.38, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 18
-  { fill:0.38, weights:{NORMAL:42,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,UNBREAKABLE:4,ANCIENT:5,TITAN:4} },                      // 19+ cap
+  { fill:0.30, weights:{NORMAL:63,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3} },                                                      // 8
+  { fill:0.31, weights:{NORMAL:60,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3} },                                                      // 9
+  { fill:0.32, weights:{NORMAL:56,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,ANCIENT:2} },                                            // 10 ancient enters
+  { fill:0.33, weights:{NORMAL:55,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,ANCIENT:3} },                                            // 11
+  { fill:0.34, weights:{NORMAL:53,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:3,TITAN:1} },                                    // 12 titan enters
+  { fill:0.35, weights:{NORMAL:51,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:4,TITAN:2} },                                    // 13
+  { fill:0.36, weights:{NORMAL:49,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:4,TITAN:3} },                                    // 14
+  { fill:0.36, weights:{NORMAL:48,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:4,TITAN:3} },                                    // 15
+  { fill:0.37, weights:{NORMAL:48,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:3} },                                    // 16
+  { fill:0.37, weights:{NORMAL:47,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 17
+  { fill:0.38, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 18
+  { fill:0.38, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 19+ cap
 ];
 function getDepthEntry(depth) {
   return DEPTH_TABLE[Math.min(Math.max(0, depth), DEPTH_TABLE.length - 1)];
@@ -4850,12 +5058,16 @@ function startBee(xOff) {
   const ang = (Math.random() * 120 - 60) * Math.PI / 180;
   const vx = CONFIG.BASE_SPD * Math.sin(ang);
   const vy = -CONFIG.BASE_SPD * Math.cos(ang);
-  return mkBee(W/2+(xOff||0), scrollY+PADDLE_Y-65, vx, vy);
+  const spawnPY = demoMode ? H - 17 : PADDLE_Y;
+  return mkBee(W/2+(xOff||0), scrollY+spawnPY-65, vx, vy);
 }
 
 function startLevel(lvl) {
   music.play();
   if (!demoMode) music.unmuffle();
+  // Auto-discover common starter cells
+  SaveManager.discover('NORMAL');
+  SaveManager.discover('THICK');
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
   scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _nextBlueprintDepth=3;
@@ -5097,7 +5309,8 @@ function update() {
   // World-space constants for this frame
   // Ceiling is pegged just above the camera's max scroll — never appears on-screen
   const hiveTopY     = (HIVE_CONFIG.CAMERA_MIN ?? scrollY - H) - BALL_R;
-  const paddleWorldY = scrollY + PADDLE_Y;
+  const effectivePaddleY = demoMode ? H - 17 : PADDLE_Y;
+  const paddleWorldY = scrollY + effectivePaddleY;
 
   // ── Side Wall Cleanup Zone (3 tiers) ──
   // Tiered invisible zones above the paddle that weaken side wall cells.
@@ -5230,8 +5443,8 @@ function update() {
         b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
         sfx.paddle(); haptic(HAPTIC.paddle);
         normSpd(b,b.speed);
-        // Guarantee minimum upward component — prevent flat skimming
-        const minVy = b.speed * 0.45;
+        // Guarantee strong upward component — prevents flat skimming
+        const minVy = b.speed * 0.55;
         if (Math.abs(b.vy) < minVy) {
           b.vy = -minVy;
           normSpd(b, b.speed);
@@ -5443,6 +5656,29 @@ function render() {
   // Draw paddle UNDER bees (in world space temporarily)
   ctx.save();
   ctx.translate(0, scrollY);          // back to screen space for paddle
+
+  // Bee proximity shadow on hend — helps track bee height
+  {
+    const renderPadY = demoMode ? H - 17 : PADDLE_Y;
+    for (const b of bees) {
+      const beeScreenY = b.y - scrollY;
+      const dist = renderPadY - beeScreenY;
+      if (dist > 0 && dist < 200 && b.vy > 0) {
+        const proximity = 1 - (dist / 200);
+        const alpha = proximity * proximity * 0.35;
+        const shadowW = 8 + proximity * 4;
+        const shadowH = 3 + proximity * 2;
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.ellipse(b.x, renderPadY - 4, shadowW / 2, shadowH / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+  }
+
   drawPaddle(paddle, paddle2);
   ctx.restore();                       // back to world space
 
@@ -5524,6 +5760,7 @@ function render() {
   drawDroplets();                    // screen space — travels to HUD jar
   drawFallingDrops();                // screen space — gravity drops from cleanup zone
 
+  if (!demoMode) {
   // ── Translucent blurred HUD backdrop ──
   // Cells scrolling behind the HUD area show through, blurred
   ctx.save();
@@ -5556,6 +5793,7 @@ function render() {
   ctx.font = '10px "Press Start 2P",monospace';
   ctx.strokeText(hiveDepthMax + '', 6, 25);
   ctx.fillText(hiveDepthMax + '', 6, 25);
+  } // end !demoMode HUD
 
   } // end HUD block
 
@@ -5745,38 +5983,38 @@ function buildGuide() {
   // Interleaved: left column = breakable cells, right column = special cells
   // CSS grid fills left→right per row, so array order is [left1, right1, left2, right2, ...]
   const CELLS_LEFT = [
-    { name:'NORMAL',      col:'#f5c030', out:'#7a3d00', lw:3, hits:'1 HIT',   honey:'1', note:'STANDARD CELL',
+    { name:'NORMAL',      type:'NORMAL',  col:'#f5c030', out:'#7a3d00', lw:3, hits:'1 HIT',   honey:'1', note:'STANDARD CELL',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,230,140,0.45)" stroke-width="1"/>` },
-    { name:'REINFORCED',  col:'#7a4800', out:'#7a3d00', lw:3, hits:'2 HITS',  honey:'1', note:'STRONGER CELL',
+    { name:'REINFORCED',  type:'THICK',   col:'#7a4800', out:'#7a3d00', lw:3, hits:'2 HITS',  honey:'1', note:'STRONGER CELL',
       svg:`<line x1="0" y1="0" x2="-5" y2="-6" stroke="#2a1000" stroke-width="1.2"/><line x1="0" y1="0" x2="5" y2="-5" stroke="#2a1000" stroke-width="1.2"/>` },
-    { name:'HEAVY',       col:'#8a6830', out:'#a08040', lw:3, hits:'3 HITS',  honey:'1', note:'HIGHER DURABILITY',
+    { name:'HEAVY',       type:'HEAVY',   col:'#8a6830', out:'#a08040', lw:3, hits:'3 HITS',  honey:'1', note:'HIGHER DURABILITY',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(138,104,48,0.5)" stroke-width="1.5"/>` },
-    { name:'ROYAL',       col:'#d4af37', out:'#d4af37', lw:3, hits:'5 HITS',  honey:'1', note:'HIGH DURABILITY',
+    { name:'ROYAL',       type:'ROYAL',   col:'#d4af37', out:'#d4af37', lw:3, hits:'5 HITS',  honey:'1', note:'HIGH DURABILITY',
       svg:`<polygon points="-4,2 -2,-3 0,2 2,-3 4,2" fill="rgba(255,220,80,0.7)" stroke="none"/>` },
-    { name:'ANCIENT',     col:'#4a6050', out:'#4a7060', lw:3, hits:'10 HITS', honey:'1', note:'VERY STRONG',
+    { name:'ANCIENT',     type:'ANCIENT', col:'#4a6050', out:'#4a7060', lw:3, hits:'10 HITS', honey:'1', note:'VERY STRONG',
       svg:`<line x1="-5" y1="0" x2="5" y2="0" stroke="rgba(80,120,90,0.5)" stroke-width="1"/><line x1="0" y1="-5" x2="0" y2="5" stroke="rgba(80,120,90,0.5)" stroke-width="1"/>` },
-    { name:'TITAN',       col:'#3a3a50', out:'#6060a0', lw:3, hits:'20 HITS', honey:'1', note:'EXTREMELY DURABLE',
+    { name:'TITAN',       type:'TITAN',   col:'#3a3a50', out:'#6060a0', lw:3, hits:'20 HITS', honey:'1', note:'EXTREMELY DURABLE',
       svg:`<circle cx="0" cy="0" r="4" fill="rgba(100,100,160,0.4)"/><circle cx="0" cy="0" r="6" fill="none" stroke="rgba(80,80,140,0.5)" stroke-width="2"/>` },
-    { name:'HONEY',       col:'#ffe050', out:'#e8b000', lw:3, hits:'1 HIT',   honey:'6', note:'HIGH HONEY REWARD',
+    { name:'HONEY',       type:'HONEY',   col:'#ffe050', out:'#e8b000', lw:3, hits:'1 HIT',   honey:'6', note:'HIGH HONEY REWARD',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,240,80,0.6)" stroke-width="1.5"/><circle cx="-3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="0" cy="-4" r="2" fill="#ff9800" opacity="0.9"/>` },
   ];
   const CELLS_RIGHT = [
-    { name:'WAX',         col:'#e2d9b2', out:'#b0a070', lw:3, hits:'1 HIT',   honey:'0', note:'WEAKENS NEIGHBORS',
+    { name:'WAX',         type:'WAX',         col:'#e2d9b2', out:'#b0a070', lw:3, hits:'1 HIT',   honey:'0', note:'WEAKENS NEIGHBORS',
       svg:`<line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(180,170,120,0.5)" stroke-width="1"/><line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(180,170,120,0.5)" stroke-width="1"/>` },
-    { name:'BROOD',       col:'#3a2408', out:'#a86800', lw:3, hits:'1 HIT',   honey:'0', note:'RELEASES BEES',
+    { name:'BROOD',       type:'BROOD',       col:'#3a2408', out:'#a86800', lw:3, hits:'1 HIT',   honey:'0', note:'RELEASES BEES',
       svg:`<circle cx="-4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="4" cy="-2" r="2" fill="#f5a010" opacity="0.8"/><circle cx="0" cy="4" r="2" fill="#f5a010" opacity="0.8"/>` },
-    { name:'BOMB',        col:'#ff4020', out:'#ff4020', lw:3, hits:'1 HIT',   honey:'0', note:'EXPLODES NEARBY',
+    { name:'BOMB',        type:'BOMB',        col:'#ff4020', out:'#ff4020', lw:3, hits:'1 HIT',   honey:'0', note:'EXPLODES NEARBY',
       svg:`<circle cx="0" cy="0" r="5" fill="rgba(255,64,32,0.3)"/><circle cx="0" cy="-5" r="2" fill="rgba(255,200,80,0.8)"/>` },
-    { name:'CHARGED',     col:'#50d0ff', out:'#50d0ff', lw:3, hits:'1 HIT',   honey:'0', note:'DROPS POWERUP',
+    { name:'CHARGED',     type:'CHARGED',     col:'#50d0ff', out:'#50d0ff', lw:3, hits:'1 HIT',   honey:'0', note:'DROPS POWERUP',
       svg:`<line x1="-2" y1="-4" x2="1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="1" y1="0" x2="-1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="-1" y1="0" x2="2" y2="4" stroke="rgba(150,230,255,0.7)" stroke-width="1"/>` },
-    { name:'PORTAL',      col:'#9020d0', out:'#cc60ff', lw:3, hits:'IMMUNE',  honey:'0', note:'TELEPORTS THE BEE',
+    { name:'PORTAL',      type:'PORTAL',      col:'#9020d0', out:'#cc60ff', lw:3, hits:'IMMUNE',  honey:'0', note:'TELEPORTS THE BEE',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(220,140,255,0.8)" stroke-width="1.5"/><text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="6" fill="#f0c0ff">1</text>` },
-    { name:'UNBREAKABLE', col:'#505050', out:'#707070', lw:3, hits:'IMMUNE',  honey:'0', note:'PERMANENT OBSTACLE',
+    { name:'UNBREAKABLE', type:'UNBREAKABLE', col:'#505050', out:'#707070', lw:3, hits:'IMMUNE',  honey:'0', note:'PERMANENT OBSTACLE',
       svg:`<line x1="-5" y1="-4" x2="5" y2="4" stroke="rgba(100,100,100,0.5)" stroke-width="1"/><line x1="5" y1="-4" x2="-5" y2="4" stroke="rgba(100,100,100,0.5)" stroke-width="1"/>` },
-    { name:'ROYAL GUARD', col:'#6a2fa0', out:'#d4af37', lw:3, hits:'IMMUNE',  honey:'0', note:'BOSS GATE BARRIER',
+    { name:'ROYAL GUARD', type:'ROYAL_GUARD', col:'#6a2fa0', out:'#d4af37', lw:3, hits:'IMMUNE',  honey:'0', note:'BOSS GATE BARRIER',
       svg:`<polygon points="0,-5 4,0 0,5 -4,0" fill="rgba(212,175,55,0.5)" stroke="none"/>` },
   ];
-  const QUEEN_CELL = { name:'QUEEN', col:'#c02070', out:'#ffd700', lw:3, hits:'SHARED HP', honey:'50', note:'BOSS \u2014 DEFEAT TO OPEN GATE',
+  const QUEEN_CELL = { name:'QUEEN', type:'QUEEN', col:'#c02070', out:'#ffd700', lw:3, hits:'SHARED HP', honey:'50', note:'BOSS \u2014 DEFEAT TO OPEN GATE',
     svg:`<polygon points="-5,3 -3,-4 0,1 3,-4 5,3" fill="rgba(255,215,0,0.6)" stroke="none"/>` };
 
   // Interleave left/right for grid flow
@@ -5788,6 +6026,15 @@ function buildGuide() {
   }
 
   function cellHTML(c) {
+    const discovered = SaveManager.isDiscovered(c.type);
+    if (!discovered) {
+      return `<div class="gc-hex">${hexSVG('#111', '#333', 2, 28, '')}</div>
+        <div class="gc-info">
+          <div class="gc-name" style="color:#444">???</div>
+          <div class="gc-note" style="color:#333">UNDISCOVERED</div>
+          <div class="gc-stats" style="color:#333">? ? ?</div>
+        </div>`;
+    }
     const nameCol = c.col === '#e2d9b2' ? '#c0b080' : c.col;
     const honeyStr = c.honey !== '0' ? ` \u00b7 ${c.honey} HONEY` : '';
     return `<div class="gc-hex">${hexSVG(c.col, c.out, c.lw, 28, c.svg)}</div>
@@ -5806,6 +6053,19 @@ function buildGuide() {
   // ── POWER-UPS tab (temporary powerups from CHARGED cells) ──
   const powersEl = document.getElementById('tab-powers');
   powersEl.innerHTML = TEMP_POWERUPS.map((p, i) => {
+    const discovered = SaveManager.isDiscovered(p.id);
+    if (!discovered) {
+      const hiddenIcon = hexSVG('#111', '#333', 1.5, 28, '');
+      return `<div class="gp-row">
+        <div class="gp-icon">${hiddenIcon}</div>
+        <div class="gp-info">
+          <div class="gp-name" style="color:#444">???</div>
+          <div class="gp-desc" style="color:#333">UNDISCOVERED</div>
+          <div class="gp-tag" style="color:#333">? ? ?</div>
+        </div>
+        <div style="width:40px;height:40px;"></div>
+      </div>`;
+    }
     const dur = p.duration > 0 ? Math.round(p.duration / 60) + 's'
               : p.duration === 0 ? 'INSTANT'
               : 'STORED';
@@ -6294,12 +6554,15 @@ function showMenu() {
       }
     });
   }
-  mkBtn('PLAY', !hasSave, () => {
-    hideOv();
-    if (animId) cancelAnimationFrame(animId);
-    demoMode = false; menuBGActive = false;
-    SaveManager.clearRun(); resetRun(); startLevel(1);
-  });
+  // Only show PLAY when there's no CONTINUE button (no saved run)
+  if (!hasSave || !s || s.depth <= 0) {
+    mkBtn('PLAY', true, () => {
+      hideOv();
+      if (animId) cancelAnimationFrame(animId);
+      demoMode = false; menuBGActive = false;
+      SaveManager.clearRun(); resetRun(); startLevel(1);
+    });
+  }
   mkBtn('SHOP',     false, ()=>{hideOv(); showShop('menu');});
   mkBtn('GUIDE',    false, ()=>{showPause(true);});
   mkBtn('SETTINGS', false, ()=>{hideOv(); showSettings('menu');});
@@ -6497,6 +6760,13 @@ document.getElementById('devInspect').onclick = () => {
   inspectorMode = true;
   inspectorTouchY = null;
   if (paused) { paused = false; lastTime = 0; loop(); }
+};
+
+document.getElementById('devUnlockAll').onclick = () => {
+  SaveManager.unlockAll();
+  const btn = document.getElementById('devUnlockAll');
+  btn.textContent = 'UNLOCKED \u2713';
+  setTimeout(() => { btn.textContent = 'UNLOCK ALL'; }, 1500);
 };
 
 document.getElementById('devClearSave').onclick = () => {
@@ -7798,9 +8068,61 @@ document.addEventListener('visibilitychange', () => {
 });
 
 Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() => {
-  playBootAnimation(() => {
-    playNeonBootSequence();
-  });
+  // Gate behind Power-On tap to ensure mobile audio sync
+  const powerScreen = document.getElementById('powerOnScreen');
+  if (!powerScreen) {
+    // Fallback if element missing — just boot directly
+    playBootAnimation(() => { playNeonBootSequence(); });
+    return;
+  }
+  const hexBtn = powerScreen.querySelector('.power-hex-btn');
+  let _powerTapped = false;
+  function onPowerTap(e) {
+    if (_powerTapped) return;
+    _powerTapped = true;
+    e.preventDefault();
+    hexBtn.removeEventListener('pointerdown', onPowerTap);
+    hexBtn.removeEventListener('touchstart', onPowerTap);
+    hexBtn.removeEventListener('click', onPowerTap);
+    // Visual press feedback
+    hexBtn.classList.add('pressed');
+    // Unlock audio inside user gesture callstack — MUST happen synchronously
+    acResume();
+    music._init();
+    if (music.el) {
+      // Set volume to 0 for silent unlock, then restore
+      const savedVol = music.el.volume;
+      music.el.volume = 0;
+      const p = music.el.play();
+      if (p && p.then) {
+        p.then(() => {
+          music.el.pause();
+          music.el.currentTime = 0;
+          music.el.volume = savedVol;
+          _audioUnlocked = true;
+        }).catch(() => { music.el.volume = savedVol; });
+      }
+    }
+    // Also create and resume a short AudioContext buffer to unlock Web Audio
+    try {
+      const unlockBuf = AC.createBuffer(1, 1, AC.sampleRate);
+      const src = AC.createBufferSource();
+      src.buffer = unlockBuf;
+      src.connect(AC.destination);
+      src.start(0);
+    } catch(e2) {}
+    // Brief indent hold → fade to black → start boot
+    setTimeout(() => {
+      powerScreen.style.opacity = '0';
+      setTimeout(() => {
+        powerScreen.remove();
+        playBootAnimation(() => { playNeonBootSequence(); });
+      }, 300);
+    }, 150);
+  }
+  hexBtn.addEventListener('pointerdown', onPowerTap);
+  hexBtn.addEventListener('touchstart', onPowerTap, {passive: false}); // Android needs touchstart
+  hexBtn.addEventListener('click', onPowerTap); // fallback for desktop
 });
 </script>
 <script>
