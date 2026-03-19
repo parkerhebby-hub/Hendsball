@@ -79,9 +79,9 @@
     transition: opacity 0.3s ease-out;
   }
   .power-hex-btn {
-    width:80px; height:80px;
+    width:88px; height:76px;
     background:#1a1a1a;
-    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
     display:flex; align-items:center; justify-content:center;
     cursor:pointer;
     transition: transform 0.12s ease-out, background 0.12s ease-out;
@@ -93,23 +93,22 @@
   }
   /* Outer glow ring around hex (since clip-path clips box-shadow) */
   .power-hex-wrap {
-    width:90px; height:90px;
-    clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
-    background: rgba(240,160,32,0.12);
+    width:98px; height:85px;
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+    background: rgba(60,60,60,0.5);
     display:flex; align-items:center; justify-content:center;
   }
 
   .neon-off { opacity:0 !important; }
   .neon-glow-title {
-    text-shadow:3px 3px 0 #4a2000, 0 0 6px rgba(240,160,32,0.4), 0 0 12px rgba(240,160,32,0.2) !important;
-    transition:text-shadow 0.4s ease-out;
+    text-shadow:3px 3px 0 #4a2000, 0 0 16px rgba(240,170,40,0.65), 0 0 35px rgba(240,160,32,0.45), 0 0 60px rgba(240,140,20,0.3), 0 0 90px rgba(240,120,10,0.12);
   }
   .neon-glow-btn {
-    box-shadow:3px 3px 0 #4a2000, 0 0 4px rgba(240,160,32,0.3), 0 0 8px rgba(192,112,16,0.15) !important;
+    box-shadow:3px 3px 0 #4a2000, 0 0 6px rgba(240,160,32,0.4), 0 0 14px rgba(240,140,20,0.2), 0 0 24px rgba(240,120,10,0.1) !important;
     transition:box-shadow 0.4s ease-out;
   }
   .neon-glow-sub {
-    text-shadow:1px 1px 0 #3a1800, 0 0 4px rgba(122,80,16,0.4) !important;
+    text-shadow:1px 1px 0 #3a1800, 0 0 6px rgba(200,140,40,0.5), 0 0 14px rgba(180,120,30,0.3), 0 0 24px rgba(160,100,20,0.15) !important;
     transition:text-shadow 0.4s ease-out;
   }
   #settingsPanel { background:#0e0500; }
@@ -396,7 +395,7 @@
   <div id="powerOnScreen">
     <div class="power-hex-wrap">
       <div class="power-hex-btn">
-        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="white" stroke-linecap="round">
+        <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#888888" stroke-linecap="round">
           <path d="M12 2v8" stroke-width="2.5"/>
           <path d="M6.34 6.34a8 8 0 1 0 11.32 0" stroke-width="2"/>
         </svg>
@@ -411,7 +410,7 @@
   </div>
 
   <div id="pause" class="panel">
-    <div id="pauseTitle">PAUSED</div>
+    <div id="pauseTitle" class="neon-glow-title">PAUSED</div>
     <div id="guideBody">
       <div class="gsec-title" style="text-align:center;">HOW TO PLAY</div>
       <div class="htp-item">
@@ -462,7 +461,7 @@
   </div>
 
   <div id="settingsPanel" class="panel">
-    <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.65rem;letter-spacing:2px;margin-bottom:18px;">SETTINGS</div>
+    <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.65rem;letter-spacing:2px;margin-bottom:18px;">SETTINGS</div>
     <div style="width:80%;max-width:280px;">
       <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">MUSIC</label>
       <input type="range" id="sliderMusic" min="0" max="100" value="50" style="width:100%;accent-color:#f0a020;margin-bottom:16px;">
@@ -484,7 +483,7 @@
 
   <!-- Passcode Lock Panel -->
   <div id="devPasscode" class="panel" style="background:rgba(0,0,0,0.92);">
-    <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">ENTER CODE</div>
+    <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">ENTER CODE</div>
     <div id="passcodeSlots" style="display:flex;gap:8px;margin-bottom:24px;"></div>
     <div id="passcodeKeys" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:180px;"></div>
     <button id="passcodeBack" class="ob" style="margin-top:16px;font-size:0.35rem;">BACK</button>
@@ -492,7 +491,7 @@
 
   <!-- Developer Menu Panel -->
   <div id="devPanel" class="panel" style="background:rgba(0,0,0,0.92);">
-    <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">DEV OPTIONS</div>
+    <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">DEV OPTIONS</div>
     <button id="devInspect" class="ob">INSPECT</button>
     <button id="devBuilder" class="ob">LEVEL BUILDER</button>
     <button id="devUnlockAll" class="ob" style="margin-top:16px;font-size:0.35rem;">UNLOCK ALL</button>
@@ -502,7 +501,7 @@
 
   <div id="shopPanel" class="panel">
     <div id="shopBody">
-      <div style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.60rem;letter-spacing:2px;padding:10px 0 6px 0;text-align:center;">SHOP</div>
+      <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.60rem;letter-spacing:2px;padding:10px 0 6px 0;text-align:center;">SHOP</div>
       <button id="shopBackBtn" class="ob" style="margin:0 auto 6px auto;">BACK</button>
 
       <!-- Two-column split: HEND left, BEE right -->
@@ -514,8 +513,8 @@
           <div style="position:relative;margin-bottom:6px;">
             <canvas id="shopHendPreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
             <label id="shopStartingHendLabel" style="display:flex;align-items:center;gap:3px;cursor:pointer;justify-content:center;position:absolute;bottom:4px;left:0;right:0;">
-              <input type="checkbox" id="shopStartingHendCB" style="accent-color:#f0a020;width:10px;height:10px;cursor:pointer;">
-              <span style="font-family:'Press Start 2P',monospace;font-size:0.32rem;color:#f5d040;white-space:nowrap;">STARTING HEND</span>
+              <input type="checkbox" id="shopStartingHendCB" style="accent-color:#f0a020;width:14px;height:14px;cursor:pointer;">
+              <span style="font-family:'Press Start 2P',monospace;font-size:0.40rem;color:#f5d040;white-space:nowrap;">STARTING HEND</span>
             </label>
           </div>
           <div class="shop-dot-label">SKIN SHADE</div>
@@ -536,6 +535,8 @@
           <div id="shopTilesBeeSkin" class="shop-dots"></div>
           <div class="shop-dot-label">TRAIL EFFECT</div>
           <div id="shopTilesTracer" class="shop-dots"></div>
+          <div class="shop-dot-label">AURAS</div>
+          <div id="shopTilesAuras" class="shop-dots"></div>
         </div>
       </div>
 
@@ -543,7 +544,7 @@
   </div>
 
   <div id="summary" class="panel">
-    <div id="sumTitle">HIVE CLEARED</div>
+    <div id="sumTitle" class="neon-glow-title">HIVE CLEARED</div>
     <div id="sumLv"></div>
     <div id="sumContent"></div>
   </div>
@@ -1072,10 +1073,11 @@ const SaveManager = {
       // Cancel any existing loop
       if (typeof animId !== 'undefined' && animId) cancelAnimationFrame(animId);
 
-      // Draw one frame so pause screen shows the restored game
-      music.play(); music.muffle();
-      render();
-      showPause();
+      // Resume with countdown then straight into gameplay
+      music.play(); music.unmuffle();
+      gameOver = false;
+      render(); // draw one frame so countdown has a backdrop
+      startCountdown(() => { lastTime = 0; loop(); });
 
       return true;
     } catch (e) {
@@ -1240,6 +1242,13 @@ const music = {
     acResume();
     this._init();
     if (!this.playing) {
+      // Ensure volume is correct (may have been zeroed by audio unlock)
+      if (this._isMobile) {
+        this.el.volume = musicVolume;
+      } else {
+        this.el.volume = 1; // Web Audio gain controls actual volume
+        if (this.gain) this.gain.gain.value = musicVolume;
+      }
       this.el.play().catch(() => {});
       this.playing = true;
     }
@@ -1330,10 +1339,11 @@ const HEND_ACCESSORIES = [
   { id:'goldRing',       name:'GOLD RING',       cost:0, color:'#d4af37', desc:'' },
   { id:'silverRing',     name:'SILVER RING',     cost:0, color:'#b0c0d0', desc:'' },
   { id:'blackRing',      name:'BLACK RING',      cost:0, color:'#2a2a2a', desc:'' },
+  { id:'brownBracelet',  name:'BRACELET',        cost:0, color:'#6a4020', desc:'' },
 ];
 
 const BEE_SKINS = [
-  { id:'classic', name:'CLASSIC',  cost:0, tint:null,                     desc:'' },
+  { id:'classic', name:'DEFAULT',  cost:0, tint:null,                     desc:'' },
   { id:'royal',   name:'ROYAL',    cost:0, tint:'rgba(180,140,255,0.85)', desc:'' },
   { id:'neon',    name:'NEON',     cost:0, tint:'rgba(60,255,80,0.85)',   desc:'' },
   { id:'shadow',  name:'SHADOW',   cost:0, tint:'rgba(60,40,80,0.85)',    desc:'' },
@@ -1342,13 +1352,25 @@ const BEE_SKINS = [
 ];
 
 const BEE_TRACERS = [
-  { id:'classic',   name:'CLASSIC',   cost:0, color:'rgba(180,180,180,', desc:'' },
+  { id:'classic',   name:'DEFAULT',   cost:0, color:'rgba(180,180,180,', desc:'' },
   { id:'honeyDrip', name:'HONEY DRIP',cost:0, color:'rgba(245,192,48,',  desc:'' },
   { id:'stardust',  name:'STARDUST',  cost:0, color:'rgba(255,240,180,', desc:'' },
   { id:'neon',      name:'NEON',      cost:0, color:'rgba(80,255,120,',  desc:'' },
   { id:'rainbow',   name:'RAINBOW',   cost:0, color:null,               desc:'' },
   { id:'smoky',     name:'SHADOW',    cost:0, color:'rgba(40,20,60,',    desc:'' },
+  { id:'poopLogs',  name:'POOP LOGS', cost:0, color:'rgba(90,55,20,',    desc:'' },
 ];
+
+// ── Bee Auras (cosmetic glow behind bee) ──
+const BEE_AURAS = [
+  { id:'none',      name:'NONE',       cost:0, color:null },
+  { id:'golden',    name:'GOLDEN',     cost:0, color:'rgba(255,200,60,' },
+  { id:'ghostly',   name:'GHOSTLY',    cost:0, color:'rgba(180,220,255,' },
+  { id:'infernal',  name:'INFERNAL',   cost:0, color:'rgba(255,80,30,' },
+  { id:'toxic',     name:'TOXIC',      cost:0, color:'rgba(80,255,60,' },
+  { id:'royal',     name:'ROYAL',      cost:0, color:'rgba(180,100,255,' },
+];
+let selectedAura = localStorage.getItem('hendsbee_aura') || 'none';
 
 // ── Hend Skins (full sprite overrides) ──
 // Note: use 0 for empty cells (not _ variable, which is declared later for BEE_G)
@@ -1915,9 +1937,12 @@ const ALL_POWERUPS = [
     tag:  'PADDLE',
     color: '#c09060', outline: '#6a4830',
     max:  1,
-    apply() { powers.twoHends++; }
+    apply() { powers.twoHends++; _hend2Intro = { active: true, offset: 100, t: 0 }; }
   },
 ];
+
+// Second hend rise-from-below animation state
+let _hend2Intro = { active: false, offset: 0, t: 0 };
 
 // ─── Temporary powerups (from CHARGED cells) ─────────
 const TEMP_POWERUPS = [
@@ -2170,6 +2195,7 @@ let upgradeBannerActive = false;
 let upgradeBannerChoices = [];
 let upgradeBannerGeom = null;   // tap detection geometry
 let jarBounceTimer = 0;         // honeypot bounce animation
+let _upgradeSlomoState = 'none'; // 'none' | 'slowing' | 'paused' | 'resuming'
 
 function checkMeterFull() {
   if (upgradeBannerActive || pickerPending || paused || pickerTransition) return;
@@ -2192,7 +2218,7 @@ function checkMeterFull() {
     upgradeBannerActive = true;
     upgradeBannerChoices = choices;
     jarBounceTimer = 0;
-    // Game continues — no pause, no blur, no muffle
+    _upgradeSlomoState = 'slowing'; // begin slow-motion ramp down
   }
 }
 
@@ -2555,18 +2581,34 @@ function drawAccessory(ox, oy, dw, dh, side) {
   const acc = HEND_ACCESSORIES.find(a => a.id === selectedAccessory);
   if (!acc) return;
 
-  // Ring finger position — proportional offsets so position scales with sprite size
-  const rx = ox + dw * 0.47, ry = oy + dh * 0.30 + 1;
-  const rw = dw * 0.06, rh = dh * 0.035;
-  const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
-  const col = colors[acc.id];
-  if (!col) return;
-
-  ctx.strokeStyle = col;
-  ctx.lineWidth = Math.max(2, dw * 0.030);
-  ctx.beginPath();
-  ctx.ellipse(rx, ry, rw, rh, 0, Math.PI, Math.PI * 2);
-  ctx.stroke();
+  if (acc.id === 'brownBracelet') {
+    // Bracelet — drawn at the wrist (lower than rings)
+    const bx = ox + dw * 0.5, by = oy + dh * 0.12;
+    const bw = dw * 0.14, bh = dh * 0.025;
+    ctx.strokeStyle = '#6a4020';
+    ctx.lineWidth = Math.max(2.5, dw * 0.035);
+    ctx.beginPath();
+    ctx.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    // Inner highlight
+    ctx.strokeStyle = '#8a5a30';
+    ctx.lineWidth = Math.max(1, dw * 0.015);
+    ctx.beginPath();
+    ctx.ellipse(bx, by - 0.5, bw * 0.8, bh * 0.7, 0, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.stroke();
+  } else {
+    // Ring finger position — proportional offsets so position scales with sprite size
+    const rx = ox + dw * 0.47, ry = oy + dh * 0.30 + 1;
+    const rw = dw * 0.06, rh = dh * 0.035;
+    const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
+    const col = colors[acc.id];
+    if (!col) return;
+    ctx.strokeStyle = col;
+    ctx.lineWidth = Math.max(2, dw * 0.030);
+    ctx.beginPath();
+    ctx.ellipse(rx, ry, rw, rh, 0, Math.PI, Math.PI * 2);
+    ctx.stroke();
+  }
 }
 
 // Paddle y is the TOP of the palm body.
@@ -2589,7 +2631,18 @@ function drawPaddle(p, p2) {
     const sq1 = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const sq2 = p2.squish > 0 ? Math.ceil(p2.squish / 4) : 0;
     drawHand(p.x, bottomY - drawH + sq1, -1, halfW);    // left hand (flipped)
-    drawHand(p2.x, bottomY - drawH + sq2, 1, halfW);    // right hand (normal)
+    // Second hend rise animation in split mode
+    let splitH2oy = bottomY - drawH + sq2;
+    if (_hend2Intro.active) {
+      _hend2Intro.t++;
+      const dur = 45;
+      const prog = Math.min(1, _hend2Intro.t / dur);
+      const eased = 1 - Math.pow(1 - prog, 3);
+      const overshoot = prog < 0.85 ? 0 : Math.sin((prog - 0.85) / 0.15 * Math.PI) * 4;
+      splitH2oy += _hend2Intro.offset * (1 - eased) - overshoot;
+      if (prog >= 1) _hend2Intro.active = false;
+    }
+    drawHand(p2.x, splitH2oy, 1, halfW);    // right hand (normal)
     if (p.squish > 0) p.squish--;
     if (p2.squish > 0) p2.squish--;
   } else if (powers.twoHends >= 1) {
@@ -2599,7 +2652,19 @@ function drawPaddle(p, p2) {
     const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const oy = bottomY - drawH + sq;
     drawHand(p.x, oy, -1, halfW);             // left hand (flipped)
-    drawHand(p.x + halfW, oy, 1, halfW);      // right hand (normal)
+    // Second hend: animate rising from below when first acquired
+    let h2oy = oy;
+    if (_hend2Intro.active) {
+      _hend2Intro.t++;
+      // Ease-out-back: overshoot slightly then settle
+      const dur = 45; // frames
+      const prog = Math.min(1, _hend2Intro.t / dur);
+      const eased = 1 - Math.pow(1 - prog, 3); // cubic ease-out
+      const overshoot = prog < 0.85 ? 0 : Math.sin((prog - 0.85) / 0.15 * Math.PI) * 4;
+      h2oy = oy + _hend2Intro.offset * (1 - eased) - overshoot;
+      if (prog >= 1) _hend2Intro.active = false;
+    }
+    drawHand(p.x + halfW, h2oy, 1, halfW);    // right hand (normal)
     if (p.squish > 0) p.squish--;
   } else {
     const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
@@ -2693,11 +2758,24 @@ function drawTrail(b) {
   if (!b._dashes || b._dashes.length === 0) return;
   const now = performance.now() / 1000;
 
-  // Resolve active tracer for color
+  // Resolve active tracer for color — powerup overrides cosmetic choice
   let tracerObj = null;
-  if (selectedTracer !== 'classic') {
-    tracerObj = BEE_TRACERS.find(t => t.id === selectedTracer);
-    if (tracerObj && lifetimeHoney < tracerObj.cost) tracerObj = null;
+  let _puTrailOverride = null;
+  if (b.powerupId) {
+    // Powerup trail override colors
+    const puTrails = {
+      beeGer:     { color:'rgba(255,160,40,', width: 3.0 },
+      beeHemoth:  { color:'rgba(255,80,20,',  width: 4.0 },
+      booBee:     { color:'rgba(200,220,255,', width: 1.5 },
+      beeR:       { color:'rgba(80,220,80,',   width: 2.0 },
+    };
+    _puTrailOverride = puTrails[b.powerupId] || null;
+  }
+  if (!_puTrailOverride) {
+    if (selectedTracer !== 'classic') {
+      tracerObj = BEE_TRACERS.find(t => t.id === selectedTracer);
+      if (tracerObj && lifetimeHoney < tracerObj.cost) tracerObj = null;
+    }
   }
 
   ctx.save();
@@ -2725,14 +2803,26 @@ function drawTrail(b) {
     const fade = 1 - (age / DASH_LIFETIME);
     const alpha = fade * fade * 0.65; // quadratic ease-out
 
-    // Determine color
-    if (tracerObj) {
+    // Determine color and width — powerup override takes priority
+    ctx.lineWidth = DASH_WIDTH;
+    if (_puTrailOverride) {
+      ctx.lineWidth = _puTrailOverride.width;
+      ctx.strokeStyle = `${_puTrailOverride.color}${alpha.toFixed(3)})`;
+    } else if (tracerObj) {
       if (tracerObj.id === 'rainbow') {
         const hue = ((now * 120 + i * 30) % 360);
         ctx.strokeStyle = `hsla(${hue},90%,60%,${alpha.toFixed(3)})`;
       } else if (tracerObj.id === 'stardust') {
         const sparkle = Math.sin(now * 2 + i * 1.7) * 0.2 + 0.8;
         ctx.strokeStyle = `${tracerObj.color}${(alpha * sparkle).toFixed(3)})`;
+      } else if (tracerObj.id === 'poopLogs') {
+        // Thicker, mottled brown — alternates between dark and light brown per dash
+        ctx.lineWidth = DASH_WIDTH * 2.2;
+        const seed = (i * 7 + 3) & 0xFF;
+        const r = 60 + (seed % 40);       // 60-100
+        const g = 35 + (seed % 25);       // 35-60
+        const b2 = 10 + (seed % 15);      // 10-25
+        ctx.strokeStyle = `rgba(${r},${g},${b2},${alpha.toFixed(3)})`;
       } else {
         ctx.strokeStyle = `${tracerObj.color}${alpha.toFixed(3)})`;
       }
@@ -2787,11 +2877,46 @@ const _beeOffCtx = _beeOffCvs.getContext('2d');
 
 function drawBee(b) {
   drawTrail(b);
+
+  // Aura glow behind bee — powerup overrides cosmetic aura
+  {
+    let auraColor = null;
+    // Powerup aura override
+    if (b.powerupId) {
+      const puAuras = {
+        beeGer:    'rgba(255,160,40,',
+        beeHemoth: 'rgba(255,60,20,',
+        booBee:    'rgba(180,200,255,',
+        beeR:      'rgba(80,200,80,',
+      };
+      auraColor = puAuras[b.powerupId] || null;
+    }
+    // Fall back to cosmetic aura
+    if (!auraColor && selectedAura !== 'none') {
+      const auraObj = BEE_AURAS.find(a => a.id === selectedAura);
+      if (auraObj && auraObj.color) auraColor = auraObj.color;
+    }
+    if (auraColor) {
+      const pulse = 0.7 + 0.3 * Math.sin(tick * 0.06);
+      const auraR = b.powerupId ? 20 + pulse * 6 : 16 + pulse * 4; // bigger for powerups
+      const glow = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, auraR);
+      glow.addColorStop(0, auraColor + (0.35 * pulse).toFixed(2) + ')');
+      glow.addColorStop(0.5, auraColor + (0.15 * pulse).toFixed(2) + ')');
+      glow.addColorStop(1, auraColor + '0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(b.x - auraR, b.y - auraR, auraR * 2, auraR * 2);
+    }
+  }
+
   const angle = Math.atan2(b.vy, b.vx) + Math.PI/2;
-  // Powerup-based size scaling
-  let scale = b.sizeScale || 1;
-  if (b.powerupId === 'beeGer') scale *= 1.5;
-  if (b.powerupId === 'beeHemoth') scale *= 3;
+  // Powerup-based size scaling — smooth transitions
+  let targetScale = b.sizeScale || 1;
+  if (b.powerupId === 'beeGer') targetScale *= 1.5;
+  if (b.powerupId === 'beeHemoth') targetScale *= 3;
+  // Smooth lerp toward target scale
+  if (!b._displayScale) b._displayScale = targetScale;
+  b._displayScale += (targetScale - b._displayScale) * 0.12; // ~8 frames to reach target
+  const scale = b._displayScale;
 
   // BOO-BEE transparency
   if (b.powerupId === 'booBee') ctx.globalAlpha = 0.5;
@@ -2933,26 +3058,100 @@ function getCrackLevel(h) {
   return 5;
 }
 
-const CRACK_SEGS = [
-  [0, 0,  -5, -7,  -10, -3],
-  [2, 1,   7, -4,   12, -8],
-  [-3, 3, -8,  6,  -12,  2],
-  [1, 2,   5,  7,   10,  5],
-  [-1,-2,  4, -6,    2,-11],
-];
+// Lightning-bolt cracks from hex corners — seeded for consistency
+function _crackRng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 0x100000000; };
+}
 
-function drawCracks(cx, cy, level) {
-  ctx.strokeStyle = PAL.hexCrack;
-  const n = Math.min(level, 5);
-  for (let i = 0; i < n; i++) {
-    ctx.lineWidth = 1.0 + i * 0.15;
-    const s = CRACK_SEGS[i];
-    ctx.beginPath();
-    ctx.moveTo(cx+s[0], cy+s[1]);
-    ctx.lineTo(cx+s[2], cy+s[3]);
-    ctx.lineTo(cx+s[4], cy+s[5]);
-    ctx.stroke();
+function drawCracks(cx, cy, level, cellSeed) {
+  if (level <= 0) return;
+
+  const rng = _crackRng((cellSeed || 0) * 31337 + 7919);
+  const r = HEX_R;
+
+  // Get hex corner positions (flat-top)
+  const corners = [];
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 180) * 60 * i;
+    corners.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) });
   }
+
+  ctx.save();
+  // Clip to hex
+  const pts = hexPts(cx, cy, r - 0.5);
+  hexPath(pts);
+  ctx.clip();
+
+  // Fewer cracks that connect: level 1-2 = 1 crack, 3-4 = 2, 5 = 3
+  const crackCount = level <= 2 ? 1 : level <= 4 ? 2 : 3;
+
+  // Track end points so subsequent cracks can branch from previous ones
+  let lastEndX = null, lastEndY = null;
+
+  for (let c = 0; c < crackCount; c++) {
+    let startX, startY, targetX, targetY;
+
+    if (c === 0 || lastEndX === null) {
+      // First crack: start from a seeded corner
+      const cornerIdx = Math.floor(rng() * 6);
+      const corner = corners[cornerIdx];
+      startX = corner.x; startY = corner.y;
+      targetX = cx; targetY = cy; // toward center
+    } else {
+      // Subsequent cracks: branch from end of previous crack
+      startX = lastEndX; startY = lastEndY;
+      // Target a different corner (creates spanning web)
+      const targetCorner = corners[Math.floor(rng() * 6)];
+      targetX = targetCorner.x; targetY = targetCorner.y;
+    }
+
+    const dx = targetX - startX;
+    const dy = targetY - startY;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 1) continue;
+    const nx = dx / dist, ny = dy / dist;
+
+    // How far the crack reaches — full distance to target
+    const reach = 0.45 + level * 0.11; // 0.56 → 1.0
+    const segments = 3 + Math.floor(rng() * 2); // 3-4 zigzag segments
+
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+
+    let px = startX, py = startY;
+    for (let s = 1; s <= segments; s++) {
+      const frac = (s / segments) * reach;
+      const bx = startX + dx * frac;
+      const by = startY + dy * frac;
+      const perpX = -ny, perpY = nx;
+      // Smoother zigzag — smaller amplitude, less jagged
+      const zigzag = (s % 2 === 0 ? 1 : -1) * (0.8 + rng() * 1.8);
+      // Last segment snaps closer to the line (less offset at the end)
+      const endFade = s === segments ? 0.3 : 1;
+      px = bx + perpX * zigzag * endFade;
+      py = by + perpY * zigzag * endFade;
+      ctx.lineTo(px, py);
+    }
+
+    // Save end point for branching
+    lastEndX = px; lastEndY = py;
+
+    // Line style: thicker + darker with more damage
+    ctx.strokeStyle = `rgba(0,0,0,${(0.3 + level * 0.1).toFixed(2)})`;
+    ctx.lineWidth = 0.8 + level * 0.2;
+    ctx.lineJoin = 'bevel';
+    ctx.stroke();
+
+    // Secondary thinner highlight crack alongside (depth effect)
+    if (level >= 3) {
+      ctx.strokeStyle = `rgba(40,25,10,${(0.2 + level * 0.05).toFixed(2)})`;
+      ctx.lineWidth = 0.4;
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
 }
 
 function drawHex(h) {
@@ -3020,36 +3219,22 @@ function drawHex(h) {
     const dripX = h.x + ((seed % 5) - 2) * 1.2;
     const dripCol = isHoney ? '#ffaa00' : '#e8a020';
     const dripAlpha = isHoney ? 0.75 : 0.6;
-    // Drip stage: 0=tiny blob, 1=small bulge, 2=medium drip, 3=long teardrop, 4=full drop
-    const stage = seed % 5;
+    // Drip stage: 0=blob, 1=bulge, 2=emerging drip (3 variants only)
+    const stage = seed % 3;
     ctx.fillStyle = dripCol;
     ctx.globalAlpha = dripAlpha;
     ctx.beginPath();
     if (stage === 0) {
-      // Tiny half-circle blob just peeking out
-      ctx.arc(dripX, baseY, 2.2, 0, Math.PI);
+      // Small half-circle blob peeking out
+      ctx.arc(dripX, baseY, 3.5, 0, Math.PI);
     } else if (stage === 1) {
-      // Small bulge — wider half-circle starting to hang
-      ctx.arc(dripX, baseY + 0.5, 3, -0.15, Math.PI + 0.15);
-    } else if (stage === 2) {
-      // Emerging drip — oval shape, wider at top, rounding at bottom
-      ctx.moveTo(dripX - 3, baseY);
-      ctx.quadraticCurveTo(dripX - 3.2, baseY + 4, dripX, baseY + 6);
-      ctx.quadraticCurveTo(dripX + 3.2, baseY + 4, dripX + 3, baseY);
-    } else if (stage === 3) {
-      // Medium teardrop — widens gradually from attachment, rounds at bottom
-      ctx.moveTo(dripX - 2.5, baseY);
-      ctx.quadraticCurveTo(dripX - 3.5, baseY + 5, dripX - 3.5, baseY + 7);
-      ctx.quadraticCurveTo(dripX - 3.5, baseY + 10, dripX, baseY + 11);
-      ctx.quadraticCurveTo(dripX + 3.5, baseY + 10, dripX + 3.5, baseY + 7);
-      ctx.quadraticCurveTo(dripX + 3.5, baseY + 5, dripX + 2.5, baseY);
+      // Bulge — wider half-circle starting to hang
+      ctx.arc(dripX, baseY + 1, 4.5, -0.15, Math.PI + 0.15);
     } else {
-      // Full teardrop — longest, starts narrow and widens smoothly into round tip
-      ctx.moveTo(dripX - 2, baseY);
-      ctx.quadraticCurveTo(dripX - 2.8, baseY + 4, dripX - 3.8, baseY + 9);
-      ctx.quadraticCurveTo(dripX - 4, baseY + 13, dripX, baseY + 15);
-      ctx.quadraticCurveTo(dripX + 4, baseY + 13, dripX + 3.8, baseY + 9);
-      ctx.quadraticCurveTo(dripX + 2.8, baseY + 4, dripX + 2, baseY);
+      // Emerging drip — oval shape, wider at top, rounding at bottom
+      ctx.moveTo(dripX - 4, baseY);
+      ctx.quadraticCurveTo(dripX - 4.5, baseY + 5.5, dripX, baseY + 8.5);
+      ctx.quadraticCurveTo(dripX + 4.5, baseY + 5.5, dripX + 4, baseY);
     }
     ctx.closePath();
     ctx.fill();
@@ -3112,7 +3297,7 @@ function drawHex(h) {
     ctx.lineWidth = 1; ctx.stroke();
   } else if (h.type === 'HEAVY') {
     ctx.strokeStyle = 'rgba(138,104,48,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
-    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl); }
+    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'ROYAL') {
     ctx.strokeStyle = 'rgba(212,175,55,0.50)'; ctx.lineWidth = 1.5; ctx.stroke();
     // crown icon — 3 tiny triangles
@@ -3120,7 +3305,7 @@ function drawHex(h) {
     ctx.beginPath();
     ctx.moveTo(h.x-4,h.y+2); ctx.lineTo(h.x-2,h.y-3); ctx.lineTo(h.x,h.y+2);
     ctx.lineTo(h.x+2,h.y-3); ctx.lineTo(h.x+4,h.y+2); ctx.closePath(); ctx.fill();
-    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl); }
+    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'ANCIENT') {
     ctx.strokeStyle = 'rgba(74,96,80,0.40)'; ctx.lineWidth = 1; ctx.stroke();
     // rune cross
@@ -3129,14 +3314,14 @@ function drawHex(h) {
     ctx.moveTo(h.x-HEX_R*0.4,h.y); ctx.lineTo(h.x+HEX_R*0.4,h.y);
     ctx.moveTo(h.x,h.y-HEX_R*0.4); ctx.lineTo(h.x,h.y+HEX_R*0.4);
     ctx.stroke();
-    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl); }
+    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'TITAN') {
     const p = (Math.floor(tick / 12) % 2) ? 0.35 : 0.15;
     ctx.strokeStyle = `rgba(80,80,140,${p})`; ctx.lineWidth = 2; ctx.stroke();
     // inner steel dot
     ctx.fillStyle = `rgba(100,100,160,${p+0.1})`;
     hexPath(hexPts(h.x, h.y, HEX_R * 0.28)); ctx.fill();
-    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl); }
+    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'CHARGED') {
     const p = (Math.floor(tick / 6) % 2) ? 0.55 : 0.20;
     ctx.strokeStyle = `rgba(80,208,255,${p})`; ctx.lineWidth = 1.5; ctx.stroke();
@@ -3187,7 +3372,7 @@ function drawHex(h) {
   } else {
     ctx.strokeStyle = h.type === 'THICK' ? 'rgba(255,150,50,0.13)' : 'rgba(255,230,140,0.18)';
     ctx.lineWidth = 1; ctx.stroke();
-    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl); }
+    { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   }
 
   // Brood dots
@@ -3356,14 +3541,30 @@ function checkHex(b) {
       if (h.hp <= 0) {
         h.dead = true;
 
-        // WAX CELL: splash 1 damage to immediate neighbours on death
+        // WAX CELL: splash damage + chain reaction (WAX→WAX and WAX→BOMB domino)
         if (h.type === 'WAX') {
-          for (const n of hexes) {
-            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
-            if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 2.2) {
-              n.hp -= CONFIG.WAX_DAMAGE;
-              n.flash = 8;
-              if (n.hp <= 0) n.dead = true;
+          const chainQueue = [h];
+          const chainProcessed = new Set();
+          while (chainQueue.length > 0) {
+            const src = chainQueue.shift();
+            if (chainProcessed.has(src)) continue;
+            chainProcessed.add(src);
+            for (const n of hexes) {
+              if (n.dead || n === src || chainProcessed.has(n)) continue;
+              if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
+              if (Math.hypot(n.x - src.x, n.y - src.y) < HEX_R * 2.2) {
+                n.hp -= CONFIG.WAX_DAMAGE;
+                n.flash = 8;
+                spawnParts(n.x, n.y, 4, ['#e8d8a0','#c0b070']);
+                if (n.hp <= 0) {
+                  n.dead = true;
+                  SaveManager.discover(n.type);
+                  // Chain: WAX and BOMB trigger their own splash
+                  if (n.type === 'WAX' || n.type === 'BOMB') {
+                    chainQueue.push(n);
+                  }
+                }
+              }
             }
           }
         }
@@ -3489,9 +3690,9 @@ const BG_TRANSITION = 900; // px of smooth blend between themes
 
 // Parallax layer definitions
 const BG_LAYERS = [
-  { r:100, speed:0.05, aMul:0.10, seed:3571 },  // far — very large, faint
-  { r:60,  speed:0.15, aMul:0.15, seed:6143 },  // mid — medium depth
-  { r:35,  speed:0.35, aMul:0.22, seed:9281 },  // near — smaller, more visible
+  { r:100, speed:0.05, aMul:0.06, seed:3571 },  // far — very faint texture
+  { r:60,  speed:0.15, aMul:0.09, seed:6143 },  // mid — subtle
+  { r:35,  speed:0.35, aMul:0.14, seed:9281 },  // near — slightly visible
 ];
 
 // Ambient particles
@@ -3832,14 +4033,119 @@ function drawBGVignette() {
   ctx.fillStyle = tG; ctx.fillRect(0, 0, W, H * 0.12);
 }
 
+// Deep atmosphere — distant warm glow pockets implying vast space
+function drawBGDeep(blend) {
+  const cb = demoMode ? H : H * PLAY_BOTTOM;
+  const { a, b, t } = blend;
+  const ac = lerpCol(a.accentCol, b.accentCol, t);
+  const offset = scrollY * 0.08;
+  // 6 large glow pockets, seeded positions that tile every 2400px
+  const period = 2400;
+  const rng = _crackRng(42);
+  const glowPositions = [];
+  for (let i = 0; i < 6; i++) {
+    glowPositions.push({ x: 30 + rng() * (W - 60), baseY: rng() * period });
+  }
+  for (const gp of glowPositions) {
+    const rawY = ((gp.baseY - offset) % period + period) % period - period * 0.15;
+    if (rawY < -120 || rawY > cb + 120) continue;
+    const r = 80 + (gp.baseY % 60);
+    const glow = ctx.createRadialGradient(gp.x, rawY, 0, gp.x, rawY, r);
+    glow.addColorStop(0, `rgba(${ac[0]},${ac[1]},${ac[2]},0.08)`);
+    glow.addColorStop(0.5, `rgba(${ac[0]},${ac[1]},${ac[2]},0.03)`);
+    glow.addColorStop(1, `rgba(${ac[0]},${ac[1]},${ac[2]},0)`);
+    ctx.fillStyle = glow;
+    ctx.fillRect(gp.x - r, rawY - r, r * 2, r * 2);
+  }
+}
+
+// Midground structural layer — large hive silhouettes for depth
+function drawBGMidground(blend) {
+  const cb = demoMode ? H : H * PLAY_BOTTOM;
+  const { a, b, t } = blend;
+  const speed = 0.6;
+  const offset = scrollY * speed;
+  // Segment index based on scroll depth (changes composition per boss gate section)
+  const segIdx = Math.floor((-scrollY) / 3000);
+  const rng = _crackRng(segIdx * 7919 + 1337);
+
+  // Generate 8 elements per segment period (3000px world = 1800px parallax)
+  const period = 1800;
+  const elements = [];
+  for (let i = 0; i < 8; i++) {
+    const type = rng() < 0.35 ? 'cluster' : rng() < 0.55 ? 'void' : rng() < 0.75 ? 'ridge' : 'wall';
+    elements.push({
+      type,
+      x: rng() * W,
+      baseY: rng() * period,
+      r: 30 + rng() * 40,
+      angle: rng() * Math.PI,
+      alpha: 0.08 + rng() * 0.12
+    });
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, W, cb);
+  ctx.clip();
+
+  for (const el of elements) {
+    const rawY = ((el.baseY - offset) % period + period) % period - period * 0.1;
+    if (rawY < -100 || rawY > cb + 100) continue;
+
+    ctx.globalAlpha = el.alpha;
+
+    if (el.type === 'cluster') {
+      // Giant partial honeycomb — 2-4 oversized hexes
+      ctx.fillStyle = 'rgba(10,6,2,1)';
+      const count = 2 + Math.floor(el.r % 3);
+      for (let h = 0; h < count; h++) {
+        const hx = el.x + (h - count/2) * el.r * 0.9;
+        const hy = rawY + (h % 2) * el.r * 0.5;
+        const pts = hexPts(hx, hy, el.r);
+        hexPath(pts);
+        ctx.fill();
+      }
+    } else if (el.type === 'void') {
+      // Dark elliptical void — implies a deeper passage
+      ctx.fillStyle = 'rgba(2,1,0,1)';
+      ctx.beginPath();
+      ctx.ellipse(el.x, rawY, el.r * 1.5, el.r * 0.8, el.angle * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (el.type === 'ridge') {
+      // Ancient support ridge — diagonal dark band
+      ctx.strokeStyle = 'rgba(10,6,2,1)';
+      ctx.lineWidth = 3 + el.r * 0.08;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      const len = 60 + el.r * 2;
+      ctx.moveTo(el.x - len * Math.cos(el.angle), rawY - len * Math.sin(el.angle));
+      ctx.lineTo(el.x + len * Math.cos(el.angle), rawY + len * Math.sin(el.angle));
+      ctx.stroke();
+    } else if (el.type === 'wall') {
+      // Tunnel wall thickening on left or right edge
+      const side = el.x < W / 2 ? 0 : W;
+      const wallW = 15 + el.r * 0.5;
+      ctx.fillStyle = 'rgba(8,4,1,1)';
+      ctx.beginPath();
+      ctx.ellipse(side, rawY, wallW, el.r * 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
 function drawBG() {
   const blend = getBGBlend(scrollY);
-  drawBGBase(blend);
-  drawBGLayers(blend);
-  drawBGVignette();
-  drawBGParticles(blend);
-  drawBGScanlines();
-  // HUD divider drawn later after blur overlay in render()
+  drawBGBase(blend);       // gradient fill
+  drawBGDeep(blend);       // distant glow pockets (speed 0.08)
+  drawBGLayers(blend);     // hex grid texture (reduced alpha)
+  drawBGMidground(blend);  // large structural silhouettes (speed 0.6)
+  drawBGVignette();        // cave edge darkening
+  drawBGParticles(blend);  // ambient particles
+  drawBGScanlines();       // CRT scan lines
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3917,16 +4223,23 @@ function drawHUD() {
   const fill = Math.min(1, totalHoney / getMeterCap());
   const bodyB = JAR_BY + JAR_BH;
 
-  // Jar bounce/wobble when upgrade banner is active
+  // Jar bounce/wobble when upgrade banner is active — intermittent, half speed
   if (upgradeBannerActive) {
-    jarBounceTimer += 0.15;
-    const bounceY = Math.sin(jarBounceTimer * 3) * 2.5;
-    const wobble  = Math.sin(jarBounceTimer * 2.3) * 0.04;
-    ctx.save();
-    ctx.translate(JAR_CX, JAR_BY + JAR_BH / 2);
-    ctx.rotate(wobble);
-    ctx.translate(-JAR_CX, -(JAR_BY + JAR_BH / 2));
-    ctx.translate(0, bounceY);
+    jarBounceTimer += 0.075; // half speed
+    // Wiggle for ~1s every 2s cycle (active when fractional part < 0.5)
+    const cycle = (jarBounceTimer * 0.5) % 2; // 2-second period
+    const wiggleActive = cycle < 1.0;
+    if (wiggleActive) {
+      const bounceY = Math.sin(jarBounceTimer * 3) * 2.5;
+      const wobble  = Math.sin(jarBounceTimer * 2.3) * 0.04;
+      ctx.save();
+      ctx.translate(JAR_CX, JAR_BY + JAR_BH / 2);
+      ctx.rotate(wobble);
+      ctx.translate(-JAR_CX, -(JAR_BY + JAR_BH / 2));
+      ctx.translate(0, bounceY);
+    } else {
+      ctx.save(); // still need save/restore pair for consistency
+    }
   }
 
   // ── Procedural honey jar ──
@@ -3983,13 +4296,32 @@ function drawHUD() {
     ctx.fillRect(bx + bw * 0.6, by, bw * 0.25, bh);
     ctx.restore();
 
-    // 3b) "HONEY" label — hand-written style with per-letter variation
+    // 3b) "HONEY" label — rustic label background + hand-written text
     ctx.save();
     jarBodyPath(); ctx.clip();
+    const labelY = by + bh * 0.45;
+    // Rustic parchment label behind text
+    const lblW = 48, lblH = 16, lblR = 3;
+    const lblX = JAR_CX - lblW / 2, lblY2 = labelY - lblH / 2;
+    ctx.fillStyle = 'rgba(240,220,170,0.85)';
+    ctx.beginPath();
+    ctx.moveTo(lblX + lblR, lblY2);
+    ctx.lineTo(lblX + lblW - lblR, lblY2);
+    ctx.quadraticCurveTo(lblX + lblW, lblY2, lblX + lblW, lblY2 + lblR);
+    ctx.lineTo(lblX + lblW, lblY2 + lblH - lblR);
+    ctx.quadraticCurveTo(lblX + lblW, lblY2 + lblH, lblX + lblW - lblR, lblY2 + lblH);
+    ctx.lineTo(lblX + lblR, lblY2 + lblH);
+    ctx.quadraticCurveTo(lblX, lblY2 + lblH, lblX, lblY2 + lblH - lblR);
+    ctx.lineTo(lblX, lblY2 + lblR);
+    ctx.quadraticCurveTo(lblX, lblY2, lblX + lblR, lblY2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(160,120,60,0.6)';
+    ctx.lineWidth = 0.5;
+    ctx.stroke();
     ctx.font = 'italic 9px "Press Start 2P"';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
-    const labelY = by + bh * 0.45;
     const letters = ['H','O','N','E','Y'];
     // Per-letter rotation/scale offsets (seeded for consistency)
     const rotations = [-0.06, 0.04, -0.03, 0.05, -0.04];
@@ -4130,7 +4462,7 @@ function drawHUD() {
 function drawUpgradeBanner() {
   if (!upgradeBannerActive || upgradeBannerChoices.length === 0) return;
 
-  const bannerY = 32;                 // just below hive depth counter
+  const bannerY = Math.round(H * 0.35);  // centered in play area
   const bannerX = 4;
   const bannerW = W - 8;
   const btnH = 58;                   // tall buttons: icon + name + description
@@ -4276,6 +4608,7 @@ function handleCanvasTap(cx, cy, e) {
           upgradeBannerActive = false;
           upgradeBannerChoices = [];
           upgradeBannerGeom = null;
+          _upgradeSlomoState = 'resuming'; // slowly ramp back to full speed
           haptic(HAPTIC.honey); // satisfying buzz on upgrade pick
           if (e) e.preventDefault();
           return true;
@@ -4774,10 +5107,10 @@ function spawnChunk(chunkTop, depth, seed) {
     }
   }
 
-  // Procedural stamps (non-blueprint, skip portal stamps near boss gates)
+  // Procedural stamps (non-blueprint, no portals — portals only via blueprints)
   const proceduralEligible = STRUCTURES.filter(s =>
     s.minDepth <= depth && !s._isBlueprint &&
-    !(nearBossGate && s.id === 'PORTAL_PAIR'));
+    s.id !== 'PORTAL_PAIR');
   const stampCount = proceduralEligible.length > 0 ? 1 + Math.floor(rng() * 2) : 0;
   for (let si = 0; si < stampCount && si < proceduralEligible.length; si++) {
     proceduralEligible[Math.floor(rng() * proceduralEligible.length)].stamp(hexMap, rng);
@@ -5033,7 +5366,7 @@ let upgradeCount = 0; // total upgrades picked this run
 function resetRun() {
   for (const k of Object.keys(powers)) powers[k] = 0;
   totalHoney = 0; droplets = []; _fallingDrops = []; _debris = []; pickerPending = false; paused = false;
-  upgradeBannerActive = false; upgradeBannerChoices = []; upgradeBannerGeom = null;
+  upgradeBannerActive = false; upgradeBannerChoices = []; upgradeBannerGeom = null; _upgradeSlomoState = 'none';
   upgradeSlots = []; levelHoneyEarned = 0; upgradeCount = 0;
   levelHoneyEarned = 0;
   activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
@@ -5142,6 +5475,22 @@ function update() {
     }
   }
 
+  // ── Upgrade banner slow-motion ──
+  if (_upgradeSlomoState === 'slowing') {
+    timeScale = Math.max(0, timeScale - 0.03);
+    if (timeScale <= 0) {
+      timeScale = 0;
+      _upgradeSlomoState = 'paused';
+    }
+  }
+  if (_upgradeSlomoState === 'resuming') {
+    timeScale = Math.min(1, timeScale + 0.02); // slower resume than slow-down
+    if (timeScale >= 1) {
+      timeScale = 1;
+      _upgradeSlomoState = 'none';
+    }
+  }
+
   // ── Inspector mode: skip all physics, only do chunk generation ──
   if (inspectorMode) {
     const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
@@ -5150,8 +5499,9 @@ function update() {
       const depth    = (currentLevel - 1) + totalDepth;
       const seed     = levelSeed + totalDepth * 1000003;
 
-      // Boss gate check (same as normal streaming)
-      if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) {
+      // Boss gate check — skip if blueprint cells are nearby
+      const _hasBlueprintNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 3);
+      if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_hasBlueprintNear) {
         const gateIndex = bossGates.length;
         const guardCells = spawnBossGateChunk(chunkTop);
         const gate = {
@@ -5271,8 +5621,9 @@ function update() {
     const depth    = (currentLevel - 1) + totalDepth;
     const seed     = levelSeed + totalDepth * 1000003;
 
-    // Boss gate check: every BOSS_GATE_INTERVAL chunks, spawn barrier + queen
-    if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) {
+    // Boss gate check: every BOSS_GATE_INTERVAL chunks, skip if blueprint nearby
+    const _bpNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 3);
+    if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_bpNear) {
       const gateIndex = bossGates.length;
       const guardCells = spawnBossGateChunk(chunkTop);
       const gate = {
@@ -5656,6 +6007,17 @@ function render() {
   // Draw paddle UNDER bees (in world space temporarily)
   ctx.save();
   ctx.translate(0, scrollY);          // back to screen space for paddle
+
+  // Faint paddle guideline — thin line at paddle height
+  if (!demoMode) {
+    const guideY = demoMode ? H - 17 : PADDLE_Y;
+    ctx.strokeStyle = 'rgba(240,200,120,0.08)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(0, guideY - 2);
+    ctx.lineTo(W, guideY - 2);
+    ctx.stroke();
+  }
 
   // Bee proximity shadow on hend — helps track bee height
   {
@@ -6542,7 +6904,7 @@ function showMenu() {
   const s = hasSave ? SaveManager.getSummary() : null;
   // Only show CONTINUE if there's a saved run with actual progress
   if (hasSave && s && s.depth > 0) {
-    mkBtn('CONTINUE · DEPTH ' + s.depth, true, () => {
+    mkBtn('DEPTH ' + s.depth, false, () => {
       hideOv();
       // Stop demo loop, exit demo mode
       if (animId) cancelAnimationFrame(animId);
@@ -6883,10 +7245,10 @@ function _builderDrawPalette() {
   ctx.lineTo(W, palY);
   ctx.stroke();
 
-  // Cell type buttons — two rows
+  // Cell type buttons — two rows, using actual hex sprites
   const cols = Math.ceil(_BUILDER_CELL_TYPES.length / 2);
   const btnW = Math.floor((W - 4) / cols);
-  const btnH = 34;
+  const btnH = 38; // taller to fit hex sprites
 
   for (let i = 0; i < _BUILDER_CELL_TYPES.length; i++) {
     const type = _BUILDER_CELL_TYPES[i];
@@ -6895,30 +7257,34 @@ function _builderDrawPalette() {
     const bx = 2 + col * btnW;
     const by = palY + 4 + row * (btnH + 2);
 
-    // Swatch
-    const palKey = CELL_TYPES[type].color;
-    const swatchColor = PAL[palKey] ? (Array.isArray(PAL[palKey]) ? PAL[palKey][0] : PAL[palKey]) : '#888';
-    ctx.fillStyle = swatchColor;
-    ctx.fillRect(bx + 2, by + 2, btnW - 4, btnH - 4);
+    // Dark button background
+    ctx.fillStyle = 'rgba(20,10,4,0.9)';
+    ctx.fillRect(bx + 1, by + 1, btnW - 2, btnH - 2);
 
     // Selected highlight
     if (builderSelectedType === type) {
       ctx.strokeStyle = '#fff';
       ctx.lineWidth = 2;
-      ctx.strokeRect(bx + 1, by + 1, btnW - 2, btnH - 2);
+      ctx.strokeRect(bx, by, btnW, btnH);
     } else {
-      ctx.strokeStyle = '#4a2200';
+      ctx.strokeStyle = '#3a1e00';
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(bx + 1, by + 1, btnW - 2, btnH - 2);
+      ctx.strokeRect(bx, by, btnW, btnH);
     }
 
-    // Label
-    ctx.font = '7px "Press Start 2P",monospace';
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    const label = type.length > 5 ? type.substring(0, 4) : type;
-    ctx.fillText(label, bx + btnW / 2, by + btnH / 2 + 3);
-    ctx.textAlign = 'left';
+    // Draw actual hex sprite using drawHex with a temporary hex object
+    const hcx = bx + btnW / 2;
+    const hcy = by + btnH / 2;
+    const tempHex = { x: hcx, y: hcy, type, hp: CELL_TYPES[type].hp, dead: false, flash: 0, ci: i % 5 };
+    // drawHex uses global HEX_R for sizing — we need to render at that scale
+    // Save/clip to button bounds to prevent overflow
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(bx, by, btnW, btnH);
+    ctx.clip();
+    drawHex(tempHex);
+    ctx.restore();
+    ctx.font = '5px "Press Start 2P",monospace';
   }
 
   // Clear button — bottom-left corner
@@ -7054,10 +7420,10 @@ function _builderHandleTap(clientX, clientY) {
     return;
   }
 
-  // Export button zone (bottom-right corner)
-  const ebW = _EXPORT_BTN.w, ebH = _EXPORT_BTN.h, ebM = _EXPORT_BTN.margin;
+  // Export button zone (bottom-right corner) — enlarged hit zone for mobile
+  const ebW = _EXPORT_BTN.w + 10, ebH = _EXPORT_BTN.h + 10, ebM = _EXPORT_BTN.margin;
   const ebX = W - ebW - ebM, ebY = H - ebH - ebM;
-  if (cx >= ebX && cx <= ebX + ebW && cy >= ebY && cy <= ebY + ebH) {
+  if (cx >= ebX && cy >= ebY) {
     _builderExport();
     return;
   }
@@ -7335,6 +7701,16 @@ function buildShopDots() {
       onClick: () => { selectedTracer = t.id; saveCosmetics(); buildShopDots(); }
     };
   }));
+
+  // Auras
+  _fillTiles('shopTilesAuras', BEE_AURAS.map(a => {
+    const color = a.color ? a.color + '0.7)' : '#333';
+    return {
+      color, active: selectedAura === a.id,
+      name: a.name, desc: '', cost: a.cost || 0,
+      onClick: () => { selectedAura = a.id; localStorage.setItem('hendsbee_aura', a.id); buildShopDots(); }
+    };
+  }));
 }
 
 function _fillDots(containerId, dots) {
@@ -7459,9 +7835,78 @@ function _shopLoop() {
       const flap = Math.max(2, Math.round(BEE_FLAP_SPEED / 2));
       const frameIdx = beeFrameSeq[Math.floor(_shopTick / flap) % beeFrameSeq.length];
       const img = beeFrames[frameIdx];
-      bx.save();
       const bob = Math.sin(_shopTick * 0.06) * 3;
-      bx.translate(60, 60 + bob);
+      const beeCX = 60, beeCY = 60 + bob;
+
+      // Preview: highway-line dashes scrolling down from bee (faking "bee flying over dashes")
+      {
+        const tracerObj = selectedTracer !== 'classic' ? BEE_TRACERS.find(t => t.id === selectedTracer) : null;
+        const dashSpacing = 14;  // space between dashes
+        const dashLen = 5;       // length of each dash
+        const scrollSpeed = 1.5; // pixels per tick
+        const scrollOffset = (_shopTick * scrollSpeed) % dashSpacing; // continuous scroll
+        const isPoop = tracerObj && tracerObj.id === 'poopLogs';
+
+        bx.save();
+        bx.lineCap = 'round';
+        bx.lineWidth = isPoop ? 3.5 : 1.8;
+
+        // Draw dashes from just below bee to bottom of preview
+        const startY = beeCY + 18; // start below bee stinger
+        const endY = 118;          // near bottom of canvas
+
+        for (let dy = -dashSpacing + scrollOffset; dy < endY - startY + dashSpacing; dy += dashSpacing) {
+          const dashY = startY + dy;
+          if (dashY < startY - 2 || dashY > endY) continue;
+
+          // Fade based on distance from bee
+          const dist = dashY - startY;
+          const maxDist = endY - startY;
+          const fade = 1 - (dist / maxDist);
+          const alpha = fade * fade * 0.55;
+          if (alpha < 0.02) continue;
+
+          // Color per dash
+          if (tracerObj) {
+            if (tracerObj.id === 'rainbow') {
+              const hue = ((_shopTick * 3 + dy * 3) % 360);
+              bx.strokeStyle = `hsla(${hue},90%,60%,${alpha.toFixed(2)})`;
+            } else if (isPoop) {
+              const seed = (Math.floor(dy / dashSpacing) * 7 + 3) & 0xFF;
+              bx.strokeStyle = `rgba(${60+seed%40},${35+seed%25},${10+seed%15},${alpha.toFixed(2)})`;
+            } else {
+              bx.strokeStyle = `${tracerObj.color}${alpha.toFixed(2)})`;
+            }
+          } else {
+            bx.strokeStyle = `rgba(200,190,160,${alpha.toFixed(2)})`;
+          }
+
+          // Vertical dash line (like highway center lines)
+          bx.beginPath();
+          bx.moveTo(beeCX, dashY);
+          bx.lineTo(beeCX, dashY + dashLen);
+          bx.stroke();
+        }
+        bx.restore();
+      }
+
+      // Preview: aura glow behind bee
+      if (selectedAura !== 'none') {
+        const auraObj = BEE_AURAS.find(a => a.id === selectedAura);
+        if (auraObj && auraObj.color) {
+          const pulse = 0.7 + 0.3 * Math.sin(_shopTick * 0.06);
+          const auraR = 28 + pulse * 6;
+          const glow = bx.createRadialGradient(beeCX, beeCY, 0, beeCX, beeCY, auraR);
+          glow.addColorStop(0, auraObj.color + (0.3 * pulse).toFixed(2) + ')');
+          glow.addColorStop(0.5, auraObj.color + (0.12 * pulse).toFixed(2) + ')');
+          glow.addColorStop(1, auraObj.color + '0)');
+          bx.fillStyle = glow;
+          bx.fillRect(beeCX - auraR, beeCY - auraR, auraR * 2, auraR * 2);
+        }
+      }
+
+      bx.save();
+      bx.translate(beeCX, beeCY);
       const dw = 80, dh = 80;
       if (skin && skin.tint) {
         const ow = dw + 2, oh = dh + 2;
@@ -7646,8 +8091,8 @@ function startCountdown(cb) {
 // CRT POWER-ON BOOT ANIMATION
 // ═══════════════════════════════════════════════════════
 function playBootSFX() {
-  // All boot sounds respect SFX volume
-  const vol = sfxVolume;
+  // All boot sounds respect SFX volume (reduced 25% for subtlety)
+  const vol = sfxVolume * 0.75;
   if (vol <= 0) return;
   acResume();
   const now = AC.currentTime;
@@ -7677,73 +8122,106 @@ function playBootSFX() {
   clickNG.gain.exponentialRampToValueAtTime(0.0001, clickTime + 0.04);
   clickSrc.start(now); clickSrc.stop(clickTime + 0.05);
 
-  // 2) Low transformer hum building (0.5s – 1.7s) — 60Hz buzz
+  // 2) HERO SOUND: Warm tube amp hum — starts quiet, builds SLOWLY to prominent warm drone
+  // Like a big vintage tube amplifier heating up from cold
   const humOsc = AC.createOscillator();
   const humGain = AC.createGain();
-  humOsc.connect(humGain); humGain.connect(AC.destination);
+  const humLPF = AC.createBiquadFilter();
+  humLPF.type = 'lowpass';
+  humLPF.frequency.setValueAtTime(200, now + 0.5);  // very filtered at start
+  humLPF.frequency.linearRampToValueAtTime(350, now + 3.5); // opens up as tubes warm
+  humLPF.Q.value = 1.5; // slight resonance for warmth
+  humOsc.connect(humLPF); humLPF.connect(humGain); humGain.connect(AC.destination);
   humOsc.type = 'sawtooth';
-  humOsc.frequency.setValueAtTime(60, now + 0.5);
-  humOsc.frequency.linearRampToValueAtTime(120, now + 1.7);
+  humOsc.frequency.setValueAtTime(50, now + 0.5);    // very low 50Hz mains hum
+  humOsc.frequency.linearRampToValueAtTime(60, now + 2.0);  // settles to 60Hz
+  humOsc.frequency.linearRampToValueAtTime(65, now + 4.0);  // tiny drift up
   humGain.gain.setValueAtTime(0, now);
   humGain.gain.linearRampToValueAtTime(0, now + 0.5);
-  humGain.gain.linearRampToValueAtTime(vol * 0.06, now + 0.9);
-  humGain.gain.linearRampToValueAtTime(vol * 0.12, now + 1.7);
-  humGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0);
-  humOsc.start(now + 0.5); humOsc.stop(now + 2.1);
+  humGain.gain.linearRampToValueAtTime(vol * 0.03, now + 1.0);  // barely audible at first
+  humGain.gain.linearRampToValueAtTime(vol * 0.08, now + 2.0);  // slowly growing
+  humGain.gain.linearRampToValueAtTime(vol * 0.14, now + 3.0);  // getting warm
+  humGain.gain.linearRampToValueAtTime(vol * 0.18, now + 3.8);  // toasty peak
+  humGain.gain.linearRampToValueAtTime(vol * 0.16, now + 5.5);  // hold warmth
+  humGain.gain.linearRampToValueAtTime(vol * 0.13, now + 7.0);  // uniform fade
+  humGain.gain.linearRampToValueAtTime(vol * 0.09, now + 8.5);
+  humGain.gain.linearRampToValueAtTime(vol * 0.05, now + 10.0);
+  humGain.gain.linearRampToValueAtTime(vol * 0.02, now + 11.5);
+  humGain.gain.exponentialRampToValueAtTime(0.0001, now + 13.0); // very slow uniform fade
+  humOsc.start(now + 0.5); humOsc.stop(now + 13.1);
 
-  // 3) Low bee-like buzz hum (1.7s – 3.5s) — warm drone, not a whine
-  const whineOsc = AC.createOscillator();
-  const whineGain = AC.createGain();
-  const whineLPF = AC.createBiquadFilter();
-  whineLPF.type = 'lowpass';
-  whineLPF.frequency.setValueAtTime(400, now + 1.7); // heavily filtered for low hum
-  whineLPF.Q.value = 2.0; // slight resonance for buzz character
-  whineOsc.connect(whineLPF); whineLPF.connect(whineGain); whineGain.connect(AC.destination);
-  whineOsc.type = 'sawtooth'; // sawtooth = rich harmonics for buzz
-  whineOsc.frequency.setValueAtTime(110, now + 1.7); // low A — bee wing frequency range
-  whineOsc.frequency.linearRampToValueAtTime(165, now + 2.5); // rises gently to E
-  whineGain.gain.setValueAtTime(0, now);
-  whineGain.gain.linearRampToValueAtTime(0, now + 1.7);
-  whineGain.gain.linearRampToValueAtTime(vol * 0.06, now + 2.2);   // gentle ramp up
-  whineGain.gain.linearRampToValueAtTime(vol * 0.04, now + 3.0);   // sustain
-  whineGain.gain.exponentialRampToValueAtTime(0.0001, now + 4.0);   // slow fade
-  whineOsc.start(now + 1.7); whineOsc.stop(now + 4.1);
+  // 2b) Second harmonic layer — adds body/warmth to the tube hum
+  const hum2Osc = AC.createOscillator();
+  const hum2Gain = AC.createGain();
+  hum2Osc.connect(humLPF); // share the same lowpass filter
+  hum2Osc.type = 'sine';
+  hum2Osc.frequency.setValueAtTime(100, now + 0.8);  // 2nd harmonic
+  hum2Osc.frequency.linearRampToValueAtTime(120, now + 3.5);
+  hum2Gain.gain.setValueAtTime(0, now);
+  hum2Gain.gain.linearRampToValueAtTime(0, now + 0.8);
+  hum2Gain.gain.linearRampToValueAtTime(vol * 0.04, now + 2.0);
+  hum2Gain.gain.linearRampToValueAtTime(vol * 0.08, now + 3.5);
+  hum2Gain.gain.linearRampToValueAtTime(vol * 0.06, now + 5.5);
+  hum2Gain.gain.linearRampToValueAtTime(vol * 0.04, now + 7.5);
+  hum2Gain.gain.linearRampToValueAtTime(vol * 0.02, now + 10.0);
+  hum2Gain.gain.exponentialRampToValueAtTime(0.0001, now + 13.0);
+  hum2Osc.connect(hum2Gain); hum2Gain.connect(AC.destination);
+  hum2Osc.start(now + 0.8); hum2Osc.stop(now + 13.1);
 
-  // 4) Static buzz ramping with screen expansion (1.7s – 3.5s)
-  const staticDur = 2.0;
+  // 3) Brief static burst — quick and punchy, fades fast (like initial contact)
+  const staticDur = 1.0;
   const staticBuf = AC.createBuffer(1, Math.ceil(AC.sampleRate * staticDur), AC.sampleRate);
   const sd = staticBuf.getChannelData(0);
   for (let i = 0; i < sd.length; i++) sd[i] = Math.random() * 2 - 1;
   const staticSrc = AC.createBufferSource();
   const staticGain = AC.createGain();
-  // Bandpass filter to make it sound like CRT static, not pure white noise
   const staticFilter = AC.createBiquadFilter();
   staticFilter.type = 'bandpass';
-  staticFilter.frequency.setValueAtTime(3000, now + 1.7);
-  staticFilter.Q.setValueAtTime(0.8, now + 1.7);
+  staticFilter.frequency.setValueAtTime(2500, now + 1.5);
+  staticFilter.Q.setValueAtTime(1.0, now + 1.5);
   staticSrc.buffer = staticBuf;
   staticSrc.connect(staticFilter); staticFilter.connect(staticGain); staticGain.connect(AC.destination);
   staticGain.gain.setValueAtTime(0, now);
-  staticGain.gain.linearRampToValueAtTime(0, now + 1.7);
-  staticGain.gain.linearRampToValueAtTime(vol * 0.15, now + 2.0);   // ramp up with screen fill
-  staticGain.gain.linearRampToValueAtTime(vol * 0.10, now + 2.5);   // peak during screen fill
-  staticGain.gain.linearRampToValueAtTime(vol * 0.03, now + 3.2);   // fade as picture focuses
-  staticGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.7);
-  staticSrc.start(now + 1.7); staticSrc.stop(now + 3.8);
+  staticGain.gain.linearRampToValueAtTime(0, now + 1.5);
+  staticGain.gain.linearRampToValueAtTime(vol * 0.10, now + 1.7);  // quick burst
+  staticGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.3);  // fades fast
+  staticSrc.start(now + 1.5); staticSrc.stop(now + 2.4);
 
-  // 5) Warm "tube warming up" low resonance (0.9s – 2.5s)
+  // 4) Quick crackling pops — short, sparse, like contact noise
+  const crackDur = 2.0;
+  const crackBuf = AC.createBuffer(1, Math.ceil(AC.sampleRate * crackDur), AC.sampleRate);
+  const cd = crackBuf.getChannelData(0);
+  for (let i = 0; i < cd.length; i++) {
+    const gate = Math.random() < 0.08 ? 1 : 0; // sparser pops
+    cd[i] = (Math.random() * 2 - 1) * gate;
+  }
+  const crackSrc = AC.createBufferSource();
+  const crackGain = AC.createGain();
+  const crackHPF = AC.createBiquadFilter();
+  crackHPF.type = 'highpass';
+  crackHPF.frequency.value = 2500;
+  crackSrc.buffer = crackBuf;
+  crackSrc.connect(crackHPF); crackHPF.connect(crackGain); crackGain.connect(AC.destination);
+  crackGain.gain.setValueAtTime(0, now);
+  crackGain.gain.linearRampToValueAtTime(vol * 0.06, now + 0.5);  // subtle early pops
+  crackGain.gain.linearRampToValueAtTime(vol * 0.08, now + 1.5);  // brief peak
+  crackGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);  // done quickly
+  crackSrc.start(now + 0.3); crackSrc.stop(now + 2.6);
+
+  // 5) Warm "tube warming up" low resonance — extended, blends with main hum
   const tubeOsc = AC.createOscillator();
   const tubeGain = AC.createGain();
   tubeOsc.connect(tubeGain); tubeGain.connect(AC.destination);
   tubeOsc.type = 'sine';
-  tubeOsc.frequency.setValueAtTime(100, now + 0.9);
-  tubeOsc.frequency.linearRampToValueAtTime(180, now + 2.5);
+  tubeOsc.frequency.setValueAtTime(80, now + 0.6);   // lower start
+  tubeOsc.frequency.linearRampToValueAtTime(140, now + 3.5); // slow rise
   tubeGain.gain.setValueAtTime(0, now);
-  tubeGain.gain.linearRampToValueAtTime(0, now + 0.9);
-  tubeGain.gain.linearRampToValueAtTime(vol * 0.08, now + 1.5);
-  tubeGain.gain.linearRampToValueAtTime(vol * 0.04, now + 2.5);
-  tubeGain.gain.exponentialRampToValueAtTime(0.0001, now + 3.0);
-  tubeOsc.start(now + 0.9); tubeOsc.stop(now + 3.1);
+  tubeGain.gain.linearRampToValueAtTime(0, now + 0.6);
+  tubeGain.gain.linearRampToValueAtTime(vol * 0.06, now + 1.5);
+  tubeGain.gain.linearRampToValueAtTime(vol * 0.10, now + 3.0);  // builds with main hum
+  tubeGain.gain.linearRampToValueAtTime(vol * 0.06, now + 4.0);  // sustain
+  tubeGain.gain.exponentialRampToValueAtTime(0.0001, now + 5.0);  // slow fade
+  tubeOsc.start(now + 0.6); tubeOsc.stop(now + 5.1);
 }
 
 function playBootAnimation(callback) {
@@ -7802,6 +8280,16 @@ function playBootAnimation(callback) {
       // Bright horizontal line
       ctx.fillStyle = '#fff8e0';
       ctx.fillRect(cx - hw, cy - lh, hw * 2, lh * 2);
+      // Visual static noise — flickering scan lines
+      ctx.save();
+      ctx.globalAlpha = 0.08 + eased * 0.12;
+      for (let sy2 = 0; sy2 < H; sy2 += 3) {
+        if (Math.random() < 0.15) {
+          ctx.fillStyle = `rgba(255,255,255,${(Math.random() * 0.3).toFixed(2)})`;
+          ctx.fillRect(0, sy2, W, 1);
+        }
+      }
+      ctx.restore();
 
     } else if (t < 2500) {
       // Phase 3: vertical expansion fills the full screen
@@ -7830,14 +8318,33 @@ function playBootAnimation(callback) {
         ctx.fillStyle = wash;
         ctx.fillRect(0, 0, W, H);
       }
+      // Visual static — random scanline interference fading as screen settles
+      ctx.save();
+      const staticAlpha = 0.15 * (1 - eased * 0.7);
+      ctx.globalAlpha = staticAlpha;
+      for (let sy2 = 0; sy2 < H; sy2 += 2) {
+        if (Math.random() < 0.2) {
+          const bright = Math.random() < 0.5;
+          ctx.fillStyle = bright ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)';
+          ctx.fillRect(0, sy2, W, 1);
+        }
+      }
+      // Random block glitches
+      if (Math.random() < 0.15) {
+        const gy = Math.random() * H;
+        const gw = 20 + Math.random() * 60;
+        ctx.fillStyle = `rgba(255,248,200,${(0.1 + Math.random() * 0.15).toFixed(2)})`;
+        ctx.fillRect(Math.random() * W, gy, gw, 2 + Math.random() * 4);
+      }
+      ctx.restore();
 
     } else {
       // Phase 4: boot animation loop ends — white fade handled by CSS overlay
       // (see _bootWhiteOverlay created below)
     }
 
-    // Apply CRT effects during pre-game phases
-    if (crtIntensity > 0 && t < 2500) drawCRT(crtIntensity);
+    // Apply CRT effects only after screen has fully lit up (Phase 3 complete)
+    if (crtIntensity > 0 && t >= 2500) drawCRT(crtIntensity);
 
     requestAnimationFrame(bootFrame);
   }
@@ -7997,6 +8504,34 @@ function playNeonBootSequence() {
   ov.style.opacity = '1';
   ov.offsetHeight; // force reflow
 
+  // Music fades in from 60% volume during intro, ramping to full as hum tapers
+  if (music.el) {
+    const _origVol = musicVolume;
+    if (music._isMobile) {
+      music.el.volume = _origVol * 0.6;
+    } else if (music.gain) {
+      music.gain.gain.value = _origVol * 0.6;
+    }
+    // Ramp to full volume over 8 seconds (matches hum fadeout)
+    let _volStart = performance.now();
+    function _rampVol() {
+      const elapsed = (performance.now() - _volStart) / 1000;
+      const frac = Math.min(1, elapsed / 8);
+      const v = _origVol * (0.6 + 0.4 * frac); // 60% → 100%
+      if (music._isMobile) {
+        if (music.el) music.el.volume = v;
+      } else if (music.gain) {
+        music.gain.gain.value = v;
+      }
+      if (frac < 1) requestAnimationFrame(_rampVol);
+    }
+    _rampVol();
+  }
+
+  // Start canvas with strong blur/bloom that slowly focuses
+  canvas.style.filter = 'blur(8px) brightness(1.5)';
+  canvas.style.transition = 'none';
+
   // Phase 1 (immediate): Title starts dim, flickers on as white fill hits edges
   const titlePattern = [
     { on: 60 }, { off: 100 },   // short dim flicker 1
@@ -8005,55 +8540,92 @@ function playNeonBootSequence() {
     { on: 999 },                 // steady ON
   ];
   title.style.opacity = '0.3';
-  title.style.transition = 'opacity 1.5s ease-in, text-shadow 1.5s ease-in';
+  // Start with a dim glow that ramps up as "tubes warm"
+  title.style.textShadow = '3px 3px 0 #4a2000, 0 0 4px rgba(240,160,32,0.2), 0 0 8px rgba(240,140,20,0.1)';
+  title.style.transition = 'opacity 1.5s ease-in, text-shadow 2s ease-in';
   neonFlickerElement(title, titlePattern, 'neon-glow-title', 0.025);
-  // After flicker completes (~670ms), ramp to full brightness
+  // After flicker completes (~670ms), ramp brightness and glow simultaneously
   setTimeout(() => {
     title.style.opacity = '1';
+    // Ramp glow up quickly — "tubes warming up"
+    title.style.textShadow = '3px 3px 0 #4a2000, 0 0 16px rgba(240,170,40,0.65), 0 0 35px rgba(240,160,32,0.45), 0 0 60px rgba(240,140,20,0.3), 0 0 90px rgba(240,120,10,0.12)';
   }, 700);
-
-  // Phase 2 (delay 1.8s): Entire canvas (cells + HUD + upgrade slots + honey jar) fades in together
+  // Boost to full glow at 2s
   setTimeout(() => {
-    canvas.style.transition = 'opacity 2.0s ease-in';
+    title.style.transition = 'text-shadow 1.5s ease-out';
+    title.style.textShadow = '3px 3px 0 #4a2000, 0 0 20px rgba(240,170,40,0.75), 0 0 40px rgba(240,160,32,0.55), 0 0 70px rgba(240,140,20,0.35), 0 0 100px rgba(240,120,10,0.15)';
+  }, 2000);
+
+  // Phase 2 (delay 2.2s): Canvas fades in with bloom, slowly comes into focus
+  setTimeout(() => {
+    canvas.style.transition = 'opacity 2.5s ease-in, filter 4.0s ease-out';
     canvas.style.opacity = '1';
-  }, 1800);
+    canvas.style.filter = 'blur(0px) brightness(1.0)'; // focuses over 4 seconds
+  }, 2200);
 
-  // Phase 3 (delay 2.8s): Buttons + subtitle power on together
+  // Phase 3 (delay 4.0s): Buttons power on MUCH slower, staggered more
   setTimeout(() => {
-    // Subtitle flickers
-    const subPattern = [
-      { on: 40 }, { off: 60 },
-      { on: 999 },
-    ];
-    neonFlickerElement(sub, subPattern, 'neon-glow-sub', 0.012);
-
-    // Each button flickers with slightly randomized pattern
+    // Each button flickers with slower, more deliberate pattern + glow ramp
     buttons.forEach((btn, i) => {
       setTimeout(() => {
-        const flickCount = 2 + Math.floor(Math.random() * 2);
+        // Start with dim glow
+        btn.style.boxShadow = '3px 3px 0 #4a2000, 0 0 2px rgba(240,160,32,0.15)';
+        btn.style.transition = 'box-shadow 1.5s ease-in';
+        const flickCount = 3 + Math.floor(Math.random() * 2);
         const pattern = [];
         for (let f = 0; f < flickCount; f++) {
-          pattern.push({ on: 30 + Math.random() * 40 });
-          pattern.push({ off: 50 + Math.random() * 60 });
+          pattern.push({ on: 50 + Math.random() * 80 });
+          pattern.push({ off: 80 + Math.random() * 120 });
         }
         pattern.push({ on: 999 });
         neonFlickerElement(btn, pattern, 'neon-glow-btn', 0.015 + Math.random() * 0.01);
-      }, i * 50);
+        // Ramp glow up after flicker settles
+        const flickDur = flickCount * 200 + 200;
+        setTimeout(() => {
+          btn.style.boxShadow = '3px 3px 0 #4a2000, 0 0 8px rgba(240,160,32,0.5), 0 0 18px rgba(240,140,20,0.25), 0 0 30px rgba(240,120,10,0.12)';
+        }, flickDur);
+      }, i * 300);
     });
 
     // Start power surge after elements settle
     setTimeout(() => {
       startPowerSurge([title, sub, ...buttons]);
-    }, 1000);
+    }, 2500);
 
-  }, 2800);
+  }, 4000);
 
-  // Reset transitions after full sequence
+  // Phase 3b (delay 7s): "HIGHEST CLIMB" subtitle comes on LAST, slow fade-in with glow ramp
+  setTimeout(() => {
+    sub.classList.remove('neon-off');
+    sub.style.opacity = '0';
+    sub.style.textShadow = '1px 1px 0 #3a1800, 0 0 2px rgba(200,140,40,0.2)';
+    sub.style.transition = 'opacity 2.5s ease-in, text-shadow 3s ease-in';
+    sub.offsetHeight; // force reflow
+    sub.style.opacity = '1';
+    sub.style.textShadow = '1px 1px 0 #3a1800, 0 0 8px rgba(200,140,40,0.6), 0 0 18px rgba(180,120,30,0.35), 0 0 30px rgba(160,100,20,0.18)';
+    sub.classList.add('neon-glow-sub');
+  }, 7000);
+
+  // Reset transitions after full sequence, then start title glow pulse
   setTimeout(() => {
     ov.style.transition = '';
     canvas.style.transition = '';
-    title.style.transition = '';
-  }, 5500);
+    canvas.style.filter = '';
+    title.style.transition = 'text-shadow 3s ease-in-out';
+    // Large, consistent pulsing glow on HENDSBEE title — subtle breathing
+    let _titlePulseOn = true;
+    function _titlePulse() {
+      if (!ov.classList.contains('show')) return;
+      if (_titlePulseOn) {
+        title.style.textShadow = '3px 3px 0 #4a2000, 0 0 20px rgba(240,170,40,0.75), 0 0 40px rgba(240,160,32,0.55), 0 0 70px rgba(240,140,20,0.35), 0 0 100px rgba(240,120,10,0.15)';
+      } else {
+        title.style.textShadow = '3px 3px 0 #4a2000, 0 0 14px rgba(240,170,40,0.6), 0 0 30px rgba(240,160,32,0.4), 0 0 55px rgba(240,140,20,0.25), 0 0 80px rgba(240,120,10,0.1)';
+      }
+      _titlePulseOn = !_titlePulseOn;
+      setTimeout(_titlePulse, 3000);
+    }
+    _titlePulse();
+  }, 8000);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -8090,17 +8662,20 @@ Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() =
     acResume();
     music._init();
     if (music.el) {
-      // Set volume to 0 for silent unlock, then restore
-      const savedVol = music.el.volume;
+      // Silent unlock: play at volume 0, then pause and restore
       music.el.volume = 0;
       const p = music.el.play();
       if (p && p.then) {
         p.then(() => {
           music.el.pause();
           music.el.currentTime = 0;
-          music.el.volume = savedVol;
+          // Restore proper volume for when music.play() is called later
+          music.el.volume = music._isMobile ? musicVolume : 1;
+          if (music.gain) music.gain.gain.value = musicVolume;
           _audioUnlocked = true;
-        }).catch(() => { music.el.volume = savedVol; });
+        }).catch(() => {
+          music.el.volume = music._isMobile ? musicVolume : 1;
+        });
       }
     }
     // Also create and resume a short AudioContext buffer to unlock Web Audio
@@ -8111,6 +8686,15 @@ Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() =
       src.connect(AC.destination);
       src.start(0);
     } catch(e2) {}
+    // Turn just the SVG icon yellow with a tight glow — hex stays dark
+    const svg = hexBtn.querySelector('svg');
+    if (svg) {
+      svg.setAttribute('stroke', '#f0a020');
+      // Tight glow only around the icon strokes, not the hex shape
+      svg.style.filter = 'drop-shadow(0 0 3px rgba(240,160,32,0.8)) drop-shadow(0 0 6px rgba(240,140,20,0.4))';
+    }
+    // Ensure hex button and wrap stay dark — no color change
+    hexBtn.style.background = '#1a1a1a';
     // Brief indent hold → fade to black → start boot
     setTimeout(() => {
       powerScreen.style.opacity = '0';
