@@ -884,7 +884,8 @@ const SaveManager = {
 
   // ── RUN (active game state) ────────────────────────────
   saveRun() {
-    // Don't save if game is over, on menu, or game hasn't started
+    // Don't save if game is over, on menu, demo mode, or game hasn't started
+    if (typeof demoMode !== 'undefined' && demoMode) return;
     if (typeof gameOver !== 'undefined' && gameOver) return;
     if (typeof menuBGActive !== 'undefined' && menuBGActive) return;
     if (typeof hexes === 'undefined' || !hexes || hexes.length === 0) return;
@@ -3083,27 +3084,36 @@ function drawCracks(cx, cy, level, cellSeed) {
   hexPath(pts);
   ctx.clip();
 
-  // Fewer cracks that connect: level 1-2 = 1 crack, 3-4 = 2, 5 = 3
+  // Connected crack count: level 1-2 = 1, 3-4 = 2, 5 = 3
   const crackCount = level <= 2 ? 1 : level <= 4 ? 2 : 3;
 
-  // Track end points so subsequent cracks can branch from previous ones
-  let lastEndX = null, lastEndY = null;
+  // Pick non-repeating corners for a connected path: corner→center→corner→...
+  const usedCorners = [];
+  for (let i = 0; i < crackCount + 1 && usedCorners.length < 6; i++) {
+    let ci;
+    do { ci = Math.floor(rng() * 6); } while (usedCorners.includes(ci) && usedCorners.length < 6);
+    usedCorners.push(ci);
+  }
+
+  // Build one continuous connected path through all crack segments
+  ctx.beginPath();
+  let px, py;
 
   for (let c = 0; c < crackCount; c++) {
     let startX, startY, targetX, targetY;
 
-    if (c === 0 || lastEndX === null) {
-      // First crack: start from a seeded corner
-      const cornerIdx = Math.floor(rng() * 6);
-      const corner = corners[cornerIdx];
+    if (c === 0) {
+      // First crack: corner toward center
+      const corner = corners[usedCorners[0]];
       startX = corner.x; startY = corner.y;
-      targetX = cx; targetY = cy; // toward center
+      targetX = cx; targetY = cy;
+      ctx.moveTo(startX, startY);
     } else {
-      // Subsequent cracks: branch from end of previous crack
-      startX = lastEndX; startY = lastEndY;
-      // Target a different corner (creates spanning web)
-      const targetCorner = corners[Math.floor(rng() * 6)];
-      targetX = targetCorner.x; targetY = targetCorner.y;
+      // Continue from where the last segment ended
+      startX = px; startY = py;
+      // Target the next unused corner
+      const corner = corners[usedCorners[c]];
+      targetX = corner.x; targetY = corner.y;
     }
 
     const dx = targetX - startX;
@@ -3112,43 +3122,33 @@ function drawCracks(cx, cy, level, cellSeed) {
     if (dist < 1) continue;
     const nx = dx / dist, ny = dy / dist;
 
-    // How far the crack reaches — full distance to target
-    const reach = 0.45 + level * 0.11; // 0.56 → 1.0
-    const segments = 3 + Math.floor(rng() * 2); // 3-4 zigzag segments
+    const reach = 0.5 + level * 0.1;
+    const segments = 3 + Math.floor(rng() * 2);
 
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-
-    let px = startX, py = startY;
     for (let s = 1; s <= segments; s++) {
       const frac = (s / segments) * reach;
       const bx = startX + dx * frac;
       const by = startY + dy * frac;
       const perpX = -ny, perpY = nx;
-      // Smoother zigzag — smaller amplitude, less jagged
-      const zigzag = (s % 2 === 0 ? 1 : -1) * (0.8 + rng() * 1.8);
-      // Last segment snaps closer to the line (less offset at the end)
-      const endFade = s === segments ? 0.3 : 1;
+      const zigzag = (s % 2 === 0 ? 1 : -1) * (0.6 + rng() * 1.4);
+      const endFade = s === segments ? 0.25 : 1;
       px = bx + perpX * zigzag * endFade;
       py = by + perpY * zigzag * endFade;
       ctx.lineTo(px, py);
     }
+  }
 
-    // Save end point for branching
-    lastEndX = px; lastEndY = py;
+  // Stroke the entire connected path at once
+  ctx.strokeStyle = `rgba(0,0,0,${(0.3 + level * 0.1).toFixed(2)})`;
+  ctx.lineWidth = 0.8 + level * 0.2;
+  ctx.lineJoin = 'bevel';
+  ctx.stroke();
 
-    // Line style: thicker + darker with more damage
-    ctx.strokeStyle = `rgba(0,0,0,${(0.3 + level * 0.1).toFixed(2)})`;
-    ctx.lineWidth = 0.8 + level * 0.2;
-    ctx.lineJoin = 'bevel';
+  // Secondary thinner highlight alongside (depth effect)
+  if (level >= 3) {
+    ctx.strokeStyle = `rgba(40,25,10,${(0.2 + level * 0.05).toFixed(2)})`;
+    ctx.lineWidth = 0.4;
     ctx.stroke();
-
-    // Secondary thinner highlight crack alongside (depth effect)
-    if (level >= 3) {
-      ctx.strokeStyle = `rgba(40,25,10,${(0.2 + level * 0.05).toFixed(2)})`;
-      ctx.lineWidth = 0.4;
-      ctx.stroke();
-    }
   }
 
   ctx.restore();
@@ -3292,78 +3292,159 @@ function drawHex(h) {
     ctx.moveTo(h.x, h.y - HEX_R * 0.5); ctx.lineTo(h.x, h.y + HEX_R * 0.5);
     ctx.stroke();
   } else if (h.type === 'BROOD') {
+    // Pulsing amber outline + egg-sac dots
     const p = (Math.floor(tick / 16) % 2) ? 0.16 : 0.46;
     ctx.strokeStyle = `rgba(240,160,40,${p})`;
     ctx.lineWidth = 1; ctx.stroke();
   } else if (h.type === 'HEAVY') {
-    ctx.strokeStyle = 'rgba(138,104,48,0.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Thick bronze outline + rivets
+    ctx.strokeStyle = 'rgba(138,104,48,0.45)'; ctx.lineWidth = 2; ctx.stroke();
+    // 3 rivets across center
+    ctx.fillStyle = 'rgba(160,130,70,0.5)';
+    for (const dx of [-5, 0, 5]) {
+      ctx.beginPath(); ctx.arc(h.x + dx, h.y, 1.5, 0, Math.PI*2); ctx.fill();
+    }
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'ROYAL') {
-    ctx.strokeStyle = 'rgba(212,175,55,0.50)'; ctx.lineWidth = 1.5; ctx.stroke();
-    // crown icon — 3 tiny triangles
-    ctx.fillStyle = 'rgba(255,220,80,0.6)';
+    ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Crown icon — 3 pointed peaks, larger and filled
+    const r = HEX_R * 0.45;
+    ctx.fillStyle = 'rgba(255,220,80,0.65)';
+    ctx.strokeStyle = 'rgba(180,140,20,0.6)'; ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(h.x-4,h.y+2); ctx.lineTo(h.x-2,h.y-3); ctx.lineTo(h.x,h.y+2);
-    ctx.lineTo(h.x+2,h.y-3); ctx.lineTo(h.x+4,h.y+2); ctx.closePath(); ctx.fill();
+    ctx.moveTo(h.x - r, h.y + r*0.4);
+    ctx.lineTo(h.x - r*0.5, h.y - r*0.6);
+    ctx.lineTo(h.x, h.y + r*0.1);
+    ctx.lineTo(h.x + r*0.5, h.y - r*0.6);
+    ctx.lineTo(h.x + r, h.y + r*0.4);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'ANCIENT') {
-    ctx.strokeStyle = 'rgba(74,96,80,0.40)'; ctx.lineWidth = 1; ctx.stroke();
-    // rune cross
-    ctx.strokeStyle = 'rgba(80,120,90,0.30)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(74,96,80,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Rune spiral — larger, more visible
+    const r = HEX_R * 0.45;
+    ctx.strokeStyle = 'rgba(100,160,110,0.45)'; ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(h.x-HEX_R*0.4,h.y); ctx.lineTo(h.x+HEX_R*0.4,h.y);
-    ctx.moveTo(h.x,h.y-HEX_R*0.4); ctx.lineTo(h.x,h.y+HEX_R*0.4);
+    // Angular spiral rune pattern
+    ctx.moveTo(h.x - r*0.6, h.y - r*0.4);
+    ctx.lineTo(h.x + r*0.6, h.y - r*0.4);
+    ctx.lineTo(h.x + r*0.6, h.y + r*0.4);
+    ctx.lineTo(h.x - r*0.3, h.y + r*0.4);
+    ctx.lineTo(h.x - r*0.3, h.y);
+    ctx.lineTo(h.x + r*0.2, h.y);
     ctx.stroke();
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'TITAN') {
-    const p = (Math.floor(tick / 12) % 2) ? 0.35 : 0.15;
-    ctx.strokeStyle = `rgba(80,80,140,${p})`; ctx.lineWidth = 2; ctx.stroke();
-    // inner steel dot
-    ctx.fillStyle = `rgba(100,100,160,${p+0.1})`;
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.28)); ctx.fill();
+    const p = (Math.floor(tick / 12) % 2) ? 0.40 : 0.18;
+    ctx.strokeStyle = `rgba(80,80,140,${p})`; ctx.lineWidth = 2.5; ctx.stroke();
+    // Shield shape — diamond with horizontal bar
+    const r = HEX_R * 0.4;
+    ctx.fillStyle = `rgba(120,120,180,${p + 0.12})`;
+    ctx.strokeStyle = `rgba(160,160,220,${p + 0.15})`; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y - r);
+    ctx.lineTo(h.x + r*0.8, h.y - r*0.2);
+    ctx.lineTo(h.x + r*0.8, h.y + r*0.2);
+    ctx.lineTo(h.x, h.y + r);
+    ctx.lineTo(h.x - r*0.8, h.y + r*0.2);
+    ctx.lineTo(h.x - r*0.8, h.y - r*0.2);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Horizontal bar across shield
+    ctx.strokeStyle = `rgba(180,180,240,${p + 0.1})`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(h.x - r*0.5, h.y); ctx.lineTo(h.x + r*0.5, h.y); ctx.stroke();
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'CHARGED') {
-    const p = (Math.floor(tick / 6) % 2) ? 0.55 : 0.20;
+    const p = (Math.floor(tick / 6) % 2) ? 0.65 : 0.25;
     ctx.strokeStyle = `rgba(80,208,255,${p})`; ctx.lineWidth = 1.5; ctx.stroke();
-    // lightning bolt lines
-    ctx.strokeStyle = `rgba(150,230,255,${p})`; ctx.lineWidth = 1;
+    // LARGE lightning bolt — prominent and clear
+    const r = HEX_R * 0.55;
+    ctx.fillStyle = `rgba(180,240,255,${p + 0.1})`;
+    ctx.strokeStyle = `rgba(255,255,255,${p})`; ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(h.x-2,h.y-4); ctx.lineTo(h.x+1,h.y); ctx.lineTo(h.x-1,h.y); ctx.lineTo(h.x+2,h.y+4);
-    ctx.stroke();
+    ctx.moveTo(h.x - r*0.15, h.y - r);        // top-left
+    ctx.lineTo(h.x + r*0.5,  h.y - r);         // top-right
+    ctx.lineTo(h.x + r*0.05, h.y - r*0.1);     // mid-right notch
+    ctx.lineTo(h.x + r*0.45, h.y - r*0.1);     // mid jut right
+    ctx.lineTo(h.x - r*0.2,  h.y + r);         // bottom point
+    ctx.lineTo(h.x + r*0.1,  h.y + r*0.05);    // mid-left notch
+    ctx.lineTo(h.x - r*0.15, h.y - r);         // back to top
+    ctx.closePath(); ctx.fill(); ctx.stroke();
   } else if (h.type === 'BOMB') {
-    const p = (Math.floor(tick / 8) % 2) ? 0.40 : 0.18;
+    const p = (Math.floor(tick / 8) % 2) ? 0.45 : 0.20;
+    // Inner glow
     ctx.fillStyle = `rgba(255,64,32,${p})`;
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.38)); ctx.fill();
-    // fuse circle at top
-    ctx.fillStyle = 'rgba(255,200,80,0.7)';
-    ctx.beginPath(); ctx.arc(h.x, h.y - HEX_R*0.35, 2, 0, Math.PI*2); ctx.fill();
-  } else if (h.type === 'UNBREAKABLE') {
-    // stone cross-hatch
-    ctx.strokeStyle = 'rgba(100,100,100,0.30)'; ctx.lineWidth = 1;
+    hexPath(hexPts(h.x, h.y, HEX_R * 0.45)); ctx.fill();
+    // Bomb circle body
+    const r = HEX_R * 0.35;
+    ctx.fillStyle = `rgba(40,10,0,${0.5 + p*0.3})`;
+    ctx.beginPath(); ctx.arc(h.x, h.y + 1, r, 0, Math.PI*2); ctx.fill();
+    // Highlight on bomb
+    ctx.fillStyle = `rgba(255,120,60,${0.3 + p*0.2})`;
+    ctx.beginPath(); ctx.arc(h.x - r*0.3, h.y - r*0.2, r*0.35, 0, Math.PI*2); ctx.fill();
+    // Fuse line + spark
+    ctx.strokeStyle = `rgba(200,160,80,${0.6 + p*0.2})`; ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(h.x-HEX_R*0.4,h.y-HEX_R*0.3); ctx.lineTo(h.x+HEX_R*0.4,h.y+HEX_R*0.3);
-    ctx.moveTo(h.x+HEX_R*0.4,h.y-HEX_R*0.3); ctx.lineTo(h.x-HEX_R*0.4,h.y+HEX_R*0.3);
+    ctx.moveTo(h.x + r*0.5, h.y - r*0.6);
+    ctx.lineTo(h.x + r*0.2, h.y - r*1.4);
     ctx.stroke();
-    ctx.fillStyle = 'rgba(60,60,60,0.3)';
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.32)); ctx.fill();
-  } else if (h.type === 'ROYAL_GUARD') {
-    // Animated gold shimmer pulse
-    const p = 0.25 + 0.25 * Math.sin(tick * 0.06 + h.ci);
-    ctx.strokeStyle = `rgba(212,175,55,${p})`; ctx.lineWidth = 2; ctx.stroke();
-    // Inner gold diamond
-    ctx.fillStyle = `rgba(212,175,55,${p * 0.8})`;
+    // Spark at fuse tip — animated
+    const sparkR = 1.5 + Math.sin(tick * 0.3) * 0.8;
+    ctx.fillStyle = `rgba(255,240,100,${0.7 + p*0.3})`;
+    ctx.beginPath(); ctx.arc(h.x + r*0.2, h.y - r*1.4, sparkR, 0, Math.PI*2); ctx.fill();
+  } else if (h.type === 'UNBREAKABLE') {
+    // Stone texture — X cross + filled inner hex
+    ctx.strokeStyle = 'rgba(120,120,120,0.35)'; ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(h.x, h.y - 5); ctx.lineTo(h.x + 4, h.y);
-    ctx.lineTo(h.x, h.y + 5); ctx.lineTo(h.x - 4, h.y); ctx.closePath(); ctx.fill();
+    const r = HEX_R * 0.45;
+    ctx.moveTo(h.x - r, h.y - r*0.7); ctx.lineTo(h.x + r, h.y + r*0.7);
+    ctx.moveTo(h.x + r, h.y - r*0.7); ctx.lineTo(h.x - r, h.y + r*0.7);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(60,60,60,0.35)';
+    hexPath(hexPts(h.x, h.y, HEX_R * 0.35)); ctx.fill();
+    // Mortar lines
+    ctx.strokeStyle = 'rgba(90,90,90,0.2)'; ctx.lineWidth = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(h.x - r, h.y); ctx.lineTo(h.x + r, h.y);
+    ctx.stroke();
+  } else if (h.type === 'ROYAL_GUARD') {
+    // Animated gold shimmer pulse + shield icon
+    const p = 0.25 + 0.25 * Math.sin(tick * 0.06 + h.ci);
+    ctx.strokeStyle = `rgba(212,175,55,${p})`; ctx.lineWidth = 2.5; ctx.stroke();
+    // Shield shape
+    const r = HEX_R * 0.4;
+    ctx.fillStyle = `rgba(212,175,55,${p * 0.7})`;
+    ctx.strokeStyle = `rgba(255,220,80,${p})`; ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(h.x - r, h.y - r*0.7);
+    ctx.lineTo(h.x + r, h.y - r*0.7);
+    ctx.lineTo(h.x + r, h.y + r*0.1);
+    ctx.lineTo(h.x, h.y + r);
+    ctx.lineTo(h.x - r, h.y + r*0.1);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
   } else if (h.type === 'QUEEN') {
-    // Pulsing magenta/gold glow
+    // Pulsing magenta/gold glow + large crown
     const p = 0.3 + 0.3 * Math.sin(tick * 0.05 + h.ci * 0.5);
     ctx.strokeStyle = `rgba(255,215,0,${p})`; ctx.lineWidth = 2; ctx.stroke();
-    // Crown icon — 3 peaks with gold fill
-    ctx.fillStyle = `rgba(255,215,0,${0.5 + p * 0.3})`;
+    // Large crown — 3 pointed peaks with base
+    const r = HEX_R * 0.5;
+    ctx.fillStyle = `rgba(255,215,0,${0.55 + p * 0.3})`;
+    ctx.strokeStyle = `rgba(200,160,0,${0.5 + p*0.2})`; ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(h.x-5,h.y+3); ctx.lineTo(h.x-3,h.y-4); ctx.lineTo(h.x,h.y+1);
-    ctx.lineTo(h.x+3,h.y-4); ctx.lineTo(h.x+5,h.y+3); ctx.closePath(); ctx.fill();
+    ctx.moveTo(h.x - r, h.y + r*0.5);
+    ctx.lineTo(h.x - r, h.y - r*0.1);
+    ctx.lineTo(h.x - r*0.5, h.y - r*0.8);
+    ctx.lineTo(h.x - r*0.15, h.y - r*0.1);
+    ctx.lineTo(h.x, h.y - r);
+    ctx.lineTo(h.x + r*0.15, h.y - r*0.1);
+    ctx.lineTo(h.x + r*0.5, h.y - r*0.8);
+    ctx.lineTo(h.x + r, h.y - r*0.1);
+    ctx.lineTo(h.x + r, h.y + r*0.5);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // Gem dots on crown points
+    ctx.fillStyle = `rgba(255,100,160,${0.6 + p*0.3})`;
+    ctx.beginPath(); ctx.arc(h.x, h.y - r*0.7, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(h.x - r*0.5, h.y - r*0.55, 1.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(h.x + r*0.5, h.y - r*0.55, 1.2, 0, Math.PI*2); ctx.fill();
     // Outer glow ring
     ctx.globalAlpha = 0.15 + p * 0.1;
     ctx.strokeStyle = '#ff60a0'; ctx.lineWidth = 1;
@@ -3375,13 +3456,19 @@ function drawHex(h) {
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   }
 
-  // Brood dots
+  // Brood egg-sac dots — larger, pulsing
   if (h.type === 'BROOD') {
-    ctx.fillStyle = '#f5a010'; ctx.globalAlpha = 0.55;
-    for (const [dx, dy] of [[-3, -2], [3, -2], [0, 3]]) {
-      ctx.beginPath(); ctx.arc(h.x + dx, h.y + dy, 2, 0, Math.PI * 2); ctx.fill();
+    const bp = 0.45 + 0.2 * Math.sin(tick * 0.08 + h.ci);
+    ctx.fillStyle = `rgba(245,160,16,${bp})`;
+    const eggR = 2.5;
+    for (const [dx, dy] of [[-4, -3], [4, -3], [-1, 4], [3, 2], [-3, 1]]) {
+      ctx.beginPath(); ctx.arc(h.x + dx, h.y + dy, eggR, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.globalAlpha = 1;
+    // Outer ring highlight
+    ctx.strokeStyle = `rgba(245,180,40,${bp * 0.5})`; ctx.lineWidth = 0.8;
+    for (const [dx, dy] of [[-4, -3], [4, -3], [-1, 4]]) {
+      ctx.beginPath(); ctx.arc(h.x + dx, h.y + dy, eggR + 1, 0, Math.PI * 2); ctx.stroke();
+    }
   }
 }
 
@@ -3543,30 +3630,10 @@ function checkHex(b) {
 
         // WAX CELL: splash damage + chain reaction (WAX→WAX and WAX→BOMB domino)
         if (h.type === 'WAX') {
-          const chainQueue = [h];
-          const chainProcessed = new Set();
-          while (chainQueue.length > 0) {
-            const src = chainQueue.shift();
-            if (chainProcessed.has(src)) continue;
-            chainProcessed.add(src);
-            for (const n of hexes) {
-              if (n.dead || n === src || chainProcessed.has(n)) continue;
-              if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
-              if (Math.hypot(n.x - src.x, n.y - src.y) < HEX_R * 2.2) {
-                n.hp -= CONFIG.WAX_DAMAGE;
-                n.flash = 8;
-                spawnParts(n.x, n.y, 4, ['#e8d8a0','#c0b070']);
-                if (n.hp <= 0) {
-                  n.dead = true;
-                  SaveManager.discover(n.type);
-                  // Chain: WAX and BOMB trigger their own splash
-                  if (n.type === 'WAX' || n.type === 'BOMB') {
-                    chainQueue.push(n);
-                  }
-                }
-              }
-            }
-          }
+          // Queue pending chain explosions with staggered timing for visual effect
+          if (!window._waxChainQueue) window._waxChainQueue = [];
+          // Add the initial WAX cell as wave 0 (processes its neighbors immediately)
+          window._waxChainQueue.push({ src: h, delay: 0, processed: false });
         }
 
         return {dead:true, h};
@@ -4341,7 +4408,7 @@ function drawHUD() {
       ctx.fillStyle = 'rgba(40,20,5,0.55)';
       ctx.fillText(letters[li], 0, 0.5);
       // Main
-      ctx.fillStyle = '#d4a030';
+      ctx.fillStyle = '#1a0a00';
       ctx.fillText(letters[li], 0, 0);
       ctx.restore();
     }
@@ -4796,102 +4863,20 @@ const STRUCTURES = [
       h.type = 'CHARGED'; h.hp = CELL_TYPES.CHARGED.hp;
     },
   },
-  {
-    id: 'WAX_WALL', minDepth: 5, weight: 10,
-    stamp(hexMap, rng) {
-      // Mixed wall: UNBREAKABLE core + WAX flanks, with HONEY behind
-      const vals = [...hexMap.values()];
-      if (vals.length < 6) return;
-      const seeds = vals.filter(h => !isNearEdge(h.x) && !SPECIAL_TYPES.has(h.type) && h.type !== 'UNBREAKABLE');
-      if (seeds.length === 0) return;
-      const seed = seeds[Math.floor(rng() * seeds.length)];
-      // Random wall direction
-      const angle = rng() * Math.PI;
-      const spacing = HEX_R * Math.sqrt(3);
-      const count = 3 + Math.floor(rng() * 3); // 3-5 cells
-      const wallCells = [seed];
-      for (let i = 1; i < count; i++) {
-        const tx = seed.x + Math.cos(angle) * spacing * i;
-        const ty = seed.y + Math.sin(angle) * spacing * i;
-        let best = null, bestD = spacing * 0.8;
-        for (const h of vals) {
-          if (wallCells.includes(h) || SPECIAL_TYPES.has(h.type) || h.type === 'UNBREAKABLE') continue;
-          if (isEdgeCell(h.x)) continue;
-          const d = Math.hypot(h.x - tx, h.y - ty);
-          if (d < bestD) { bestD = d; best = h; }
-        }
-        if (best) wallCells.push(best);
-      }
-      if (wallCells.length < 3) return; // need at least 3 for a real wall
-      // Core = UNBREAKABLE, flanks = WAX
-      for (let i = 0; i < wallCells.length; i++) {
-        const wc = wallCells[i];
-        if (i > 0 && i < wallCells.length - 1) {
-          wc.type = 'UNBREAKABLE'; wc.hp = CELL_TYPES.UNBREAKABLE.hp;
-        } else {
-          wc.type = 'WAX'; wc.hp = CELL_TYPES.WAX.hp;
-        }
-      }
-      // Place 1-2 HONEY cells behind the wall (perpendicular)
-      const perpX = Math.cos(angle + Math.PI/2) * spacing;
-      const perpY = Math.sin(angle + Math.PI/2) * spacing;
-      const mid = wallCells[Math.floor(wallCells.length / 2)];
-      for (let s = 0; s < 2; s++) {
-        const hx = mid.x + perpX * (s + 1), hy = mid.y + perpY * (s + 1);
-        let best = null, bestD = spacing * 0.8;
-        for (const h of vals) {
-          if (wallCells.includes(h) || SPECIAL_TYPES.has(h.type) || h.type === 'UNBREAKABLE' || h.type === 'HONEY') continue;
-          const d = Math.hypot(h.x - hx, h.y - hy);
-          if (d < bestD) { bestD = d; best = h; }
-        }
-        if (best) { best.type = 'HONEY'; best.hp = CELL_TYPES.HONEY.hp; }
-      }
-    },
-  },
+  // WAX_WALL stamp removed — UNBREAKABLE cells are blueprint-only
   // Dynamic blueprints from LevelExports/ are injected here by loadBlueprints()
   // See _loadedBlueprints array and the loadBlueprints() function below
-  {
-    id: 'BARRIER_WALL', minDepth: 6, weight: 8,
-    stamp(hexMap, rng) {
-      // Horizontal row of UNBREAKABLE cells on the same hex row
-      const vals = [...hexMap.values()];
-      const seeds = vals.filter(h => !isNearEdge(h.x) && !SPECIAL_TYPES.has(h.type)
-                                     && h.x > W*0.25 && h.x < W*0.75);
-      if (seeds.length === 0) return;
-      const seed = seeds[Math.floor(rng() * seeds.length)];
-      // Gather ALL cells on the same hex row (same Y ±5px), including specials
-      const sameRow = vals.filter(h => Math.abs(h.y - seed.y) < 5)
-                          .sort((a, b) => a.x - b.x);
-      if (sameRow.length < 3) return;
-      const seedIdx = sameRow.indexOf(seed);
-      if (seedIdx < 0) return;
-      const count = 3 + Math.floor(rng() * 3); // 3-5 cells wide
-      const startIdx = Math.max(0, seedIdx - Math.floor(count / 2));
-      const span = sameRow.slice(startIdx, startIdx + count);
-      // Convert non-special cells in the span to UNBREAKABLE
-      let converted = 0;
-      for (const wc of span) {
-        if (!SPECIAL_TYPES.has(wc.type)) {
-          wc.type = 'UNBREAKABLE'; wc.hp = CELL_TYPES.UNBREAKABLE.hp;
-          converted++;
-        }
-      }
-      // If too few were converted (most were special), bail — no visual wall
-      if (converted < 2) {
-        for (const wc of span) {
-          if (wc.type === 'UNBREAKABLE') {
-            wc.type = 'NORMAL'; wc.hp = CELL_TYPES.NORMAL.hp;
-          }
-        }
-      }
-    },
-  },
+  // BARRIER_WALL stamp removed — UNBREAKABLE cells are blueprint-only
 ];
 
 // ── Dynamic Blueprint Loader ─────────────────────────────
-// Fetches all level exports from /api/blueprints and registers them as STRUCTURES
+// Blueprints are embedded inline so they work on mobile (no server needed).
+// The fetch fallback tries /api/blueprints for any NEW exports added via serve.js.
 const _loadedBlueprints = [];   // filled by loadBlueprints()
 let _blueprintsReady = false;
+
+// ── Embedded blueprint data (exported from LevelExports/) ──
+const _EMBEDDED_BLUEPRINTS = [{"id":"level-export-2026-03-19T07-07-43","cells":[{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":45,"y":483.2421753117167},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":72,"y":342.94605989863766},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":288,"y":342.94605989863766},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":315,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":315,"y":483.2421753117167},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":180,"y":249.4153162899183},{"type":"BROOD","x":180,"y":467.6537180435968},{"type":"ROYAL","x":153,"y":483.2421753117167},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":207,"y":483.2421753117167},{"type":"ROYAL","x":153,"y":233.8268590217984},{"type":"ROYAL","x":180,"y":218.23840175367852},{"type":"ROYAL","x":207,"y":233.8268590217984}]},{"id":"level-export-2026-03-19T08-22-21","cells":[{"type":"NORMAL","x":72,"y":62.35382907247958},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":126,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"NORMAL","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"NORMAL","x":72,"y":311.76914536239786},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":72,"y":374.12297443487745},{"type":"NORMAL","x":126,"y":124.70765814495915},{"type":"NORMAL","x":126,"y":155.88457268119893},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"NORMAL","x":126,"y":218.23840175367852},{"type":"NORMAL","x":126,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"NORMAL","x":126,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"BOMB","x":99,"y":140.29611541307904},{"type":"NORMAL","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":202.64994448555862},{"type":"NORMAL","x":99,"y":233.8268590217984},{"type":"BROOD","x":99,"y":265.0037735580382},{"type":"NORMAL","x":99,"y":296.18068809427797},{"type":"NORMAL","x":99,"y":327.35760263051776},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":180,"y":124.70765814495915},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":187.06148721743872},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"NORMAL","x":180,"y":249.4153162899183},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":180,"y":311.76914536239786},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"NORMAL","x":207,"y":265.0037735580382},{"type":"BOMB","x":207,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":202.64994448555862},{"type":"NORMAL","x":207,"y":171.47302994931883},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":234,"y":155.88457268119893},{"type":"NORMAL","x":234,"y":187.06148721743872},{"type":"NORMAL","x":234,"y":218.23840175367852},{"type":"NORMAL","x":234,"y":249.4153162899183},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"NORMAL","x":288,"y":249.4153162899183},{"type":"NORMAL","x":288,"y":218.23840175367852},{"type":"NORMAL","x":288,"y":187.06148721743872},{"type":"NORMAL","x":315,"y":202.64994448555862},{"type":"NORMAL","x":315,"y":233.8268590217984},{"type":"CHARGED","x":342,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":31.17691453623979},{"type":"NORMAL","x":18,"y":62.35382907247958},{"type":"NORMAL","x":18,"y":93.53074360871936},{"type":"NORMAL","x":18,"y":124.70765814495915},{"type":"NORMAL","x":18,"y":155.88457268119893},{"type":"NORMAL","x":18,"y":187.06148721743872},{"type":"NORMAL","x":18,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":249.4153162899183},{"type":"NORMAL","x":18,"y":280.5922308261581},{"type":"NORMAL","x":18,"y":311.76914536239786},{"type":"NORMAL","x":18,"y":342.94605989863766},{"type":"NORMAL","x":18,"y":374.12297443487745},{"type":"NORMAL","x":18,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":140.29611541307904},{"type":"WAX","x":45,"y":109.11920087683926},{"type":"WAX","x":45,"y":77.94228634059947},{"type":"WAX","x":45,"y":46.76537180435968},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":261,"y":171.47302994931883}]},{"id":"level-export-2026-03-19T08-26-14","cells":[{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"HONEY","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":296.18068809427797},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":99,"y":233.8268590217984},{"type":"HONEY","x":99,"y":202.64994448555862},{"type":"HONEY","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":140.29611541307904},{"type":"HONEY","x":126,"y":218.23840175367852},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":180,"y":187.06148721743872},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":126,"y":124.70765814495915},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"HONEY","x":126,"y":93.53074360871936},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":153,"y":171.47302994931883},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"HONEY","x":180,"y":311.76914536239786},{"type":"HONEY","x":207,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"HONEY","x":207,"y":358.53451716675755},{"type":"HONEY","x":180,"y":374.12297443487745},{"type":"HONEY","x":207,"y":389.71143170299734},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"HONEY","x":207,"y":452.06526077547693},{"type":"NORMAL","x":180,"y":467.6537180435968},{"type":"NORMAL","x":207,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"HONEY","x":234,"y":374.12297443487745},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":261,"y":420.88834623923714},{"type":"HONEY","x":288,"y":436.47680350735703},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":288,"y":374.12297443487745},{"type":"HONEY","x":288,"y":342.94605989863766},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"NORMAL","x":261,"y":452.06526077547693},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"PORTAL","x":126,"y":155.88457268119893},{"type":"PORTAL","x":234,"y":342.94605989863766},{"type":"UNBREAKABLE","x":72,"y":405.29988897111724},{"type":"UNBREAKABLE","x":45,"y":420.88834623923714},{"type":"UNBREAKABLE","x":45,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":467.6537180435968},{"type":"UNBREAKABLE","x":99,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":436.47680350735703},{"type":"UNBREAKABLE","x":99,"y":420.88834623923714},{"type":"UNBREAKABLE","x":261,"y":140.29611541307904},{"type":"UNBREAKABLE","x":288,"y":124.70765814495915},{"type":"UNBREAKABLE","x":315,"y":140.29611541307904},{"type":"UNBREAKABLE","x":315,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":187.06148721743872},{"type":"UNBREAKABLE","x":261,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":155.88457268119893}]},{"id":"level-export-2026-03-19T08-30-09","cells":[{"type":"CHARGED","x":180,"y":498.8306325798366},{"type":"THICK","x":153,"y":514.4190898479565},{"type":"THICK","x":180,"y":530.0075471160764},{"type":"THICK","x":207,"y":514.4190898479565},{"type":"THICK","x":207,"y":483.2421753117167},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":153,"y":483.2421753117167},{"type":"THICK","x":153,"y":109.11920087683926},{"type":"THICK","x":180,"y":93.53074360871936},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":99,"y":296.18068809427797},{"type":"THICK","x":99,"y":327.35760263051776},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":45,"y":327.35760263051776},{"type":"THICK","x":45,"y":296.18068809427797},{"type":"CHARGED","x":72,"y":311.76914536239786},{"type":"CHARGED","x":288,"y":311.76914536239786},{"type":"THICK","x":261,"y":296.18068809427797},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":315,"y":296.18068809427797},{"type":"THICK","x":315,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":261,"y":327.35760263051776},{"type":"THICK","x":180,"y":155.88457268119893},{"type":"THICK","x":207,"y":140.29611541307904},{"type":"THICK","x":207,"y":109.11920087683926},{"type":"THICK","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":342,"y":280.5922308261581},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":342,"y":342.94605989863766},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":18,"y":280.5922308261581},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":18,"y":342.94605989863766},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":207,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":234,"y":124.70765814495915},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":207,"y":77.94228634059947},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":126,"y":124.70765814495915},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"BOMB","x":234,"y":405.29988897111724},{"type":"BOMB","x":126,"y":405.29988897111724},{"type":"BOMB","x":234,"y":218.23840175367852},{"type":"BOMB","x":126,"y":218.23840175367852},{"type":"BROOD","x":180,"y":311.76914536239786}]},{"id":"level-export-2026-03-19T08-38-58","cells":[{"type":"NORMAL","x":153,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":233.8268590217984},{"type":"THICK","x":180,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":153,"y":265.0037735580382},{"type":"THICK","x":207,"y":265.0037735580382},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":311.76914536239786},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"THICK","x":234,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":153,"y":358.53451716675755},{"type":"NORMAL","x":207,"y":358.53451716675755},{"type":"NORMAL","x":234,"y":342.94605989863766},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"UNBREAKABLE","x":180,"y":436.47680350735703},{"type":"THICK","x":180,"y":374.12297443487745},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":261,"y":296.18068809427797},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":18,"y":218.23840175367852},{"type":"WAX","x":18,"y":249.4153162899183},{"type":"WAX","x":342,"y":249.4153162899183},{"type":"WAX","x":342,"y":218.23840175367852},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"BROOD","x":153,"y":202.64994448555862},{"type":"BROOD","x":207,"y":202.64994448555862},{"type":"TITAN","x":153,"y":171.47302994931883},{"type":"TITAN","x":126,"y":155.88457268119893},{"type":"TITAN","x":207,"y":171.47302994931883},{"type":"TITAN","x":234,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"UNBREAKABLE","x":180,"y":187.06148721743872},{"type":"NORMAL","x":153,"y":296.18068809427797},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"THICK","x":126,"y":374.12297443487745},{"type":"THICK","x":234,"y":374.12297443487745},{"type":"WAX","x":18,"y":187.06148721743872},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":342,"y":187.06148721743872},{"type":"UNBREAKABLE","x":180,"y":467.6537180435968},{"type":"CHARGED","x":180,"y":530.0075471160764},{"type":"HONEY","x":180,"y":62.35382907247958},{"type":"HONEY","x":153,"y":77.94228634059947},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":207,"y":77.94228634059947},{"type":"BOMB","x":180,"y":93.53074360871936}]},{"id":"level-export-2026-03-19T08-41-52","cells":[{"type":"UNBREAKABLE","x":153,"y":327.35760263051776},{"type":"UNBREAKABLE","x":126,"y":311.76914536239786},{"type":"UNBREAKABLE","x":99,"y":327.35760263051776},{"type":"UNBREAKABLE","x":72,"y":311.76914536239786},{"type":"UNBREAKABLE","x":207,"y":327.35760263051776},{"type":"UNBREAKABLE","x":234,"y":311.76914536239786},{"type":"UNBREAKABLE","x":261,"y":327.35760263051776},{"type":"UNBREAKABLE","x":288,"y":311.76914536239786},{"type":"UNBREAKABLE","x":180,"y":311.76914536239786},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":436.47680350735703},{"type":"NORMAL","x":72,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":126,"y":436.47680350735703},{"type":"BROOD","x":99,"y":420.88834623923714},{"type":"PORTAL","x":261,"y":420.88834623923714},{"type":"PORTAL","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":99,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"ANCIENT","x":234,"y":187.06148721743872},{"type":"ANCIENT","x":234,"y":218.23840175367852},{"type":"ANCIENT","x":261,"y":233.8268590217984},{"type":"ANCIENT","x":288,"y":218.23840175367852},{"type":"ANCIENT","x":288,"y":187.06148721743872},{"type":"ANCIENT","x":261,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":202.64994448555862}]},{"id":"level-export-2026-03-19T08-45-54","cells":[{"type":"CHARGED","x":99,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":171.47302994931883},{"type":"TITAN","x":126,"y":187.06148721743872},{"type":"TITAN","x":99,"y":202.64994448555862},{"type":"TITAN","x":261,"y":202.64994448555862},{"type":"TITAN","x":288,"y":187.06148721743872},{"type":"TITAN","x":72,"y":187.06148721743872},{"type":"WAX","x":72,"y":155.88457268119893},{"type":"WAX","x":99,"y":140.29611541307904},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"TITAN","x":234,"y":187.06148721743872},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":140.29611541307904},{"type":"WAX","x":288,"y":155.88457268119893},{"type":"HEAVY","x":180,"y":187.06148721743872},{"type":"HEAVY","x":180,"y":218.23840175367852},{"type":"HEAVY","x":153,"y":233.8268590217984},{"type":"HEAVY","x":153,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":296.18068809427797},{"type":"HEAVY","x":126,"y":280.5922308261581},{"type":"HEAVY","x":207,"y":233.8268590217984},{"type":"HEAVY","x":234,"y":280.5922308261581},{"type":"HEAVY","x":153,"y":296.18068809427797},{"type":"BROOD","x":153,"y":327.35760263051776},{"type":"HEAVY","x":180,"y":342.94605989863766},{"type":"BROOD","x":207,"y":327.35760263051776},{"type":"HEAVY","x":126,"y":311.76914536239786},{"type":"HEAVY","x":234,"y":311.76914536239786},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":153,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"NORMAL","x":207,"y":420.88834623923714},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":288,"y":342.94605989863766},{"type":"NORMAL","x":45,"y":358.53451716675755},{"type":"NORMAL","x":45,"y":389.71143170299734},{"type":"NORMAL","x":315,"y":358.53451716675755},{"type":"NORMAL","x":315,"y":389.71143170299734},{"type":"NORMAL","x":45,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":452.06526077547693},{"type":"NORMAL","x":45,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":467.6537180435968},{"type":"NORMAL","x":99,"y":483.2421753117167},{"type":"NORMAL","x":126,"y":498.8306325798366},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"NORMAL","x":261,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":498.8306325798366},{"type":"BOMB","x":207,"y":514.4190898479565},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"BOMB","x":153,"y":514.4190898479565},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"BOMB","x":180,"y":498.8306325798366},{"type":"BOMB","x":153,"y":483.2421753117167},{"type":"BOMB","x":207,"y":483.2421753117167},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"PORTAL","x":315,"y":265.0037735580382},{"type":"PORTAL","x":45,"y":265.0037735580382},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":93.53074360871936},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":261,"y":77.94228634059947},{"type":"ANCIENT","x":288,"y":93.53074360871936},{"type":"ANCIENT","x":315,"y":77.94228634059947}]},{"id":"level-export-2026-03-19T08-47-59","cells":[{"type":"BOMB","x":72,"y":561.1844616523161},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"BOMB","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"BOMB","x":288,"y":187.06148721743872},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":99,"y":77.94228634059947},{"type":"BOMB","x":72,"y":62.35382907247958},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":99,"y":483.2421753117167},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":99,"y":140.29611541307904}]},{"id":"level-export-2026-03-19T08-53-06","cells":[{"type":"HONEY","x":45,"y":77.94228634059947},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":99,"y":77.94228634059947},{"type":"HONEY","x":99,"y":109.11920087683926},{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"HONEY","x":45,"y":109.11920087683926},{"type":"HONEY","x":45,"y":140.29611541307904},{"type":"HONEY","x":45,"y":171.47302994931883},{"type":"HONEY","x":207,"y":171.47302994931883},{"type":"HONEY","x":207,"y":202.64994448555862},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":153,"y":171.47302994931883},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":153,"y":233.8268590217984},{"type":"HONEY","x":153,"y":265.0037735580382},{"type":"HONEY","x":180,"y":218.23840175367852},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":249.4153162899183},{"type":"HONEY","x":315,"y":265.0037735580382},{"type":"HONEY","x":315,"y":296.18068809427797},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":261,"y":358.53451716675755},{"type":"PORTAL","x":288,"y":280.5922308261581},{"type":"PORTAL","x":72,"y":93.53074360871936},{"type":"CHARGED","x":180,"y":187.06148721743872}]},{"id":"level-export-2026-03-19T08-55-51","cells":[{"type":"WAX","x":72,"y":592.3613761885559},{"type":"ANCIENT","x":72,"y":561.1844616523161},{"type":"ANCIENT","x":99,"y":545.5960043841962},{"type":"ANCIENT","x":126,"y":530.0075471160764},{"type":"ANCIENT","x":126,"y":498.8306325798366},{"type":"ANCIENT","x":126,"y":467.6537180435968},{"type":"ANCIENT","x":99,"y":452.06526077547693},{"type":"ANCIENT","x":72,"y":436.47680350735703},{"type":"ANCIENT","x":72,"y":405.29988897111724},{"type":"ANCIENT","x":72,"y":374.12297443487745},{"type":"ANCIENT","x":99,"y":358.53451716675755},{"type":"ANCIENT","x":126,"y":342.94605989863766},{"type":"ANCIENT","x":126,"y":311.76914536239786},{"type":"ANCIENT","x":126,"y":280.5922308261581},{"type":"ANCIENT","x":99,"y":265.0037735580382},{"type":"ANCIENT","x":72,"y":249.4153162899183},{"type":"ANCIENT","x":72,"y":218.23840175367852},{"type":"ANCIENT","x":72,"y":187.06148721743872},{"type":"ANCIENT","x":99,"y":171.47302994931883},{"type":"ANCIENT","x":126,"y":155.88457268119893},{"type":"ANCIENT","x":126,"y":124.70765814495915},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":62.35382907247958},{"type":"CHARGED","x":72,"y":498.8306325798366},{"type":"CHARGED","x":72,"y":124.70765814495915},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"BROOD","x":126,"y":405.29988897111724},{"type":"BROOD","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":62.35382907247958},{"type":"WAX","x":99,"y":46.76537180435968},{"type":"WAX","x":72,"y":31.17691453623979},{"type":"HONEY","x":261,"y":77.94228634059947},{"type":"HONEY","x":234,"y":93.53074360871936},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":288,"y":93.53074360871936},{"type":"HONEY","x":315,"y":109.11920087683926},{"type":"HONEY","x":261,"y":576.772918920436},{"type":"HONEY","x":261,"y":545.5960043841962},{"type":"HONEY","x":261,"y":514.4190898479565},{"type":"HONEY","x":261,"y":483.2421753117167},{"type":"HONEY","x":261,"y":452.06526077547693},{"type":"HONEY","x":261,"y":389.71143170299734},{"type":"HONEY","x":234,"y":405.29988897111724},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":261,"y":140.29611541307904},{"type":"HONEY","x":261,"y":171.47302994931883},{"type":"HONEY","x":261,"y":202.64994448555862},{"type":"HONEY","x":261,"y":233.8268590217984},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"HONEY","x":315,"y":420.88834623923714}]}];
 
 function _makeStampFromCells(cells) {
   // Pre-compute offsets from the design's center
@@ -4988,31 +4973,41 @@ function _makeStampFromCells(cells) {
   };
 }
 
+function _registerBlueprint(bp) {
+  if (!bp.cells || bp.cells.length === 0) return;
+  const struct = {
+    id: 'BP_' + bp.id,
+    minDepth: 1,
+    weight: 20,
+    _isBlueprint: true,
+    stamp: _makeStampFromCells(bp.cells),
+  };
+  STRUCTURES.push(struct);
+  _loadedBlueprints.push(struct);
+}
+
 function loadBlueprints() {
+  // 1) Always load embedded blueprints (works offline / mobile)
+  for (const bp of _EMBEDDED_BLUEPRINTS) _registerBlueprint(bp);
+  _blueprintsReady = true;
+  console.log(`[HENDSBEE] Loaded ${_loadedBlueprints.length} embedded blueprint(s)`);
+
+  // 2) Optionally try server for any NEW exports (only works with serve.js)
   fetch('/api/blueprints')
     .then(r => r.json())
     .then(list => {
       if (!Array.isArray(list)) return;
-      for (let i = 0; i < list.length; i++) {
-        const bp = list[i];
-        if (!bp.cells || bp.cells.length === 0) continue;
-        const struct = {
-          id: 'BP_' + bp.id,
-          minDepth: 1,        // available from depth 1 onward
-          weight: 20,         // high weight to ensure they appear often
-          _isBlueprint: true,
-          stamp: _makeStampFromCells(bp.cells),
-        };
-        STRUCTURES.push(struct);
-        _loadedBlueprints.push(struct);
+      const existingIds = new Set(_loadedBlueprints.map(s => s.id));
+      let added = 0;
+      for (const bp of list) {
+        const id = 'BP_' + bp.id;
+        if (existingIds.has(id)) continue; // skip duplicates
+        _registerBlueprint(bp);
+        added++;
       }
-      _blueprintsReady = true;
-      console.log(`[HENDSBEE] Loaded ${_loadedBlueprints.length} blueprint(s) from LevelExports/`);
+      if (added > 0) console.log(`[HENDSBEE] +${added} extra blueprint(s) from server`);
     })
-    .catch(e => {
-      console.warn('[HENDSBEE] Could not load blueprints:', e.message);
-      _blueprintsReady = true; // still continue without blueprints
-    });
+    .catch(() => { /* server not available — embedded blueprints are enough */ });
 }
 
 // Load blueprints on startup
@@ -5491,6 +5486,50 @@ function update() {
     }
   }
 
+  // ── WAX chain reaction (staggered domino effect) ──
+  if (window._waxChainQueue && window._waxChainQueue.length > 0) {
+    const WAX_CHAIN_DELAY = 4; // frames between chain waves
+    const toProcess = [];
+    for (let i = window._waxChainQueue.length - 1; i >= 0; i--) {
+      const entry = window._waxChainQueue[i];
+      if (entry.processed) { window._waxChainQueue.splice(i, 1); continue; }
+      entry.delay--;
+      if (entry.delay <= 0) {
+        toProcess.push(entry);
+        entry.processed = true;
+        window._waxChainQueue.splice(i, 1);
+      }
+    }
+    for (const entry of toProcess) {
+      const src = entry.src;
+      sfx.wax(); haptic(HAPTIC.wax);
+      triggerShake(2, 4);
+      spawnParts(src.x, src.y, 8, ['#e8d8a0','#c0b070','#d0c080']);
+      spawnDebris(src.x, src.y, 3, ['#e2d9b2','#c8bf98']);
+      for (const n of hexes) {
+        if (n.dead || n === src) continue;
+        if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
+        if (Math.hypot(n.x - src.x, n.y - src.y) < HEX_R * 2.2) {
+          n.hp -= CONFIG.WAX_DAMAGE;
+          n.flash = 8;
+          spawnParts(n.x, n.y, 4, ['#e8d8a0','#c0b070']);
+          if (n.hp <= 0) {
+            n.dead = true;
+            destroyed++;
+            SaveManager.discover(n.type);
+            // Honey from chain-killed cells
+            const honeyVal = CELL_TYPES[n.type]?.honey || 0;
+            for (let d = 0; d < honeyVal; d++) spawnDroplet(n.x, n.y);
+            // Chain continues: WAX and BOMB propagate
+            if (n.type === 'WAX' || n.type === 'BOMB') {
+              window._waxChainQueue.push({ src: n, delay: WAX_CHAIN_DELAY, processed: false });
+            }
+          }
+        }
+      }
+    }
+  }
+
   // ── Inspector mode: skip all physics, only do chunk generation ──
   if (inspectorMode) {
     const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
@@ -5877,13 +5916,21 @@ if (b.tpCooldown > 0) b.tpCooldown--;
         } else if (h.type === 'BOMB') {
           sfx.bomb(); haptic(HAPTIC.bomb); spawnParts(h.x,h.y,28,PAL.hexBomb);
           triggerShake(6, 12);
-          /* text removed: BOOM! */
-          // Explosion: 2 damage, wider radius than WAX
+          // Explosion: 2 damage, wider radius than WAX — chain to WAX/BOMB
+          if (!window._waxChainQueue) window._waxChainQueue = [];
           for (const n of hexes) {
             if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 3.5) {
               n.hp -= 2; n.flash = 10;
-              if (n.hp <= 0) { n.dead = true; destroyed++; spawnParts(n.x,n.y,6,['#ff8040','#ff4020','#fff']); }
+              if (n.hp <= 0) {
+                n.dead = true; destroyed++;
+                spawnParts(n.x,n.y,6,['#ff8040','#ff4020','#fff']);
+                const honeyVal = CELL_TYPES[n.type]?.honey || 0;
+                for (let d = 0; d < honeyVal; d++) spawnDroplet(n.x, n.y);
+                if (n.type === 'WAX' || n.type === 'BOMB') {
+                  window._waxChainQueue.push({ src: n, delay: 4, processed: false });
+                }
+              }
             }
           }
         } else {
@@ -6902,9 +6949,19 @@ function showMenu() {
   clearBtns();
   const hasSave = SaveManager.hasSavedRun();
   const s = hasSave ? SaveManager.getSummary() : null;
-  // Only show CONTINUE if there's a saved run with actual progress
-  if (hasSave && s && s.depth > 0) {
-    mkBtn('DEPTH ' + s.depth, false, () => {
+  const hasValidSave = hasSave && s && s.depth > 0;
+
+  // Always show PLAY button (new game / fresh start)
+  mkBtn('PLAY', true, () => {
+    hideOv();
+    if (animId) cancelAnimationFrame(animId);
+    demoMode = false; menuBGActive = false;
+    SaveManager.clearRun(); resetRun(); startLevel(1);
+  });
+
+  // Show CONTINUE only if there's a saved run with actual progress
+  if (hasValidSave) {
+    mkBtn('CONTINUE  DEPTH ' + s.depth, false, () => {
       hideOv();
       // Stop demo loop, exit demo mode
       if (animId) cancelAnimationFrame(animId);
@@ -6914,15 +6971,6 @@ function showMenu() {
         SaveManager.clearRun();
         resetRun(); startLevel(1);
       }
-    });
-  }
-  // Only show PLAY when there's no CONTINUE button (no saved run)
-  if (!hasSave || !s || s.depth <= 0) {
-    mkBtn('PLAY', true, () => {
-      hideOv();
-      if (animId) cancelAnimationFrame(animId);
-      demoMode = false; menuBGActive = false;
-      SaveManager.clearRun(); resetRun(); startLevel(1);
     });
   }
   mkBtn('SHOP',     false, ()=>{hideOv(); showShop('menu');});
@@ -8066,25 +8114,25 @@ window.addEventListener('keydown', e => {
 function startCountdown(cb) {
   paused = true;
   let count = 3;
+  // Use HTML overlay so countdown is visible above all panels
+  const cdEl = document.createElement('div');
+  cdEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:10000;font-family:"Press Start 2P",monospace;font-size:min(64px,15vw);color:#f5c030;pointer-events:none;';
+  document.body.appendChild(cdEl);
+  render(); // draw game backdrop on canvas
+  cdEl.textContent = String(count);
   function tick() {
-    render();
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, W, H);
-    ctx.font = '64px "Press Start 2P",monospace';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#f5c030';
-    ctx.fillText(String(count), W/2, H/2 + 20);
-    ctx.textAlign = 'left';
     count--;
-    if (count >= 0) {
+    if (count > 0) {
+      cdEl.textContent = String(count);
       setTimeout(tick, 800);
     } else {
+      cdEl.remove();
       paused = false;
       lastTime = 0;
       cb();
     }
   }
-  tick();
+  setTimeout(tick, 800);
 }
 
 // ═══════════════════════════════════════════════════════
