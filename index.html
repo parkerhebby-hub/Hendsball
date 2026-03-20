@@ -916,6 +916,7 @@ const SaveManager = {
           const o = { x: h.x, y: h.y, type: h.type, hp: h.hp,
                       dead: false, flash: 0, ci: h.ci };
           if (h.portalChannel != null) o.portalChannel = h.portalChannel;
+          if (h.portalRole) o.portalRole = h.portalRole;
           if (h.bossGateId != null) o.bossGateId = h.bossGateId;
           return o;
         }),
@@ -1016,6 +1017,7 @@ const SaveManager = {
         const hex = { x: h.x, y: h.y, type: h.type, hp: h.hp,
                       dead: h.dead ?? false, flash: h.flash ?? 0, ci: h.ci ?? 0 };
         if (h.portalChannel != null) hex.portalChannel = h.portalChannel;
+        if (h.portalRole) hex.portalRole = h.portalRole;
         if (h.bossGateId != null) hex.bossGateId = h.bossGateId;
         return hex;
       });
@@ -1169,7 +1171,7 @@ const sfx = {
   thick:  () => { _tone(120, 'sawtooth', 0.20, 0.20, 70);  _noise(0.12, 0.12); },
   brood:  () => { _tone(100, 'sawtooth', 0.22, 0.28, 55);  _tone(200, 'square', 0.10, 0.18, 150); },
   honey:  () => { _tone(700, 'sine', 0.18, 0.22, 950);     _tone(950, 'sine', 0.10, 0.18, 1200); },
-  wax:    () => { _noise(0.20, 0.14); _tone(280, 'sawtooth', 0.10, 0.10, 180); },
+  wax:    () => { const fV=(Math.random()-0.5)*60, aV=(Math.random()-0.5)*0.06; _noise(0.10+aV, 0.12); _tone(280+fV, 'sawtooth', 0.05, 0.10, 180+fV); },
   queen:  () => { [440,554,659,880].forEach((f,i) => setTimeout(() => _tone(f,'sine',0.16,0.38,f*1.6), i*45)); },
   teleport: () => { _tone(880,'sine',0.18,0.12,440); setTimeout(()=>_tone(440,'sine',0.18,0.18,880),120); },
   bomb:     () => { _noise(0.30,0.20); _tone(100,'sawtooth',0.25,0.30,40); },
@@ -1994,11 +1996,20 @@ function activatePowerup(type, px, py) {
   }
   // Instant effects dispatched here
   switch (type.id) {
-    case 'beeBee': { // Split bees
+    case 'beeBee': { // Split bees — slight V-shaped divergence
+      const ANG = 15 * Math.PI / 180;
+      const cosA = Math.cos(ANG), sinA = Math.sin(ANG);
       const clones = [];
       for (const b of bees) {
+        const ovx = b.vx, ovy = b.vy;
         b.sizeScale *= 0.7;
-        const nb = mkBee(b.x, b.y, -b.vx, b.vy, b.speed);
+        // Rotate original slightly left
+        b.vx = ovx * cosA + ovy * sinA;
+        b.vy = -ovx * sinA + ovy * cosA;
+        // Clone rotated slightly right
+        const cvx = ovx * cosA - ovy * sinA;
+        const cvy = ovx * sinA + ovy * cosA;
+        const nb = mkBee(b.x, b.y, cvx, cvy, b.speed);
         nb.sizeScale = b.sizeScale;
         clones.push(nb);
       }
@@ -2583,19 +2594,19 @@ function drawAccessory(ox, oy, dw, dh, side) {
   if (!acc) return;
 
   if (acc.id === 'brownBracelet') {
-    // Bracelet — drawn at the wrist (lower than rings)
+    // Bracelet — drawn at the wrist, spanning full wrist width
     const bx = ox + dw * 0.5, by = oy + dh * 0.12;
-    const bw = dw * 0.14, bh = dh * 0.025;
+    const bw = dw * 0.38, bh = dh * 0.035;
     ctx.strokeStyle = '#6a4020';
-    ctx.lineWidth = Math.max(2.5, dw * 0.035);
+    ctx.lineWidth = Math.max(2.5, dw * 0.04);
     ctx.beginPath();
     ctx.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
     ctx.stroke();
     // Inner highlight
     ctx.strokeStyle = '#8a5a30';
-    ctx.lineWidth = Math.max(1, dw * 0.015);
+    ctx.lineWidth = Math.max(1, dw * 0.018);
     ctx.beginPath();
-    ctx.ellipse(bx, by - 0.5, bw * 0.8, bh * 0.7, 0, Math.PI * 1.1, Math.PI * 1.9);
+    ctx.ellipse(bx, by - 0.5, bw * 0.85, bh * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95);
     ctx.stroke();
   } else {
     // Ring finger position — proportional offsets so position scales with sprite size
@@ -2647,25 +2658,29 @@ function drawPaddle(p, p2) {
     if (p.squish > 0) p.squish--;
     if (p2.squish > 0) p2.squish--;
   } else if (powers.twoHends >= 1) {
-    // Two hands side by side, mirrored, no gap
+    // Two hands side by side — existing hand keeps its side, new hand animates in
     const halfW = Math.round(pw / 2);
     const drawH = getHandSpriteH(halfW);
     const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const oy = bottomY - drawH + sq;
-    drawHand(p.x, oy, -1, halfW);             // left hand (flipped)
-    // Second hend: animate rising from below when first acquired
+    const existingSide = (favouriteHend === 'left') ? -1 : 1;
+    const newSide = -existingSide;
+    const existingX = existingSide === -1 ? p.x : p.x + halfW;
+    const newX = newSide === -1 ? p.x : p.x + halfW;
+    // Existing hand — no animation, stays in place
+    drawHand(existingX, oy, existingSide, halfW);
+    // New hand — animate rising from below when first acquired
     let h2oy = oy;
     if (_hend2Intro.active) {
       _hend2Intro.t++;
-      // Ease-out-back: overshoot slightly then settle
-      const dur = 45; // frames
+      const dur = 45;
       const prog = Math.min(1, _hend2Intro.t / dur);
-      const eased = 1 - Math.pow(1 - prog, 3); // cubic ease-out
+      const eased = 1 - Math.pow(1 - prog, 3);
       const overshoot = prog < 0.85 ? 0 : Math.sin((prog - 0.85) / 0.15 * Math.PI) * 4;
       h2oy = oy + _hend2Intro.offset * (1 - eased) - overshoot;
       if (prog >= 1) _hend2Intro.active = false;
     }
-    drawHand(p.x + halfW, h2oy, 1, halfW);    // right hand (normal)
+    drawHand(newX, h2oy, newSide, halfW);
     if (p.squish > 0) p.squish--;
   } else {
     const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
@@ -3209,8 +3224,8 @@ function drawHex(h) {
         hasBelow = true; break;
       }
     }
-    if (!hasBelow) {
-    // Single drip per cell — seeded variant determines drip stage
+    if (!hasBelow && ((h.ci * 7 + 13) % 10 < 4)) {
+    // ~40% of exposed cells get a drip — seeded variant determines drip stage
     // Stages progress: tiny blob → emerging drip → full teardrop
     const isHoney = h.type === 'HONEY';
     const baseY = h.y + HEX_R * 0.866;       // bottom edge center
@@ -3247,22 +3262,65 @@ function drawHex(h) {
   // Inner accent / detail
   hexPath(hexPts(h.x, h.y, HEX_R * 0.52));
   if (h.type === 'PORTAL') {
-    // pulsing ring — alternates between two phases for portal effect
+    // Pulsing outer ring
     const phase = (Math.floor(tick / 8) % 2);
-    const p = phase ? 0.80 : 0.25;
-    ctx.strokeStyle = `rgba(220,140,255,${p})`;
+    const p = phase ? 0.80 : 0.35;
+    const isSender = (h.portalRole === 'sender');
+    const baseHue = isSender ? [180,100,255] : [100,220,255]; // purple sender, cyan receiver
+    ctx.strokeStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${p})`;
     ctx.lineWidth = 2; ctx.stroke();
-    // channel badge — small number indicating which portal pair
-    ctx.fillStyle = '#f0c0ff'; ctx.globalAlpha = 0.90;
-    ctx.font = '5px "Press Start 2P",monospace';
+
+    // Swirling center vortex — 3 curved arms rotating
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    const swirlDir = isSender ? 1 : -1; // CW for sender, CCW for receiver
+    const swirlAngle = tick * 0.08 * swirlDir;
+    for (let arm = 0; arm < 3; arm++) {
+      const a0 = swirlAngle + (arm * Math.PI * 2 / 3);
+      ctx.strokeStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${0.25 + p*0.2})`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let t = 0; t <= 1; t += 0.1) {
+        const rad = t * HEX_R * 0.42;
+        const ang = a0 + t * 1.8 * swirlDir;
+        const px = Math.cos(ang) * rad;
+        const py = Math.sin(ang) * rad;
+        if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+
+    // Directional particles — sucked in (sender) or pushed out (receiver)
+    for (let i = 0; i < 4; i++) {
+      const seed = h.ci * 31 + i * 17;
+      const cycle = ((tick + seed) % 40) / 40; // 0→1 over 40 frames
+      const angle = (seed * 2.399) + tick * 0.02 * swirlDir; // golden angle offset + slow rotation
+      let dist, alpha;
+      if (isSender) {
+        // Particles move inward (far→center)
+        dist = HEX_R * 0.55 * (1 - cycle);
+        alpha = 0.15 + cycle * 0.5; // brighter as they approach center
+      } else {
+        // Particles move outward (center→far)
+        dist = HEX_R * 0.55 * cycle;
+        alpha = 0.6 - cycle * 0.5; // dimmer as they move away
+      }
+      const px = Math.cos(angle) * dist;
+      const py = Math.sin(angle) * dist;
+      const sz = 1 + (isSender ? cycle : (1 - cycle)) * 1.2;
+      ctx.fillStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${alpha})`;
+      ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+
+    // Role label — S or R (sender/receiver)
+    ctx.fillStyle = isSender ? 'rgba(200,140,255,0.7)' : 'rgba(140,220,255,0.7)';
+    ctx.globalAlpha = 0.85;
+    ctx.font = '4px "Press Start 2P",monospace';
     ctx.textAlign = 'center';
-    ctx.fillText(String((h.portalChannel ?? 0) + 1), h.x, h.y + 4);
+    ctx.fillText(isSender ? '▼' : '▲', h.x, h.y + 5);
     ctx.textAlign = 'left';
     ctx.globalAlpha = 1;
-    // inner shimmer — rotates between phases
-    ctx.fillStyle = phase ? 'rgba(200,100,255,0.22)' : 'rgba(140,50,220,0.12)';
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.38));
-    ctx.fill();
   } else if (h.type === 'HONEY') {
     // bright inner ring
     ctx.strokeStyle = 'rgba(255,240,80,0.55)';
@@ -3292,10 +3350,36 @@ function drawHex(h) {
     ctx.moveTo(h.x, h.y - HEX_R * 0.5); ctx.lineTo(h.x, h.y + HEX_R * 0.5);
     ctx.stroke();
   } else if (h.type === 'BROOD') {
-    // Pulsing amber outline + egg-sac dots
+    // Pulsing amber outline + mini bee sprite (like bee-bee size)
     const p = (Math.floor(tick / 16) % 2) ? 0.16 : 0.46;
     ctx.strokeStyle = `rgba(240,160,40,${p})`;
     ctx.lineWidth = 1; ctx.stroke();
+    // Draw mini bee using PNG sprite if available
+    const useBeeSprite = beeFrames.length === 4 && beeFrames[0];
+    if (useBeeSprite) {
+      const fIdx = beeFrameSeq[Math.floor(tick / BEE_FLAP_SPEED) % beeFrameSeq.length];
+      const bImg = beeFrames[fIdx];
+      const beeW = HEX_R * 1.1, beeH = HEX_R * 1.1;
+      ctx.save();
+      ctx.globalAlpha = 0.65 + p * 0.25;
+      ctx.drawImage(bImg, h.x - beeW / 2, h.y - beeH / 2, beeW, beeH);
+      ctx.restore();
+    } else {
+      // Fallback: simple bee outline
+      const br = HEX_R * 0.35;
+      ctx.save(); ctx.translate(h.x, h.y);
+      ctx.strokeStyle = `rgba(255,200,60,${0.45 + p*0.3})`;
+      ctx.fillStyle = `rgba(255,180,30,${0.15 + p*0.15})`;
+      ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.ellipse(0, 0, br, br*0.6, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = `rgba(60,30,0,${0.3 + p*0.2})`; ctx.lineWidth = 0.7;
+      ctx.beginPath(); ctx.moveTo(-br*0.3, -br*0.55); ctx.lineTo(-br*0.3, br*0.55); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(br*0.25, -br*0.5); ctx.lineTo(br*0.25, br*0.5); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,255,255,${0.3 + p*0.2})`; ctx.lineWidth = 0.6;
+      ctx.beginPath(); ctx.ellipse(-br*0.3, -br*0.6, br*0.4, br*0.25, -0.3, 0, Math.PI); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(br*0.3, -br*0.6, br*0.4, br*0.25, 0.3, 0, Math.PI); ctx.stroke();
+      ctx.restore();
+    }
   } else if (h.type === 'HEAVY') {
     // Thick bronze outline + rivets
     ctx.strokeStyle = 'rgba(138,104,48,0.45)'; ctx.lineWidth = 2; ctx.stroke();
@@ -3356,18 +3440,19 @@ function drawHex(h) {
   } else if (h.type === 'CHARGED') {
     const p = (Math.floor(tick / 6) % 2) ? 0.65 : 0.25;
     ctx.strokeStyle = `rgba(80,208,255,${p})`; ctx.lineWidth = 1.5; ctx.stroke();
-    // LARGE lightning bolt — prominent and clear
+    // Standard zigzag ⚡ lightning bolt
     const r = HEX_R * 0.55;
-    ctx.fillStyle = `rgba(180,240,255,${p + 0.1})`;
-    ctx.strokeStyle = `rgba(255,255,255,${p})`; ctx.lineWidth = 1;
+    ctx.fillStyle = `rgba(180,240,255,${p + 0.15})`;
+    ctx.strokeStyle = `rgba(255,255,255,${p + 0.1})`; ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(h.x - r*0.15, h.y - r);        // top-left
-    ctx.lineTo(h.x + r*0.5,  h.y - r);         // top-right
-    ctx.lineTo(h.x + r*0.05, h.y - r*0.1);     // mid-right notch
-    ctx.lineTo(h.x + r*0.45, h.y - r*0.1);     // mid jut right
-    ctx.lineTo(h.x - r*0.2,  h.y + r);         // bottom point
-    ctx.lineTo(h.x + r*0.1,  h.y + r*0.05);    // mid-left notch
-    ctx.lineTo(h.x - r*0.15, h.y - r);         // back to top
+    ctx.moveTo(h.x + r*0.05, h.y - r);         // top center-right
+    ctx.lineTo(h.x + r*0.45, h.y - r*0.95);    // top-right corner
+    ctx.lineTo(h.x + r*0.05, h.y - r*0.1);     // zigzag center-right
+    ctx.lineTo(h.x + r*0.35, h.y - r*0.05);    // jut right
+    ctx.lineTo(h.x - r*0.05, h.y + r);         // bottom point
+    ctx.lineTo(h.x - r*0.05, h.y + r*0.15);    // zigzag center-left
+    ctx.lineTo(h.x - r*0.35, h.y + r*0.1);     // jut left
+    ctx.lineTo(h.x - r*0.05, h.y - r*0.85);    // back up top-left
     ctx.closePath(); ctx.fill(); ctx.stroke();
   } else if (h.type === 'BOMB') {
     const p = (Math.floor(tick / 8) % 2) ? 0.45 : 0.20;
@@ -3523,24 +3608,25 @@ function checkHex(b) {
       const nlen = Math.hypot(nx,ny)||1;
       nx /= nlen; ny /= nlen;
 
-// PORTAL CELL: indestructible teleporter
+// PORTAL CELL: one-way teleporter (sender → receiver only)
       if (h.type === 'PORTAL') {
-        if (b.tpCooldown > 0) {
-          // cooldown active — treat as solid wall, reflect normally
+        SaveManager.discover('PORTAL');
+        // Receiver portal or cooldown active — bounce like a normal wall
+        if (h.portalRole !== 'sender' || b.tpCooldown > 0) {
           const dot = b.vx*nx + b.vy*ny;
           if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
           const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
           b.x += nx*ov2; b.y += ny*ov2;
+          h.flash = 6;
           return {dead:false, h};
         }
-        SaveManager.discover('PORTAL');
         const dest = hexes.find(q => q.type === 'PORTAL' && q !== h && q.portalChannel === h.portalChannel);
         if (dest) {
           b.x = dest.x; b.y = dest.y;
           b.tpCooldown = CONFIG.PORTAL_COOLDOWN;
           h.flash = 14; dest.flash = 14;
           spawnParts(h.x,    h.y,    18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
-          spawnParts(dest.x, dest.y, 18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
+          spawnParts(dest.x, dest.y, 18, ['#80e0ff','#b0f0ff','#e0ffff','#fff']);
           broodMsgs.push({x:dest.x, y:dest.y-8, life:55, txt:'TELEPORT!'});
           sfx.teleport();
         } else {
@@ -3556,6 +3642,7 @@ function checkHex(b) {
 
       // UNBREAKABLE CELL: permanent obstacle — just reflect
       if (h.type === 'UNBREAKABLE') {
+        SaveManager.discover('UNBREAKABLE');
         const dot = b.vx*nx + b.vy*ny;
         if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
         const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
@@ -3566,6 +3653,7 @@ function checkHex(b) {
 
       // ROYAL_GUARD: indestructible barrier — always reflects, even BOO-BEE
       if (h.type === 'ROYAL_GUARD') {
+        SaveManager.discover('ROYAL_GUARD');
         const dot = b.vx*nx + b.vy*ny;
         if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
         const ov2 = (BALL_R + HEX_COLL_R) - dist + 1;
@@ -3576,6 +3664,7 @@ function checkHex(b) {
 
       // QUEEN: shared HP pool — damage goes to boss gate, cell reflects
       if (h.type === 'QUEEN') {
+        SaveManager.discover('QUEEN');
         const gate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
         if (gate && !gate.dead) {
           let qdmg = 1 + powers.beefyBees;
@@ -3726,41 +3815,42 @@ function bgRand(seed) {
 const BG_THEMES = [
   { name:'Old Hive Base',
     scrollStart: 0,
-    topCol:[20,12,4],    botCol:[40,24,8],       // much darker cave
-    gridCol:[30,18,0],   accentCol:[42,24,0],
-    fillChance:0.14,     fillCol:[140,120,60],
+    topCol:[55,35,12],   botCol:[85,55,20],      // warm amber cave
+    gridCol:[70,45,12],  accentCol:[90,60,18],
+    fillChance:0.14,     fillCol:[170,140,70],
     gridAlpha:0.06,
     particleCol:[80,50,20], particleAlpha:0.20, particleRate:0.18 },
   { name:'Active Comb',
     scrollStart: -1500,
-    topCol:[50,30,10],   botCol:[80,50,16],      // darker amber
-    gridCol:[40,24,0],   accentCol:[60,36,0],
-    fillChance:0.22,     fillCol:[120,64,0],
+    topCol:[90,60,22],   botCol:[140,95,35],     // bright amber
+    gridCol:[80,55,16],  accentCol:[110,75,24],
+    fillChance:0.22,     fillCol:[180,110,30],
     gridAlpha:0.08,
     particleCol:[180,140,30], particleAlpha:0.18, particleRate:0.22 },
   { name:'Royal Chambers',
     scrollStart: -3000,
-    topCol:[100,65,18],  botCol:[140,100,30],    // darker gold
-    gridCol:[80,50,14],  accentCol:[120,80,28],
-    fillChance:0.20,     fillCol:[180,130,40],
+    topCol:[150,105,40], botCol:[190,145,55],    // rich gold
+    gridCol:[130,90,30], accentCol:[170,125,50],
+    fillChance:0.20,     fillCol:[210,165,60],
     gridAlpha:0.10,
     particleCol:[200,160,50], particleAlpha:0.15, particleRate:0.30 },
   { name:'Ancient Depths',
     scrollStart: -5000,
-    topCol:[40,20,44],   botCol:[72,30,84],      // darker purple
-    gridCol:[40,20,50],  accentCol:[70,35,85],
-    fillChance:0.16,     fillCol:[100,55,130],
+    topCol:[75,40,75],   botCol:[115,55,120],    // warm purple
+    gridCol:[80,45,90],  accentCol:[110,65,125],
+    fillChance:0.16,     fillCol:[140,85,165],
     gridAlpha:0.12,
     particleCol:[120,80,170], particleAlpha:0.12, particleRate:0.40 },
 ];
 const BG_TRANSITION = 900; // px of smooth blend between themes
 
-// Parallax layer definitions
-const BG_LAYERS = [
-  { r:100, speed:0.05, aMul:0.06, seed:3571 },  // far — very faint texture
-  { r:60,  speed:0.15, aMul:0.09, seed:6143 },  // mid — subtle
-  { r:35,  speed:0.35, aMul:0.14, seed:9281 },  // near — slightly visible
-];
+// Parallax layer offscreen canvases (generated once, tiled each frame)
+let _bgLayerFar = null, _bgLayerMid = null, _bgLayerNear = null;
+let _bgLayersReady = false;
+const BG_LAYER_H = 4800;       // height of each tileable layer canvas
+const BG_FAR_SPEED  = 0.35;    // parallax multiplier — farthest
+const BG_MID_SPEED  = 0.55;    // parallax multiplier — mid
+const BG_NEAR_SPEED = 0.80;    // parallax multiplier — nearest
 
 // Ambient particles
 const BG_PARTICLE_MAX = 90;
@@ -3807,73 +3897,249 @@ function drawBGBase(blend) {
   // Gradient overlay
   const grad = ctx.createLinearGradient(0, 0, 0, cb);
   grad.addColorStop(0,   `rgba(${tc[0]},${tc[1]},${tc[2]},0.0)`);
-  grad.addColorStop(0.5, `rgba(${Math.round((tc[0]+bc[0])/2)},${Math.round((tc[1]+bc[1])/2)},${Math.round((tc[2]+bc[2])/2)},0.25)`);
-  grad.addColorStop(1,   `rgba(${bc[0]},${bc[1]},${bc[2]},0.4)`);
+  grad.addColorStop(0.5, `rgba(${Math.round((tc[0]+bc[0])/2)},${Math.round((tc[1]+bc[1])/2)},${Math.round((tc[2]+bc[2])/2)},0.35)`);
+  grad.addColorStop(1,   `rgba(${bc[0]},${bc[1]},${bc[2]},0.55)`);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, W, cb);
 }
 
-function drawBGLayers(blend) {
-  const { a, b, t } = blend;
-  const cb = demoMode ? H : H * PLAY_BOTTOM;
-  const baseAlpha = a.gridAlpha + (b.gridAlpha - a.gridAlpha) * t;
-  const gc = lerpCol(a.gridCol, b.gridCol, t);
-  const ac = lerpCol(a.accentCol, b.accentCol, t);
-  const fc = lerpCol(a.fillCol, b.fillCol, t);
-  const fillChance = a.fillChance + (b.fillChance - a.fillChance) * t;
+// ── Organic blob helper for procedural hive wall shapes ──
+function _drawOrganicBlob(c, cx, cy, rx, ry, segs, rng, jitter) {
+  const pts = [];
+  for (let i = 0; i < segs; i++) {
+    const ang = (i / segs) * Math.PI * 2;
+    const jr = 1 + (rng() - 0.5) * jitter;
+    pts.push({ x: cx + Math.cos(ang) * rx * jr, y: cy + Math.sin(ang) * ry * jr });
+  }
+  c.beginPath();
+  c.moveTo(pts[0].x, pts[0].y);
+  for (let i = 0; i < segs; i++) {
+    const cur = pts[i], nxt = pts[(i + 1) % segs];
+    const cpx = (cur.x + nxt.x) / 2 + (rng() - 0.5) * rx * 0.3;
+    const cpy = (cur.y + nxt.y) / 2 + (rng() - 0.5) * ry * 0.3;
+    c.quadraticCurveTo(cpx, cpy, nxt.x, nxt.y);
+  }
+  c.closePath();
+  c.fill();
+}
 
-  ctx.save();
-  ctx.beginPath(); ctx.rect(0, 0, W, cb); ctx.clip();
+// ── Draw a single hex on an offscreen context ──
+function _drawHexOn(c, hx, hy, r) {
+  const pp = hexPts(hx, hy, r);
+  c.beginPath(); c.moveTo(pp[0][0], pp[0][1]);
+  for (let i = 1; i < 6; i++) c.lineTo(pp[i][0], pp[i][1]);
+  c.closePath();
+}
 
-  for (const layer of BG_LAYERS) {
-    const bR = layer.r;
-    const cS = bR * 1.5;
-    const rS = bR * Math.sqrt(3);
-    const pOff = ((scrollY * layer.speed) % rS + rS) % rS;
-    const alpha = baseAlpha * layer.aMul;
-    const rand = bgRand(currentLevel * layer.seed);
+// ── Generate all 3 parallax layer canvases ──
+function _generateBGLayers() {
+  const LH = BG_LAYER_H;
 
-    for (let c = -1; c < Math.ceil(W / cS) + 2; c++) {
-      for (let r = -2; r < Math.ceil(cb / rS) + 3; r++) {
-        const bx = c * cS;
-        const by = r * rS + (c % 2 ? rS / 2 : 0) + pOff;
-        const rv = rand();
+  // --- FAR LAYER: dense honeycomb + tunnels + glows ---
+  _bgLayerFar = document.createElement('canvas');
+  _bgLayerFar.width = W; _bgLayerFar.height = LH;
+  const fc = _bgLayerFar.getContext('2d');
+  fc.fillStyle = 'rgb(45,28,8)';
+  fc.fillRect(0, 0, W, LH);
+  // Honeycomb grid
+  const hR = 18, hCS = hR * 1.5, hRS = hR * Math.sqrt(3);
+  const fRng = bgRand(7331);
+  fc.lineWidth = 0.7;
+  for (let c = -1; c < Math.ceil(W / hCS) + 2; c++) {
+    for (let r = -1; r < Math.ceil(LH / hRS) + 2; r++) {
+      const bx = c * hCS, by = r * hRS + (c % 2 ? hRS / 2 : 0);
+      const rv = fRng();
+      // Fill some cells
+      if (rv < 0.15) {
+        fc.globalAlpha = 0.20 + rv;
+        fc.fillStyle = `rgb(${80 + Math.floor(rv * 200)},${55 + Math.floor(rv * 120)},${15 + Math.floor(rv * 60)})`;
+        _drawHexOn(fc, bx, by, hR); fc.fill();
+      }
+      // Stroke all cells
+      fc.globalAlpha = 0.30 + fRng() * 0.10;
+      fc.strokeStyle = 'rgb(75,50,16)';
+      _drawHexOn(fc, bx, by, hR); fc.stroke();
+    }
+  }
+  // Tunnel openings
+  fc.globalAlpha = 1;
+  for (let i = 0; i < 10; i++) {
+    const tx = fRng() < 0.5 ? fRng() * W * 0.35 : W * 0.65 + fRng() * W * 0.35;
+    const ty = fRng() * LH;
+    const trx = 35 + fRng() * 50, trY = 25 + fRng() * 40;
+    fc.fillStyle = `rgba(15,8,2,${0.5 + fRng() * 0.3})`;
+    fc.beginPath(); fc.ellipse(tx, ty, trx, trY, fRng() * 0.5, 0, Math.PI * 2); fc.fill();
+    // Wrap near edges for seamless tiling
+    if (ty < trY + 20) { fc.beginPath(); fc.ellipse(tx, ty + LH, trx, trY, 0, 0, Math.PI * 2); fc.fill(); }
+    if (ty > LH - trY - 20) { fc.beginPath(); fc.ellipse(tx, ty - LH, trx, trY, 0, 0, Math.PI * 2); fc.fill(); }
+  }
+  // Glow spots
+  for (let i = 0; i < 8; i++) {
+    const gx = fRng() < 0.5 ? fRng() * W * 0.3 + 10 : W * 0.7 + fRng() * W * 0.25;
+    const gy = fRng() * LH;
+    const gr = 60 + fRng() * 50;
+    const glow = fc.createRadialGradient(gx, gy, 0, gx, gy, gr);
+    glow.addColorStop(0, 'rgba(140,90,25,0.14)');
+    glow.addColorStop(0.6, 'rgba(120,75,20,0.06)');
+    glow.addColorStop(1, 'rgba(100,60,15,0)');
+    fc.fillStyle = glow; fc.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
+    if (gy < gr) { const g2 = fc.createRadialGradient(gx, gy + LH, 0, gx, gy + LH, gr); g2.addColorStop(0, 'rgba(140,90,25,0.14)'); g2.addColorStop(1, 'rgba(100,60,15,0)'); fc.fillStyle = g2; fc.fillRect(gx - gr, gy + LH - gr, gr * 2, gr * 2); }
+  }
+  fc.globalAlpha = 1;
 
-        // Occasional accent fill
-        if (rv < fillChance * layer.aMul) {
-          ctx.globalAlpha = alpha * (0.4 + rv);
-          ctx.fillStyle = `rgb(${fc[0]},${fc[1]},${fc[2]})`;
-          const pp = hexPts(bx, by, bR);
-          ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
-          for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
-          ctx.closePath(); ctx.fill();
-        }
+  // --- MID LAYER: wax walls on edges, center ~55% transparent ---
+  _bgLayerMid = document.createElement('canvas');
+  _bgLayerMid.width = W; _bgLayerMid.height = LH;
+  const mc = _bgLayerMid.getContext('2d');
+  mc.clearRect(0, 0, W, LH);
+  const mRng = bgRand(4219);
+  const mSegH = 350;
+  const mSegs = Math.ceil(LH / mSegH);
+  for (let s = 0; s < mSegs; s++) {
+    const sy = s * mSegH;
+    // Left edge blobs
+    const lCount = 1 + Math.floor(mRng() * 2.5);
+    for (let j = 0; j < lCount; j++) {
+      const bx = -10 + mRng() * 15;
+      const by = sy + mSegH * 0.2 + mRng() * mSegH * 0.6;
+      const brx = 40 + mRng() * 55;
+      const bry = 40 + mRng() * 70;
+      mc.fillStyle = `rgba(55,35,10,${0.75 + mRng() * 0.15})`;
+      _drawOrganicBlob(mc, bx, by, brx, bry, 8 + Math.floor(mRng() * 4), mRng, 0.6);
+      // Wrap
+      if (by - bry < 20 && s === 0) _drawOrganicBlob(mc, bx, by + LH, brx, bry, 8, mRng, 0.4);
+      if (by + bry > LH - 20 && s === mSegs - 1) _drawOrganicBlob(mc, bx, by - LH, brx, bry, 8, mRng, 0.4);
+    }
+    // Right edge blobs
+    const rCount = 1 + Math.floor(mRng() * 2.5);
+    for (let j = 0; j < rCount; j++) {
+      const bx = W + 10 - mRng() * 15;
+      const by = sy + mSegH * 0.2 + mRng() * mSegH * 0.6;
+      const brx = 40 + mRng() * 55;
+      const bry = 40 + mRng() * 70;
+      mc.fillStyle = `rgba(55,35,10,${0.75 + mRng() * 0.15})`;
+      _drawOrganicBlob(mc, bx, by, brx, bry, 8 + Math.floor(mRng() * 4), mRng, 0.6);
+      if (by - bry < 20 && s === 0) _drawOrganicBlob(mc, bx, by + LH, brx, bry, 8, mRng, 0.4);
+      if (by + bry > LH - 20 && s === mSegs - 1) _drawOrganicBlob(mc, bx, by - LH, brx, bry, 8, mRng, 0.4);
+    }
+    // Comb clusters on edges (20% chance)
+    if (mRng() < 0.20) {
+      const side = mRng() < 0.5 ? 0 : 1;
+      const cx = side === 0 ? 25 + mRng() * 40 : W - 25 - mRng() * 40;
+      const cy = sy + mRng() * mSegH;
+      const cnt = 3 + Math.floor(mRng() * 4);
+      mc.fillStyle = 'rgba(70,45,14,0.60)';
+      mc.strokeStyle = 'rgba(90,60,20,0.40)'; mc.lineWidth = 0.8;
+      for (let h = 0; h < cnt; h++) {
+        const hx = cx + (h % 3 - 1) * 16, hy = cy + Math.floor(h / 3) * 14;
+        _drawHexOn(mc, hx, hy, 9); mc.fill(); mc.stroke();
+      }
+    }
+    // Thin wax tendril (10% chance)
+    if (mRng() < 0.10) {
+      const side = mRng() < 0.5;
+      const sx = side ? 30 + mRng() * 40 : W - 30 - mRng() * 40;
+      const ex = side ? 80 + mRng() * 20 : W - 80 - mRng() * 20;
+      const ty = sy + mRng() * mSegH;
+      mc.strokeStyle = 'rgba(65,42,12,0.50)'; mc.lineWidth = 2 + mRng();
+      mc.beginPath(); mc.moveTo(sx, ty);
+      mc.quadraticCurveTo((sx + ex) / 2, ty + (mRng() - 0.5) * 50, ex, ty + (mRng() - 0.5) * 30);
+      mc.stroke();
+    }
+  }
+  // Hex grid texture on solid edge regions
+  mc.globalAlpha = 0.12; mc.strokeStyle = 'rgb(80,55,18)'; mc.lineWidth = 0.5;
+  const mhR = 12, mhCS = mhR * 1.5, mhRS = mhR * Math.sqrt(3);
+  for (let c = -1; c < Math.ceil(W / mhCS) + 2; c++) {
+    const bx = c * mhCS;
+    if (bx > 85 && bx < W - 85) continue; // skip center
+    for (let r = -1; r < Math.ceil(LH / mhRS) + 2; r++) {
+      const by = r * mhRS + (c % 2 ? mhRS / 2 : 0);
+      _drawHexOn(mc, bx, by, mhR); mc.stroke();
+    }
+  }
+  mc.globalAlpha = 1;
 
-        // Hex outline
-        ctx.globalAlpha = alpha + rand() * 0.02;
-        ctx.strokeStyle = `rgb(${gc[0]},${gc[1]},${gc[2]})`;
-        ctx.lineWidth = layer.aMul > 0.8 ? 0.9 : 0.6;
-        const pp2 = hexPts(bx, by, bR);
-        ctx.beginPath(); ctx.moveTo(pp2[0][0], pp2[0][1]);
-        for (let i = 1; i < 6; i++) ctx.lineTo(pp2[i][0], pp2[i][1]);
-        ctx.closePath(); ctx.stroke();
-
-        // Near layer gets extra detail: inner hex on some cells
-        if (layer.aMul > 0.9 && rv < 0.15) {
-          const ip = hexPts(bx, by, bR * 0.55);
-          ctx.globalAlpha = alpha * 0.5;
-          ctx.strokeStyle = `rgb(${ac[0]},${ac[1]},${ac[2]})`;
-          ctx.lineWidth = 0.6;
-          ctx.beginPath(); ctx.moveTo(ip[0][0], ip[0][1]);
-          for (let i = 1; i < 6; i++) ctx.lineTo(ip[i][0], ip[i][1]);
-          ctx.closePath(); ctx.stroke();
-        }
-
-        // Consume remaining RNG values for consistency
-        rand(); rand();
+  // --- NEAR LAYER: bold wax walls, center ~70% transparent ---
+  _bgLayerNear = document.createElement('canvas');
+  _bgLayerNear.width = W; _bgLayerNear.height = LH;
+  const nc = _bgLayerNear.getContext('2d');
+  nc.clearRect(0, 0, W, LH);
+  const nRng = bgRand(8503);
+  const nSegH = 280;
+  const nSegs = Math.ceil(LH / nSegH);
+  for (let s = 0; s < nSegs; s++) {
+    const sy = s * nSegH;
+    // Left edge blobs (bold, thick)
+    const lC = 1 + Math.floor(nRng() * 1.5);
+    for (let j = 0; j < lC; j++) {
+      const bx = -15 + nRng() * 10;
+      const by = sy + nSegH * 0.15 + nRng() * nSegH * 0.7;
+      const brx = 30 + nRng() * 40;
+      const bry = 35 + nRng() * 55;
+      nc.fillStyle = `rgba(40,22,6,${0.85 + nRng() * 0.10})`;
+      _drawOrganicBlob(nc, bx, by, brx, bry, 7 + Math.floor(nRng() * 3), nRng, 0.5);
+      if (by - bry < 15 && s === 0) _drawOrganicBlob(nc, bx, by + LH, brx, bry, 7, nRng, 0.4);
+      if (by + bry > LH - 15 && s === nSegs - 1) _drawOrganicBlob(nc, bx, by - LH, brx, bry, 7, nRng, 0.4);
+    }
+    // Right edge blobs
+    const rC = 1 + Math.floor(nRng() * 1.5);
+    for (let j = 0; j < rC; j++) {
+      const bx = W + 15 - nRng() * 10;
+      const by = sy + nSegH * 0.15 + nRng() * nSegH * 0.7;
+      const brx = 30 + nRng() * 40;
+      const bry = 35 + nRng() * 55;
+      nc.fillStyle = `rgba(40,22,6,${0.85 + nRng() * 0.10})`;
+      _drawOrganicBlob(nc, bx, by, brx, bry, 7 + Math.floor(nRng() * 3), nRng, 0.5);
+      if (by - bry < 15 && s === 0) _drawOrganicBlob(nc, bx, by + LH, brx, bry, 7, nRng, 0.4);
+      if (by + bry > LH - 15 && s === nSegs - 1) _drawOrganicBlob(nc, bx, by - LH, brx, bry, 7, nRng, 0.4);
+    }
+    // Structural ridges (15%)
+    if (nRng() < 0.15) {
+      const side = nRng() < 0.5;
+      const sx = side ? 5 + nRng() * 20 : W - 5 - nRng() * 20;
+      const ang = (side ? 0.2 : Math.PI - 0.2) + (nRng() - 0.5) * 0.4;
+      const len = 30 + nRng() * 35;
+      nc.strokeStyle = 'rgba(50,30,8,0.70)'; nc.lineWidth = 3 + nRng() * 2; nc.lineCap = 'round';
+      nc.beginPath();
+      nc.moveTo(sx, sy + nRng() * nSegH);
+      nc.lineTo(sx + Math.cos(ang) * len, sy + nRng() * nSegH + Math.sin(ang) * len);
+      nc.stroke();
+    }
+    // Edge hex clusters (15%)
+    if (nRng() < 0.15) {
+      const side = nRng() < 0.5 ? 0 : 1;
+      const cx = side === 0 ? 15 + nRng() * 25 : W - 15 - nRng() * 25;
+      const cy = sy + nRng() * nSegH;
+      nc.fillStyle = 'rgba(50,30,10,0.55)';
+      nc.strokeStyle = 'rgba(70,45,15,0.35)'; nc.lineWidth = 0.7;
+      for (let h = 0; h < 3 + Math.floor(nRng() * 3); h++) {
+        const hx = cx + (h % 2 - 0.5) * 14, hy = cy + Math.floor(h / 2) * 12;
+        _drawHexOn(nc, hx, hy, 8); nc.fill(); nc.stroke();
       }
     }
   }
+  // Inner-shadow gradient at cutout edges
+  const lShadow = nc.createLinearGradient(0, 0, 65, 0);
+  lShadow.addColorStop(0, 'rgba(35,20,5,0.40)');
+  lShadow.addColorStop(1, 'rgba(35,20,5,0)');
+  nc.fillStyle = lShadow; nc.fillRect(0, 0, 65, LH);
+  const rShadow = nc.createLinearGradient(W, 0, W - 65, 0);
+  rShadow.addColorStop(0, 'rgba(35,20,5,0.40)');
+  rShadow.addColorStop(1, 'rgba(35,20,5,0)');
+  nc.fillStyle = rShadow; nc.fillRect(W - 65, 0, 65, LH);
+
+  _bgLayersReady = true;
+}
+
+// ── Draw a single parallax layer with seamless vertical tiling ──
+function _drawBGLayer(layer, speed, alpha, clipBottom) {
+  const offset = ((scrollY * speed) % BG_LAYER_H + BG_LAYER_H) % BG_LAYER_H;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, 0, W, clipBottom); ctx.clip();
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(layer, 0, -offset);
+  ctx.drawImage(layer, 0, -offset + BG_LAYER_H);
   ctx.restore();
 }
 
@@ -3926,11 +4192,8 @@ function drawCRT(intensity) {
   if (intensity <= 0) return;
   ctx.save();
 
-  // 0) Barrel distortion — two-pass (horiz + vert) for even radial curvature
+  // 0) Barrel distortion OR glitch effect during screen shake
   if (intensity > 0.1) {
-    const strength = 0.006 * intensity; // max ~0.6% distortion at full intensity
-    const H_STRIPS = 48;
-    const V_STRIPS = 64;
     // Lazy-init offscreen buffer
     if (!_crtBarrelCvs || _crtBarrelCvs.width !== W || _crtBarrelCvs.height !== H) {
       _crtBarrelCvs = document.createElement('canvas');
@@ -3938,35 +4201,67 @@ function drawCRT(intensity) {
       _crtBarrelCvs.height = H;
       _crtBarrelCtx = _crtBarrelCvs.getContext('2d');
     }
-    // Pass 1: horizontal barrel — scale strip widths based on vertical position
-    _crtBarrelCtx.clearRect(0, 0, W, H);
-    _crtBarrelCtx.drawImage(canvas, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    const stripH = H / H_STRIPS;
-    for (let i = 0; i < H_STRIPS; i++) {
-      const dy = (i + 0.5) / H_STRIPS - 0.5;     // -0.5..+0.5
-      const scale = 1 + strength * (1 - 4 * dy * dy);
-      const srcY = Math.round(i * stripH);
-      const srcH = Math.round((i + 1) * stripH) - srcY;
-      if (srcH <= 0) continue;
-      const dstW = W * scale;
-      const dstX = (W - dstW) / 2;
-      ctx.drawImage(_crtBarrelCvs, 0, srcY, W, srcH, dstX, srcY, dstW, srcH);
-    }
-    // Pass 2: vertical barrel — scale strip heights based on horizontal position
-    _crtBarrelCtx.clearRect(0, 0, W, H);
-    _crtBarrelCtx.drawImage(canvas, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    const stripW = W / V_STRIPS;
-    for (let i = 0; i < V_STRIPS; i++) {
-      const dx = (i + 0.5) / V_STRIPS - 0.5;     // -0.5..+0.5
-      const scale = 1 + strength * (1 - 4 * dx * dx);
-      const srcX = Math.round(i * stripW);
-      const srcW = Math.round((i + 1) * stripW) - srcX;
-      if (srcW <= 0) continue;
-      const dstH = H * scale;
-      const dstY = (H - dstH) / 2;
-      ctx.drawImage(_crtBarrelCvs, srcX, 0, srcW, H, srcX, dstY, srcW, dstH);
+
+    if (shakeTimer > 0) {
+      // GLITCH MODE — skip barrel distortion (causes blocky artifacts during shake)
+      // Instead draw horizontal scan displacement for intentional CRT interference
+      _crtBarrelCtx.clearRect(0, 0, W, H);
+      _crtBarrelCtx.drawImage(canvas, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const glitchMag = Math.min(shakeMag, 6);
+      const bandCount = 3 + Math.floor(Math.random() * 3); // 3-5 displaced bands
+      // Draw most of the image normally
+      ctx.drawImage(_crtBarrelCvs, 0, 0);
+      // Overlay displaced horizontal bands for glitch feel
+      for (let g = 0; g < bandCount; g++) {
+        const gy = Math.floor(Math.random() * H);
+        const gh = 2 + Math.floor(Math.random() * 8); // 2-9px tall bands
+        const gx = (Math.random() - 0.5) * glitchMag * 3; // horizontal shift
+        ctx.drawImage(_crtBarrelCvs, 0, gy, W, gh, gx, gy, W, gh);
+      }
+      // Brief RGB split — shift red channel slightly
+      if (glitchMag > 2) {
+        ctx.globalAlpha = 0.08;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.drawImage(_crtBarrelCvs, Math.round(glitchMag * 0.5), 0);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      }
+    } else {
+      // Normal barrel distortion — two-pass (horiz + vert) for even radial curvature
+      const strength = 0.006 * intensity;
+      const H_STRIPS = 48;
+      const V_STRIPS = 64;
+      // Pass 1: horizontal barrel — scale strip widths based on vertical position
+      _crtBarrelCtx.clearRect(0, 0, W, H);
+      _crtBarrelCtx.drawImage(canvas, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const stripH = H / H_STRIPS;
+      for (let i = 0; i < H_STRIPS; i++) {
+        const dy = (i + 0.5) / H_STRIPS - 0.5;
+        const scale = 1 + strength * (1 - 4 * dy * dy);
+        const srcY = Math.round(i * stripH);
+        const srcH = Math.round((i + 1) * stripH) - srcY;
+        if (srcH <= 0) continue;
+        const dstW = W * scale;
+        const dstX = (W - dstW) / 2;
+        ctx.drawImage(_crtBarrelCvs, 0, srcY, W, srcH, dstX, srcY, dstW, srcH);
+      }
+      // Pass 2: vertical barrel — scale strip heights based on horizontal position
+      _crtBarrelCtx.clearRect(0, 0, W, H);
+      _crtBarrelCtx.drawImage(canvas, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      const stripW = W / V_STRIPS;
+      for (let i = 0; i < V_STRIPS; i++) {
+        const dx = (i + 0.5) / V_STRIPS - 0.5;
+        const scale = 1 + strength * (1 - 4 * dx * dx);
+        const srcX = Math.round(i * stripW);
+        const srcW = Math.round((i + 1) * stripW) - srcX;
+        if (srcW <= 0) continue;
+        const dstH = H * scale;
+        const dstY = (H - dstH) / 2;
+        ctx.drawImage(_crtBarrelCvs, srcX, 0, srcW, H, srcX, dstY, srcW, dstH);
+      }
     }
   }
 
@@ -4100,119 +4395,17 @@ function drawBGVignette() {
   ctx.fillStyle = tG; ctx.fillRect(0, 0, W, H * 0.12);
 }
 
-// Deep atmosphere — distant warm glow pockets implying vast space
-function drawBGDeep(blend) {
-  const cb = demoMode ? H : H * PLAY_BOTTOM;
-  const { a, b, t } = blend;
-  const ac = lerpCol(a.accentCol, b.accentCol, t);
-  const offset = scrollY * 0.08;
-  // 6 large glow pockets, seeded positions that tile every 2400px
-  const period = 2400;
-  const rng = _crackRng(42);
-  const glowPositions = [];
-  for (let i = 0; i < 6; i++) {
-    glowPositions.push({ x: 30 + rng() * (W - 60), baseY: rng() * period });
-  }
-  for (const gp of glowPositions) {
-    const rawY = ((gp.baseY - offset) % period + period) % period - period * 0.15;
-    if (rawY < -120 || rawY > cb + 120) continue;
-    const r = 80 + (gp.baseY % 60);
-    const glow = ctx.createRadialGradient(gp.x, rawY, 0, gp.x, rawY, r);
-    glow.addColorStop(0, `rgba(${ac[0]},${ac[1]},${ac[2]},0.08)`);
-    glow.addColorStop(0.5, `rgba(${ac[0]},${ac[1]},${ac[2]},0.03)`);
-    glow.addColorStop(1, `rgba(${ac[0]},${ac[1]},${ac[2]},0)`);
-    ctx.fillStyle = glow;
-    ctx.fillRect(gp.x - r, rawY - r, r * 2, r * 2);
-  }
-}
-
-// Midground structural layer — large hive silhouettes for depth
-function drawBGMidground(blend) {
-  const cb = demoMode ? H : H * PLAY_BOTTOM;
-  const { a, b, t } = blend;
-  const speed = 0.6;
-  const offset = scrollY * speed;
-  // Segment index based on scroll depth (changes composition per boss gate section)
-  const segIdx = Math.floor((-scrollY) / 3000);
-  const rng = _crackRng(segIdx * 7919 + 1337);
-
-  // Generate 8 elements per segment period (3000px world = 1800px parallax)
-  const period = 1800;
-  const elements = [];
-  for (let i = 0; i < 8; i++) {
-    const type = rng() < 0.35 ? 'cluster' : rng() < 0.55 ? 'void' : rng() < 0.75 ? 'ridge' : 'wall';
-    elements.push({
-      type,
-      x: rng() * W,
-      baseY: rng() * period,
-      r: 30 + rng() * 40,
-      angle: rng() * Math.PI,
-      alpha: 0.08 + rng() * 0.12
-    });
-  }
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, W, cb);
-  ctx.clip();
-
-  for (const el of elements) {
-    const rawY = ((el.baseY - offset) % period + period) % period - period * 0.1;
-    if (rawY < -100 || rawY > cb + 100) continue;
-
-    ctx.globalAlpha = el.alpha;
-
-    if (el.type === 'cluster') {
-      // Giant partial honeycomb — 2-4 oversized hexes
-      ctx.fillStyle = 'rgba(10,6,2,1)';
-      const count = 2 + Math.floor(el.r % 3);
-      for (let h = 0; h < count; h++) {
-        const hx = el.x + (h - count/2) * el.r * 0.9;
-        const hy = rawY + (h % 2) * el.r * 0.5;
-        const pts = hexPts(hx, hy, el.r);
-        hexPath(pts);
-        ctx.fill();
-      }
-    } else if (el.type === 'void') {
-      // Dark elliptical void — implies a deeper passage
-      ctx.fillStyle = 'rgba(2,1,0,1)';
-      ctx.beginPath();
-      ctx.ellipse(el.x, rawY, el.r * 1.5, el.r * 0.8, el.angle * 0.3, 0, Math.PI * 2);
-      ctx.fill();
-    } else if (el.type === 'ridge') {
-      // Ancient support ridge — diagonal dark band
-      ctx.strokeStyle = 'rgba(10,6,2,1)';
-      ctx.lineWidth = 3 + el.r * 0.08;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      const len = 60 + el.r * 2;
-      ctx.moveTo(el.x - len * Math.cos(el.angle), rawY - len * Math.sin(el.angle));
-      ctx.lineTo(el.x + len * Math.cos(el.angle), rawY + len * Math.sin(el.angle));
-      ctx.stroke();
-    } else if (el.type === 'wall') {
-      // Tunnel wall thickening on left or right edge
-      const side = el.x < W / 2 ? 0 : W;
-      const wallW = 15 + el.r * 0.5;
-      ctx.fillStyle = 'rgba(8,4,1,1)';
-      ctx.beginPath();
-      ctx.ellipse(side, rawY, wallW, el.r * 2, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  ctx.globalAlpha = 1;
-  ctx.restore();
-}
-
 function drawBG() {
+  if (!_bgLayersReady) _generateBGLayers();
   const blend = getBGBlend(scrollY);
-  drawBGBase(blend);       // gradient fill
-  drawBGDeep(blend);       // distant glow pockets (speed 0.08)
-  drawBGLayers(blend);     // hex grid texture (reduced alpha)
-  drawBGMidground(blend);  // large structural silhouettes (speed 0.6)
-  drawBGVignette();        // cave edge darkening
-  drawBGParticles(blend);  // ambient particles
-  drawBGScanlines();       // CRT scan lines
+  const cb = demoMode ? H : H * PLAY_BOTTOM;
+  drawBGBase(blend);                                // theme gradient fill
+  _drawBGLayer(_bgLayerFar,  BG_FAR_SPEED,  0.55, cb); // dense comb texture
+  _drawBGLayer(_bgLayerMid,  BG_MID_SPEED,  0.70, cb); // wax walls, center cutout
+  _drawBGLayer(_bgLayerNear, BG_NEAR_SPEED, 0.85, cb); // bold framing, center cutout
+  drawBGVignette();                                 // cave edge darkening
+  drawBGParticles(blend);                           // ambient particles
+  drawBGScanlines();                                // CRT scan lines
 }
 
 // ═══════════════════════════════════════════════════════
@@ -4386,15 +4579,15 @@ function drawHUD() {
     ctx.strokeStyle = 'rgba(160,120,60,0.6)';
     ctx.lineWidth = 0.5;
     ctx.stroke();
-    ctx.font = 'italic 9px "Press Start 2P"';
+    ctx.font = '9px "Press Start 2P"';
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'center';
     const letters = ['H','O','N','E','Y'];
     // Per-letter rotation/scale offsets (seeded for consistency)
     const rotations = [-0.06, 0.04, -0.03, 0.05, -0.04];
-    const scales    = [1.0, 0.95, 1.05, 0.97, 1.02];
+    const scales    = [1.0, 0.82, 1.05, 0.84, 1.02];
     const yOffsets  = [0, -0.5, 0.5, -0.3, 0.4];
-    const totalW = 40; // approximate total text width
+    const totalW = 38; // approximate total text width
     const startX = JAR_CX - totalW / 2 + 4;
     const spacing = 8;
     for (let li = 0; li < letters.length; li++) {
@@ -4876,7 +5069,7 @@ const _loadedBlueprints = [];   // filled by loadBlueprints()
 let _blueprintsReady = false;
 
 // ── Embedded blueprint data (exported from LevelExports/) ──
-const _EMBEDDED_BLUEPRINTS = [{"id":"level-export-2026-03-19T07-07-43","cells":[{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":45,"y":483.2421753117167},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":72,"y":342.94605989863766},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":288,"y":342.94605989863766},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":315,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":315,"y":483.2421753117167},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":180,"y":249.4153162899183},{"type":"BROOD","x":180,"y":467.6537180435968},{"type":"ROYAL","x":153,"y":483.2421753117167},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":207,"y":483.2421753117167},{"type":"ROYAL","x":153,"y":233.8268590217984},{"type":"ROYAL","x":180,"y":218.23840175367852},{"type":"ROYAL","x":207,"y":233.8268590217984}]},{"id":"level-export-2026-03-19T08-22-21","cells":[{"type":"NORMAL","x":72,"y":62.35382907247958},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":126,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"NORMAL","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"NORMAL","x":72,"y":311.76914536239786},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":72,"y":374.12297443487745},{"type":"NORMAL","x":126,"y":124.70765814495915},{"type":"NORMAL","x":126,"y":155.88457268119893},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"NORMAL","x":126,"y":218.23840175367852},{"type":"NORMAL","x":126,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"NORMAL","x":126,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"BOMB","x":99,"y":140.29611541307904},{"type":"NORMAL","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":202.64994448555862},{"type":"NORMAL","x":99,"y":233.8268590217984},{"type":"BROOD","x":99,"y":265.0037735580382},{"type":"NORMAL","x":99,"y":296.18068809427797},{"type":"NORMAL","x":99,"y":327.35760263051776},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":180,"y":124.70765814495915},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":187.06148721743872},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"NORMAL","x":180,"y":249.4153162899183},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":180,"y":311.76914536239786},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"NORMAL","x":207,"y":265.0037735580382},{"type":"BOMB","x":207,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":202.64994448555862},{"type":"NORMAL","x":207,"y":171.47302994931883},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":234,"y":155.88457268119893},{"type":"NORMAL","x":234,"y":187.06148721743872},{"type":"NORMAL","x":234,"y":218.23840175367852},{"type":"NORMAL","x":234,"y":249.4153162899183},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"NORMAL","x":288,"y":249.4153162899183},{"type":"NORMAL","x":288,"y":218.23840175367852},{"type":"NORMAL","x":288,"y":187.06148721743872},{"type":"NORMAL","x":315,"y":202.64994448555862},{"type":"NORMAL","x":315,"y":233.8268590217984},{"type":"CHARGED","x":342,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":31.17691453623979},{"type":"NORMAL","x":18,"y":62.35382907247958},{"type":"NORMAL","x":18,"y":93.53074360871936},{"type":"NORMAL","x":18,"y":124.70765814495915},{"type":"NORMAL","x":18,"y":155.88457268119893},{"type":"NORMAL","x":18,"y":187.06148721743872},{"type":"NORMAL","x":18,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":249.4153162899183},{"type":"NORMAL","x":18,"y":280.5922308261581},{"type":"NORMAL","x":18,"y":311.76914536239786},{"type":"NORMAL","x":18,"y":342.94605989863766},{"type":"NORMAL","x":18,"y":374.12297443487745},{"type":"NORMAL","x":18,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":140.29611541307904},{"type":"WAX","x":45,"y":109.11920087683926},{"type":"WAX","x":45,"y":77.94228634059947},{"type":"WAX","x":45,"y":46.76537180435968},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":261,"y":171.47302994931883}]},{"id":"level-export-2026-03-19T08-26-14","cells":[{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"HONEY","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":296.18068809427797},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":99,"y":233.8268590217984},{"type":"HONEY","x":99,"y":202.64994448555862},{"type":"HONEY","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":140.29611541307904},{"type":"HONEY","x":126,"y":218.23840175367852},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":180,"y":187.06148721743872},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":126,"y":124.70765814495915},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"HONEY","x":126,"y":93.53074360871936},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":153,"y":171.47302994931883},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"HONEY","x":180,"y":311.76914536239786},{"type":"HONEY","x":207,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"HONEY","x":207,"y":358.53451716675755},{"type":"HONEY","x":180,"y":374.12297443487745},{"type":"HONEY","x":207,"y":389.71143170299734},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"HONEY","x":207,"y":452.06526077547693},{"type":"NORMAL","x":180,"y":467.6537180435968},{"type":"NORMAL","x":207,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"HONEY","x":234,"y":374.12297443487745},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":261,"y":420.88834623923714},{"type":"HONEY","x":288,"y":436.47680350735703},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":288,"y":374.12297443487745},{"type":"HONEY","x":288,"y":342.94605989863766},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"NORMAL","x":261,"y":452.06526077547693},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"PORTAL","x":126,"y":155.88457268119893},{"type":"PORTAL","x":234,"y":342.94605989863766},{"type":"UNBREAKABLE","x":72,"y":405.29988897111724},{"type":"UNBREAKABLE","x":45,"y":420.88834623923714},{"type":"UNBREAKABLE","x":45,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":467.6537180435968},{"type":"UNBREAKABLE","x":99,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":436.47680350735703},{"type":"UNBREAKABLE","x":99,"y":420.88834623923714},{"type":"UNBREAKABLE","x":261,"y":140.29611541307904},{"type":"UNBREAKABLE","x":288,"y":124.70765814495915},{"type":"UNBREAKABLE","x":315,"y":140.29611541307904},{"type":"UNBREAKABLE","x":315,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":187.06148721743872},{"type":"UNBREAKABLE","x":261,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":155.88457268119893}]},{"id":"level-export-2026-03-19T08-30-09","cells":[{"type":"CHARGED","x":180,"y":498.8306325798366},{"type":"THICK","x":153,"y":514.4190898479565},{"type":"THICK","x":180,"y":530.0075471160764},{"type":"THICK","x":207,"y":514.4190898479565},{"type":"THICK","x":207,"y":483.2421753117167},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":153,"y":483.2421753117167},{"type":"THICK","x":153,"y":109.11920087683926},{"type":"THICK","x":180,"y":93.53074360871936},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":99,"y":296.18068809427797},{"type":"THICK","x":99,"y":327.35760263051776},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":45,"y":327.35760263051776},{"type":"THICK","x":45,"y":296.18068809427797},{"type":"CHARGED","x":72,"y":311.76914536239786},{"type":"CHARGED","x":288,"y":311.76914536239786},{"type":"THICK","x":261,"y":296.18068809427797},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":315,"y":296.18068809427797},{"type":"THICK","x":315,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":261,"y":327.35760263051776},{"type":"THICK","x":180,"y":155.88457268119893},{"type":"THICK","x":207,"y":140.29611541307904},{"type":"THICK","x":207,"y":109.11920087683926},{"type":"THICK","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":342,"y":280.5922308261581},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":342,"y":342.94605989863766},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":18,"y":280.5922308261581},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":18,"y":342.94605989863766},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":207,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":234,"y":124.70765814495915},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":207,"y":77.94228634059947},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":126,"y":124.70765814495915},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"BOMB","x":234,"y":405.29988897111724},{"type":"BOMB","x":126,"y":405.29988897111724},{"type":"BOMB","x":234,"y":218.23840175367852},{"type":"BOMB","x":126,"y":218.23840175367852},{"type":"BROOD","x":180,"y":311.76914536239786}]},{"id":"level-export-2026-03-19T08-38-58","cells":[{"type":"NORMAL","x":153,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":233.8268590217984},{"type":"THICK","x":180,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":153,"y":265.0037735580382},{"type":"THICK","x":207,"y":265.0037735580382},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":311.76914536239786},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"THICK","x":234,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":153,"y":358.53451716675755},{"type":"NORMAL","x":207,"y":358.53451716675755},{"type":"NORMAL","x":234,"y":342.94605989863766},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"UNBREAKABLE","x":180,"y":436.47680350735703},{"type":"THICK","x":180,"y":374.12297443487745},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":261,"y":296.18068809427797},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":18,"y":218.23840175367852},{"type":"WAX","x":18,"y":249.4153162899183},{"type":"WAX","x":342,"y":249.4153162899183},{"type":"WAX","x":342,"y":218.23840175367852},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"BROOD","x":153,"y":202.64994448555862},{"type":"BROOD","x":207,"y":202.64994448555862},{"type":"TITAN","x":153,"y":171.47302994931883},{"type":"TITAN","x":126,"y":155.88457268119893},{"type":"TITAN","x":207,"y":171.47302994931883},{"type":"TITAN","x":234,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"UNBREAKABLE","x":180,"y":187.06148721743872},{"type":"NORMAL","x":153,"y":296.18068809427797},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"THICK","x":126,"y":374.12297443487745},{"type":"THICK","x":234,"y":374.12297443487745},{"type":"WAX","x":18,"y":187.06148721743872},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":342,"y":187.06148721743872},{"type":"UNBREAKABLE","x":180,"y":467.6537180435968},{"type":"CHARGED","x":180,"y":530.0075471160764},{"type":"HONEY","x":180,"y":62.35382907247958},{"type":"HONEY","x":153,"y":77.94228634059947},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":207,"y":77.94228634059947},{"type":"BOMB","x":180,"y":93.53074360871936}]},{"id":"level-export-2026-03-19T08-41-52","cells":[{"type":"UNBREAKABLE","x":153,"y":327.35760263051776},{"type":"UNBREAKABLE","x":126,"y":311.76914536239786},{"type":"UNBREAKABLE","x":99,"y":327.35760263051776},{"type":"UNBREAKABLE","x":72,"y":311.76914536239786},{"type":"UNBREAKABLE","x":207,"y":327.35760263051776},{"type":"UNBREAKABLE","x":234,"y":311.76914536239786},{"type":"UNBREAKABLE","x":261,"y":327.35760263051776},{"type":"UNBREAKABLE","x":288,"y":311.76914536239786},{"type":"UNBREAKABLE","x":180,"y":311.76914536239786},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":436.47680350735703},{"type":"NORMAL","x":72,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":126,"y":436.47680350735703},{"type":"BROOD","x":99,"y":420.88834623923714},{"type":"PORTAL","x":261,"y":420.88834623923714},{"type":"PORTAL","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":99,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"ANCIENT","x":234,"y":187.06148721743872},{"type":"ANCIENT","x":234,"y":218.23840175367852},{"type":"ANCIENT","x":261,"y":233.8268590217984},{"type":"ANCIENT","x":288,"y":218.23840175367852},{"type":"ANCIENT","x":288,"y":187.06148721743872},{"type":"ANCIENT","x":261,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":202.64994448555862}]},{"id":"level-export-2026-03-19T08-45-54","cells":[{"type":"CHARGED","x":99,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":171.47302994931883},{"type":"TITAN","x":126,"y":187.06148721743872},{"type":"TITAN","x":99,"y":202.64994448555862},{"type":"TITAN","x":261,"y":202.64994448555862},{"type":"TITAN","x":288,"y":187.06148721743872},{"type":"TITAN","x":72,"y":187.06148721743872},{"type":"WAX","x":72,"y":155.88457268119893},{"type":"WAX","x":99,"y":140.29611541307904},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"TITAN","x":234,"y":187.06148721743872},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":140.29611541307904},{"type":"WAX","x":288,"y":155.88457268119893},{"type":"HEAVY","x":180,"y":187.06148721743872},{"type":"HEAVY","x":180,"y":218.23840175367852},{"type":"HEAVY","x":153,"y":233.8268590217984},{"type":"HEAVY","x":153,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":296.18068809427797},{"type":"HEAVY","x":126,"y":280.5922308261581},{"type":"HEAVY","x":207,"y":233.8268590217984},{"type":"HEAVY","x":234,"y":280.5922308261581},{"type":"HEAVY","x":153,"y":296.18068809427797},{"type":"BROOD","x":153,"y":327.35760263051776},{"type":"HEAVY","x":180,"y":342.94605989863766},{"type":"BROOD","x":207,"y":327.35760263051776},{"type":"HEAVY","x":126,"y":311.76914536239786},{"type":"HEAVY","x":234,"y":311.76914536239786},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":153,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"NORMAL","x":207,"y":420.88834623923714},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":288,"y":342.94605989863766},{"type":"NORMAL","x":45,"y":358.53451716675755},{"type":"NORMAL","x":45,"y":389.71143170299734},{"type":"NORMAL","x":315,"y":358.53451716675755},{"type":"NORMAL","x":315,"y":389.71143170299734},{"type":"NORMAL","x":45,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":452.06526077547693},{"type":"NORMAL","x":45,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":467.6537180435968},{"type":"NORMAL","x":99,"y":483.2421753117167},{"type":"NORMAL","x":126,"y":498.8306325798366},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"NORMAL","x":261,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":498.8306325798366},{"type":"BOMB","x":207,"y":514.4190898479565},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"BOMB","x":153,"y":514.4190898479565},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"BOMB","x":180,"y":498.8306325798366},{"type":"BOMB","x":153,"y":483.2421753117167},{"type":"BOMB","x":207,"y":483.2421753117167},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"PORTAL","x":315,"y":265.0037735580382},{"type":"PORTAL","x":45,"y":265.0037735580382},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":93.53074360871936},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":261,"y":77.94228634059947},{"type":"ANCIENT","x":288,"y":93.53074360871936},{"type":"ANCIENT","x":315,"y":77.94228634059947}]},{"id":"level-export-2026-03-19T08-47-59","cells":[{"type":"BOMB","x":72,"y":561.1844616523161},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"BOMB","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"BOMB","x":288,"y":187.06148721743872},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":99,"y":77.94228634059947},{"type":"BOMB","x":72,"y":62.35382907247958},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":99,"y":483.2421753117167},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":99,"y":140.29611541307904}]},{"id":"level-export-2026-03-19T08-53-06","cells":[{"type":"HONEY","x":45,"y":77.94228634059947},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":99,"y":77.94228634059947},{"type":"HONEY","x":99,"y":109.11920087683926},{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"HONEY","x":45,"y":109.11920087683926},{"type":"HONEY","x":45,"y":140.29611541307904},{"type":"HONEY","x":45,"y":171.47302994931883},{"type":"HONEY","x":207,"y":171.47302994931883},{"type":"HONEY","x":207,"y":202.64994448555862},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":153,"y":171.47302994931883},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":153,"y":233.8268590217984},{"type":"HONEY","x":153,"y":265.0037735580382},{"type":"HONEY","x":180,"y":218.23840175367852},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":249.4153162899183},{"type":"HONEY","x":315,"y":265.0037735580382},{"type":"HONEY","x":315,"y":296.18068809427797},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":261,"y":358.53451716675755},{"type":"PORTAL","x":288,"y":280.5922308261581},{"type":"PORTAL","x":72,"y":93.53074360871936},{"type":"CHARGED","x":180,"y":187.06148721743872}]},{"id":"level-export-2026-03-19T08-55-51","cells":[{"type":"WAX","x":72,"y":592.3613761885559},{"type":"ANCIENT","x":72,"y":561.1844616523161},{"type":"ANCIENT","x":99,"y":545.5960043841962},{"type":"ANCIENT","x":126,"y":530.0075471160764},{"type":"ANCIENT","x":126,"y":498.8306325798366},{"type":"ANCIENT","x":126,"y":467.6537180435968},{"type":"ANCIENT","x":99,"y":452.06526077547693},{"type":"ANCIENT","x":72,"y":436.47680350735703},{"type":"ANCIENT","x":72,"y":405.29988897111724},{"type":"ANCIENT","x":72,"y":374.12297443487745},{"type":"ANCIENT","x":99,"y":358.53451716675755},{"type":"ANCIENT","x":126,"y":342.94605989863766},{"type":"ANCIENT","x":126,"y":311.76914536239786},{"type":"ANCIENT","x":126,"y":280.5922308261581},{"type":"ANCIENT","x":99,"y":265.0037735580382},{"type":"ANCIENT","x":72,"y":249.4153162899183},{"type":"ANCIENT","x":72,"y":218.23840175367852},{"type":"ANCIENT","x":72,"y":187.06148721743872},{"type":"ANCIENT","x":99,"y":171.47302994931883},{"type":"ANCIENT","x":126,"y":155.88457268119893},{"type":"ANCIENT","x":126,"y":124.70765814495915},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":62.35382907247958},{"type":"CHARGED","x":72,"y":498.8306325798366},{"type":"CHARGED","x":72,"y":124.70765814495915},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"BROOD","x":126,"y":405.29988897111724},{"type":"BROOD","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":62.35382907247958},{"type":"WAX","x":99,"y":46.76537180435968},{"type":"WAX","x":72,"y":31.17691453623979},{"type":"HONEY","x":261,"y":77.94228634059947},{"type":"HONEY","x":234,"y":93.53074360871936},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":288,"y":93.53074360871936},{"type":"HONEY","x":315,"y":109.11920087683926},{"type":"HONEY","x":261,"y":576.772918920436},{"type":"HONEY","x":261,"y":545.5960043841962},{"type":"HONEY","x":261,"y":514.4190898479565},{"type":"HONEY","x":261,"y":483.2421753117167},{"type":"HONEY","x":261,"y":452.06526077547693},{"type":"HONEY","x":261,"y":389.71143170299734},{"type":"HONEY","x":234,"y":405.29988897111724},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":261,"y":140.29611541307904},{"type":"HONEY","x":261,"y":171.47302994931883},{"type":"HONEY","x":261,"y":202.64994448555862},{"type":"HONEY","x":261,"y":233.8268590217984},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"HONEY","x":315,"y":420.88834623923714}]}];
+const _EMBEDDED_BLUEPRINTS = [{"id":"level-export-2026-03-19T07-07-43","cells":[{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":45,"y":483.2421753117167},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":72,"y":342.94605989863766},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":288,"y":342.94605989863766},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":315,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":315,"y":483.2421753117167},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":180,"y":249.4153162899183},{"type":"BROOD","x":180,"y":467.6537180435968},{"type":"ROYAL","x":153,"y":483.2421753117167},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":207,"y":483.2421753117167},{"type":"ROYAL","x":153,"y":233.8268590217984},{"type":"ROYAL","x":180,"y":218.23840175367852},{"type":"ROYAL","x":207,"y":233.8268590217984}]},{"id":"level-export-2026-03-19T08-22-21","cells":[{"type":"NORMAL","x":72,"y":62.35382907247958},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":126,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"NORMAL","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"NORMAL","x":72,"y":311.76914536239786},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":72,"y":374.12297443487745},{"type":"NORMAL","x":126,"y":124.70765814495915},{"type":"NORMAL","x":126,"y":155.88457268119893},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"NORMAL","x":126,"y":218.23840175367852},{"type":"NORMAL","x":126,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"NORMAL","x":126,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"BOMB","x":99,"y":140.29611541307904},{"type":"NORMAL","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":202.64994448555862},{"type":"NORMAL","x":99,"y":233.8268590217984},{"type":"BROOD","x":99,"y":265.0037735580382},{"type":"NORMAL","x":99,"y":296.18068809427797},{"type":"NORMAL","x":99,"y":327.35760263051776},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":180,"y":124.70765814495915},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":187.06148721743872},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"NORMAL","x":180,"y":249.4153162899183},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":180,"y":311.76914536239786},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"NORMAL","x":207,"y":265.0037735580382},{"type":"BOMB","x":207,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":202.64994448555862},{"type":"NORMAL","x":207,"y":171.47302994931883},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":234,"y":155.88457268119893},{"type":"NORMAL","x":234,"y":187.06148721743872},{"type":"NORMAL","x":234,"y":218.23840175367852},{"type":"NORMAL","x":234,"y":249.4153162899183},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"NORMAL","x":288,"y":249.4153162899183},{"type":"NORMAL","x":288,"y":218.23840175367852},{"type":"NORMAL","x":288,"y":187.06148721743872},{"type":"NORMAL","x":315,"y":202.64994448555862},{"type":"NORMAL","x":315,"y":233.8268590217984},{"type":"CHARGED","x":342,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":31.17691453623979},{"type":"NORMAL","x":18,"y":62.35382907247958},{"type":"NORMAL","x":18,"y":93.53074360871936},{"type":"NORMAL","x":18,"y":124.70765814495915},{"type":"NORMAL","x":18,"y":155.88457268119893},{"type":"NORMAL","x":18,"y":187.06148721743872},{"type":"NORMAL","x":18,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":249.4153162899183},{"type":"NORMAL","x":18,"y":280.5922308261581},{"type":"NORMAL","x":18,"y":311.76914536239786},{"type":"NORMAL","x":18,"y":342.94605989863766},{"type":"NORMAL","x":18,"y":374.12297443487745},{"type":"NORMAL","x":18,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":140.29611541307904},{"type":"WAX","x":45,"y":109.11920087683926},{"type":"WAX","x":45,"y":77.94228634059947},{"type":"WAX","x":45,"y":46.76537180435968},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":261,"y":171.47302994931883}]},{"id":"level-export-2026-03-19T08-26-14","cells":[{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"HONEY","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":296.18068809427797},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":99,"y":233.8268590217984},{"type":"HONEY","x":99,"y":202.64994448555862},{"type":"HONEY","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":140.29611541307904},{"type":"HONEY","x":126,"y":218.23840175367852},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":180,"y":187.06148721743872},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":126,"y":124.70765814495915},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"HONEY","x":126,"y":93.53074360871936},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":153,"y":171.47302994931883},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"HONEY","x":180,"y":311.76914536239786},{"type":"HONEY","x":207,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"HONEY","x":207,"y":358.53451716675755},{"type":"HONEY","x":180,"y":374.12297443487745},{"type":"HONEY","x":207,"y":389.71143170299734},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"HONEY","x":207,"y":452.06526077547693},{"type":"NORMAL","x":180,"y":467.6537180435968},{"type":"NORMAL","x":207,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"HONEY","x":234,"y":374.12297443487745},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":261,"y":420.88834623923714},{"type":"HONEY","x":288,"y":436.47680350735703},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":288,"y":374.12297443487745},{"type":"HONEY","x":288,"y":342.94605989863766},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"NORMAL","x":261,"y":452.06526077547693},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"PORTAL","x":126,"y":155.88457268119893},{"type":"PORTAL","x":234,"y":342.94605989863766},{"type":"UNBREAKABLE","x":72,"y":405.29988897111724},{"type":"UNBREAKABLE","x":45,"y":420.88834623923714},{"type":"UNBREAKABLE","x":45,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":467.6537180435968},{"type":"UNBREAKABLE","x":99,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":436.47680350735703},{"type":"UNBREAKABLE","x":99,"y":420.88834623923714},{"type":"UNBREAKABLE","x":261,"y":140.29611541307904},{"type":"UNBREAKABLE","x":288,"y":124.70765814495915},{"type":"UNBREAKABLE","x":315,"y":140.29611541307904},{"type":"UNBREAKABLE","x":315,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":187.06148721743872},{"type":"UNBREAKABLE","x":261,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":155.88457268119893}]},{"id":"level-export-2026-03-19T08-30-09","cells":[{"type":"CHARGED","x":180,"y":498.8306325798366},{"type":"THICK","x":153,"y":514.4190898479565},{"type":"THICK","x":180,"y":530.0075471160764},{"type":"THICK","x":207,"y":514.4190898479565},{"type":"THICK","x":207,"y":483.2421753117167},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":153,"y":483.2421753117167},{"type":"THICK","x":153,"y":109.11920087683926},{"type":"THICK","x":180,"y":93.53074360871936},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":99,"y":296.18068809427797},{"type":"THICK","x":99,"y":327.35760263051776},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":45,"y":327.35760263051776},{"type":"THICK","x":45,"y":296.18068809427797},{"type":"CHARGED","x":72,"y":311.76914536239786},{"type":"CHARGED","x":288,"y":311.76914536239786},{"type":"THICK","x":261,"y":296.18068809427797},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":315,"y":296.18068809427797},{"type":"THICK","x":315,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":261,"y":327.35760263051776},{"type":"THICK","x":180,"y":155.88457268119893},{"type":"THICK","x":207,"y":140.29611541307904},{"type":"THICK","x":207,"y":109.11920087683926},{"type":"THICK","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":342,"y":280.5922308261581},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":342,"y":342.94605989863766},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":18,"y":280.5922308261581},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":18,"y":342.94605989863766},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":207,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":234,"y":124.70765814495915},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":207,"y":77.94228634059947},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":126,"y":124.70765814495915},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"BOMB","x":234,"y":405.29988897111724},{"type":"BOMB","x":126,"y":405.29988897111724},{"type":"BOMB","x":234,"y":218.23840175367852},{"type":"BOMB","x":126,"y":218.23840175367852},{"type":"BROOD","x":180,"y":311.76914536239786}]},{"id":"level-export-2026-03-19T08-38-58","cells":[{"type":"NORMAL","x":153,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":233.8268590217984},{"type":"THICK","x":180,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":153,"y":265.0037735580382},{"type":"THICK","x":207,"y":265.0037735580382},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":311.76914536239786},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"THICK","x":234,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":153,"y":358.53451716675755},{"type":"NORMAL","x":207,"y":358.53451716675755},{"type":"NORMAL","x":234,"y":342.94605989863766},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"UNBREAKABLE","x":180,"y":436.47680350735703},{"type":"THICK","x":180,"y":374.12297443487745},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":261,"y":296.18068809427797},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":18,"y":218.23840175367852},{"type":"WAX","x":18,"y":249.4153162899183},{"type":"WAX","x":342,"y":249.4153162899183},{"type":"WAX","x":342,"y":218.23840175367852},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"BROOD","x":153,"y":202.64994448555862},{"type":"BROOD","x":207,"y":202.64994448555862},{"type":"TITAN","x":153,"y":171.47302994931883},{"type":"TITAN","x":126,"y":155.88457268119893},{"type":"TITAN","x":207,"y":171.47302994931883},{"type":"TITAN","x":234,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"UNBREAKABLE","x":180,"y":187.06148721743872},{"type":"NORMAL","x":153,"y":296.18068809427797},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"THICK","x":126,"y":374.12297443487745},{"type":"THICK","x":234,"y":374.12297443487745},{"type":"WAX","x":18,"y":187.06148721743872},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":342,"y":187.06148721743872},{"type":"UNBREAKABLE","x":180,"y":467.6537180435968},{"type":"CHARGED","x":180,"y":530.0075471160764},{"type":"HONEY","x":180,"y":62.35382907247958},{"type":"HONEY","x":153,"y":77.94228634059947},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":207,"y":77.94228634059947},{"type":"BOMB","x":180,"y":93.53074360871936}]},{"id":"level-export-2026-03-19T08-41-52","cells":[{"type":"UNBREAKABLE","x":153,"y":327.35760263051776},{"type":"UNBREAKABLE","x":126,"y":311.76914536239786},{"type":"UNBREAKABLE","x":99,"y":327.35760263051776},{"type":"UNBREAKABLE","x":72,"y":311.76914536239786},{"type":"UNBREAKABLE","x":207,"y":327.35760263051776},{"type":"UNBREAKABLE","x":234,"y":311.76914536239786},{"type":"UNBREAKABLE","x":261,"y":327.35760263051776},{"type":"UNBREAKABLE","x":288,"y":311.76914536239786},{"type":"UNBREAKABLE","x":180,"y":311.76914536239786},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":436.47680350735703},{"type":"NORMAL","x":72,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":126,"y":436.47680350735703},{"type":"BROOD","x":99,"y":420.88834623923714},{"type":"PORTAL","x":261,"y":420.88834623923714},{"type":"PORTAL","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":99,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"ANCIENT","x":234,"y":187.06148721743872},{"type":"ANCIENT","x":234,"y":218.23840175367852},{"type":"ANCIENT","x":261,"y":233.8268590217984},{"type":"ANCIENT","x":288,"y":218.23840175367852},{"type":"ANCIENT","x":288,"y":187.06148721743872},{"type":"ANCIENT","x":261,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":202.64994448555862}]},{"id":"level-export-2026-03-19T08-45-54","cells":[{"type":"CHARGED","x":99,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":171.47302994931883},{"type":"TITAN","x":126,"y":187.06148721743872},{"type":"TITAN","x":99,"y":202.64994448555862},{"type":"TITAN","x":261,"y":202.64994448555862},{"type":"TITAN","x":288,"y":187.06148721743872},{"type":"TITAN","x":72,"y":187.06148721743872},{"type":"WAX","x":72,"y":155.88457268119893},{"type":"WAX","x":99,"y":140.29611541307904},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"TITAN","x":234,"y":187.06148721743872},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":140.29611541307904},{"type":"WAX","x":288,"y":155.88457268119893},{"type":"HEAVY","x":180,"y":187.06148721743872},{"type":"HEAVY","x":180,"y":218.23840175367852},{"type":"HEAVY","x":153,"y":233.8268590217984},{"type":"HEAVY","x":153,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":296.18068809427797},{"type":"HEAVY","x":126,"y":280.5922308261581},{"type":"HEAVY","x":207,"y":233.8268590217984},{"type":"HEAVY","x":234,"y":280.5922308261581},{"type":"HEAVY","x":153,"y":296.18068809427797},{"type":"BROOD","x":153,"y":327.35760263051776},{"type":"HEAVY","x":180,"y":342.94605989863766},{"type":"BROOD","x":207,"y":327.35760263051776},{"type":"HEAVY","x":126,"y":311.76914536239786},{"type":"HEAVY","x":234,"y":311.76914536239786},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":153,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"NORMAL","x":207,"y":420.88834623923714},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":288,"y":342.94605989863766},{"type":"NORMAL","x":45,"y":358.53451716675755},{"type":"NORMAL","x":45,"y":389.71143170299734},{"type":"NORMAL","x":315,"y":358.53451716675755},{"type":"NORMAL","x":315,"y":389.71143170299734},{"type":"NORMAL","x":45,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":452.06526077547693},{"type":"NORMAL","x":45,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":467.6537180435968},{"type":"NORMAL","x":99,"y":483.2421753117167},{"type":"NORMAL","x":126,"y":498.8306325798366},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"NORMAL","x":261,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":498.8306325798366},{"type":"BOMB","x":207,"y":514.4190898479565},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"BOMB","x":153,"y":514.4190898479565},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"BOMB","x":180,"y":498.8306325798366},{"type":"BOMB","x":153,"y":483.2421753117167},{"type":"BOMB","x":207,"y":483.2421753117167},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"PORTAL","x":315,"y":265.0037735580382},{"type":"PORTAL","x":45,"y":265.0037735580382},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":93.53074360871936},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":261,"y":77.94228634059947},{"type":"ANCIENT","x":288,"y":93.53074360871936},{"type":"ANCIENT","x":315,"y":77.94228634059947}]},{"id":"level-export-2026-03-19T08-47-59","cells":[{"type":"BOMB","x":72,"y":561.1844616523161},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"BOMB","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"BOMB","x":288,"y":187.06148721743872},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":99,"y":77.94228634059947},{"type":"BOMB","x":72,"y":62.35382907247958},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":99,"y":483.2421753117167},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":99,"y":140.29611541307904}]},{"id":"level-export-2026-03-19T08-53-06","cells":[{"type":"HONEY","x":45,"y":77.94228634059947},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":99,"y":77.94228634059947},{"type":"HONEY","x":99,"y":109.11920087683926},{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"HONEY","x":45,"y":109.11920087683926},{"type":"HONEY","x":45,"y":140.29611541307904},{"type":"HONEY","x":45,"y":171.47302994931883},{"type":"HONEY","x":207,"y":171.47302994931883},{"type":"HONEY","x":207,"y":202.64994448555862},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":153,"y":171.47302994931883},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":153,"y":233.8268590217984},{"type":"HONEY","x":153,"y":265.0037735580382},{"type":"HONEY","x":180,"y":218.23840175367852},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":249.4153162899183},{"type":"HONEY","x":315,"y":265.0037735580382},{"type":"HONEY","x":315,"y":296.18068809427797},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":261,"y":358.53451716675755},{"type":"PORTAL","x":288,"y":280.5922308261581},{"type":"PORTAL","x":72,"y":93.53074360871936},{"type":"CHARGED","x":180,"y":187.06148721743872}]},{"id":"level-export-2026-03-19T08-55-51","cells":[{"type":"WAX","x":72,"y":592.3613761885559},{"type":"ANCIENT","x":72,"y":561.1844616523161},{"type":"ANCIENT","x":99,"y":545.5960043841962},{"type":"ANCIENT","x":126,"y":530.0075471160764},{"type":"ANCIENT","x":126,"y":498.8306325798366},{"type":"ANCIENT","x":126,"y":467.6537180435968},{"type":"ANCIENT","x":99,"y":452.06526077547693},{"type":"ANCIENT","x":72,"y":436.47680350735703},{"type":"ANCIENT","x":72,"y":405.29988897111724},{"type":"ANCIENT","x":72,"y":374.12297443487745},{"type":"ANCIENT","x":99,"y":358.53451716675755},{"type":"ANCIENT","x":126,"y":342.94605989863766},{"type":"ANCIENT","x":126,"y":311.76914536239786},{"type":"ANCIENT","x":126,"y":280.5922308261581},{"type":"ANCIENT","x":99,"y":265.0037735580382},{"type":"ANCIENT","x":72,"y":249.4153162899183},{"type":"ANCIENT","x":72,"y":218.23840175367852},{"type":"ANCIENT","x":72,"y":187.06148721743872},{"type":"ANCIENT","x":99,"y":171.47302994931883},{"type":"ANCIENT","x":126,"y":155.88457268119893},{"type":"ANCIENT","x":126,"y":124.70765814495915},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":62.35382907247958},{"type":"CHARGED","x":72,"y":498.8306325798366},{"type":"CHARGED","x":72,"y":124.70765814495915},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"BROOD","x":126,"y":405.29988897111724},{"type":"BROOD","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":62.35382907247958},{"type":"WAX","x":99,"y":46.76537180435968},{"type":"WAX","x":72,"y":31.17691453623979},{"type":"HONEY","x":261,"y":77.94228634059947},{"type":"HONEY","x":234,"y":93.53074360871936},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":288,"y":93.53074360871936},{"type":"HONEY","x":315,"y":109.11920087683926},{"type":"HONEY","x":261,"y":576.772918920436},{"type":"HONEY","x":261,"y":545.5960043841962},{"type":"HONEY","x":261,"y":514.4190898479565},{"type":"HONEY","x":261,"y":483.2421753117167},{"type":"HONEY","x":261,"y":452.06526077547693},{"type":"HONEY","x":261,"y":389.71143170299734},{"type":"HONEY","x":234,"y":405.29988897111724},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":261,"y":140.29611541307904},{"type":"HONEY","x":261,"y":171.47302994931883},{"type":"HONEY","x":261,"y":202.64994448555862},{"type":"HONEY","x":261,"y":233.8268590217984},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"HONEY","x":315,"y":420.88834623923714}]},{"id":"level-export-2026-03-19T23-26-37","cells":[{"type":"CHARGED","x":126,"y":405.29988897111724},{"type":"CHARGED","x":234,"y":405.29988897111724},{"type":"TITAN","x":180,"y":436.47680350735703},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":99,"y":452.06526077547693},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":514.4190898479565},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":180,"y":467.6537180435968},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":72,"y":467.6537180435968},{"type":"THICK","x":45,"y":452.06526077547693},{"type":"THICK","x":45,"y":420.88834623923714},{"type":"THICK","x":45,"y":389.71143170299734},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":467.6537180435968},{"type":"THICK","x":315,"y":452.06526077547693},{"type":"THICK","x":315,"y":420.88834623923714},{"type":"THICK","x":315,"y":389.71143170299734},{"type":"THICK","x":72,"y":405.29988897111724},{"type":"THICK","x":153,"y":420.88834623923714},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":153,"y":358.53451716675755},{"type":"THICK","x":207,"y":420.88834623923714},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"THICK","x":207,"y":358.53451716675755},{"type":"THICK","x":288,"y":405.29988897111724},{"type":"THICK","x":234,"y":342.94605989863766},{"type":"THICK","x":126,"y":342.94605989863766},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"BOMB","x":261,"y":265.0037735580382},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":99,"y":265.0037735580382},{"type":"THICK","x":99,"y":233.8268590217984},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":288,"y":218.23840175367852},{"type":"THICK","x":288,"y":249.4153162899183},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":288,"y":311.76914536239786},{"type":"THICK","x":72,"y":218.23840175367852},{"type":"THICK","x":72,"y":249.4153162899183},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":72,"y":311.76914536239786},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":72,"y":374.12297443487745},{"type":"THICK","x":45,"y":358.53451716675755},{"type":"THICK","x":99,"y":358.53451716675755},{"type":"THICK","x":153,"y":296.18068809427797},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":315,"y":358.53451716675755},{"type":"THICK","x":288,"y":374.12297443487745},{"type":"THICK","x":261,"y":358.53451716675755},{"type":"BOMB","x":261,"y":327.35760263051776},{"type":"BOMB","x":234,"y":311.76914536239786},{"type":"THICK","x":207,"y":296.18068809427797},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"BOMB","x":126,"y":311.76914536239786},{"type":"BOMB","x":99,"y":327.35760263051776},{"type":"THICK","x":261,"y":233.8268590217984},{"type":"THICK","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":280.5922308261581}]},{"id":"level-export-2026-03-19T23-28-38","cells":[{"type":"CHARGED","x":126,"y":405.29988897111724},{"type":"CHARGED","x":234,"y":405.29988897111724},{"type":"TITAN","x":180,"y":436.47680350735703},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":99,"y":452.06526077547693},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":514.4190898479565},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"TITAN","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"TITAN","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":72,"y":467.6537180435968},{"type":"THICK","x":45,"y":452.06526077547693},{"type":"THICK","x":45,"y":420.88834623923714},{"type":"THICK","x":45,"y":389.71143170299734},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":467.6537180435968},{"type":"THICK","x":315,"y":452.06526077547693},{"type":"THICK","x":315,"y":420.88834623923714},{"type":"THICK","x":315,"y":389.71143170299734},{"type":"THICK","x":72,"y":405.29988897111724},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":153,"y":358.53451716675755},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"THICK","x":207,"y":358.53451716675755},{"type":"THICK","x":288,"y":405.29988897111724},{"type":"THICK","x":234,"y":342.94605989863766},{"type":"THICK","x":126,"y":342.94605989863766},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"BOMB","x":261,"y":265.0037735580382},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":99,"y":265.0037735580382},{"type":"THICK","x":99,"y":233.8268590217984},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":288,"y":218.23840175367852},{"type":"THICK","x":288,"y":249.4153162899183},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":288,"y":311.76914536239786},{"type":"THICK","x":72,"y":218.23840175367852},{"type":"THICK","x":72,"y":249.4153162899183},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":72,"y":311.76914536239786},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":72,"y":374.12297443487745},{"type":"THICK","x":45,"y":358.53451716675755},{"type":"THICK","x":99,"y":358.53451716675755},{"type":"THICK","x":153,"y":296.18068809427797},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":315,"y":358.53451716675755},{"type":"THICK","x":288,"y":374.12297443487745},{"type":"THICK","x":261,"y":358.53451716675755},{"type":"BOMB","x":261,"y":327.35760263051776},{"type":"BOMB","x":234,"y":311.76914536239786},{"type":"THICK","x":207,"y":296.18068809427797},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"BOMB","x":126,"y":311.76914536239786},{"type":"BOMB","x":99,"y":327.35760263051776},{"type":"THICK","x":261,"y":233.8268590217984},{"type":"THICK","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":207,"y":420.88834623923714},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"NORMAL","x":153,"y":109.11920087683926},{"type":"NORMAL","x":180,"y":93.53074360871936},{"type":"NORMAL","x":207,"y":109.11920087683926},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":72,"y":31.17691453623979},{"type":"NORMAL","x":45,"y":46.76537180435968},{"type":"NORMAL","x":45,"y":77.94228634059947},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":99,"y":46.76537180435968},{"type":"NORMAL","x":288,"y":31.17691453623979},{"type":"NORMAL","x":315,"y":46.76537180435968},{"type":"NORMAL","x":315,"y":77.94228634059947},{"type":"NORMAL","x":288,"y":93.53074360871936},{"type":"NORMAL","x":261,"y":77.94228634059947},{"type":"NORMAL","x":261,"y":46.76537180435968},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":288,"y":62.35382907247958}]},{"id":"level-export-2026-03-19T23-33-21","cells":[{"type":"HONEY","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":126,"y":280.5922308261581},{"type":"HONEY","x":234,"y":280.5922308261581},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":280.5922308261581},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":389.71143170299734},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"THICK","x":72,"y":498.8306325798366},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":126,"y":467.6537180435968},{"type":"THICK","x":153,"y":452.06526077547693},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":207,"y":452.06526077547693},{"type":"THICK","x":234,"y":467.6537180435968},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":498.8306325798366},{"type":"THICK","x":72,"y":530.0075471160764},{"type":"THICK","x":99,"y":545.5960043841962},{"type":"THICK","x":126,"y":561.1844616523161},{"type":"THICK","x":153,"y":576.772918920436},{"type":"THICK","x":180,"y":592.3613761885559},{"type":"THICK","x":288,"y":530.0075471160764},{"type":"THICK","x":261,"y":545.5960043841962},{"type":"THICK","x":234,"y":561.1844616523161},{"type":"THICK","x":207,"y":576.772918920436},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":72,"y":405.29988897111724},{"type":"BROOD","x":288,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"ANCIENT","x":207,"y":420.88834623923714},{"type":"HONEY","x":72,"y":311.76914536239786},{"type":"HONEY","x":99,"y":327.35760263051776},{"type":"HONEY","x":126,"y":311.76914536239786},{"type":"HONEY","x":234,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":288,"y":311.76914536239786}]},{"id":"level-export-2026-03-19T23-37-53","cells":[{"type":"NORMAL","x":126,"y":623.5382907247957},{"type":"NORMAL","x":153,"y":639.1267479929156},{"type":"NORMAL","x":180,"y":623.5382907247957},{"type":"NORMAL","x":207,"y":639.1267479929156},{"type":"NORMAL","x":234,"y":623.5382907247957},{"type":"NORMAL","x":261,"y":639.1267479929156},{"type":"NORMAL","x":288,"y":623.5382907247957},{"type":"NORMAL","x":315,"y":639.1267479929156},{"type":"NORMAL","x":99,"y":639.1267479929156},{"type":"NORMAL","x":72,"y":623.5382907247957},{"type":"NORMAL","x":45,"y":639.1267479929156},{"type":"NORMAL","x":288,"y":592.3613761885559},{"type":"NORMAL","x":315,"y":576.772918920436},{"type":"NORMAL","x":342,"y":592.3613761885559},{"type":"NORMAL","x":342,"y":623.5382907247957},{"type":"NORMAL","x":261,"y":576.772918920436},{"type":"NORMAL","x":234,"y":592.3613761885559},{"type":"NORMAL","x":207,"y":576.772918920436},{"type":"NORMAL","x":180,"y":592.3613761885559},{"type":"NORMAL","x":153,"y":576.772918920436},{"type":"NORMAL","x":126,"y":592.3613761885559},{"type":"NORMAL","x":99,"y":576.772918920436},{"type":"NORMAL","x":72,"y":592.3613761885559},{"type":"NORMAL","x":45,"y":576.772918920436},{"type":"NORMAL","x":18,"y":592.3613761885559},{"type":"NORMAL","x":18,"y":623.5382907247957},{"type":"BOMB","x":45,"y":607.9498334566758},{"type":"HONEY","x":99,"y":607.9498334566758},{"type":"BOMB","x":315,"y":607.9498334566758},{"type":"HONEY","x":261,"y":607.9498334566758},{"type":"CHARGED","x":153,"y":607.9498334566758},{"type":"BROOD","x":207,"y":607.9498334566758},{"type":"UNBREAKABLE","x":288,"y":405.29988897111724},{"type":"UNBREAKABLE","x":288,"y":374.12297443487745},{"type":"UNBREAKABLE","x":261,"y":389.71143170299734},{"type":"UNBREAKABLE","x":261,"y":358.53451716675755},{"type":"UNBREAKABLE","x":234,"y":374.12297443487745},{"type":"UNBREAKABLE","x":234,"y":342.94605989863766},{"type":"UNBREAKABLE","x":207,"y":358.53451716675755},{"type":"UNBREAKABLE","x":207,"y":327.35760263051776},{"type":"UNBREAKABLE","x":180,"y":342.94605989863766},{"type":"UNBREAKABLE","x":180,"y":311.76914536239786},{"type":"UNBREAKABLE","x":153,"y":327.35760263051776},{"type":"UNBREAKABLE","x":153,"y":296.18068809427797},{"type":"UNBREAKABLE","x":126,"y":311.76914536239786},{"type":"UNBREAKABLE","x":126,"y":280.5922308261581},{"type":"UNBREAKABLE","x":99,"y":296.18068809427797},{"type":"UNBREAKABLE","x":99,"y":265.0037735580382},{"type":"UNBREAKABLE","x":72,"y":280.5922308261581},{"type":"UNBREAKABLE","x":72,"y":249.4153162899183},{"type":"UNBREAKABLE","x":207,"y":233.8268590217984},{"type":"UNBREAKABLE","x":207,"y":202.64994448555862},{"type":"UNBREAKABLE","x":234,"y":218.23840175367852},{"type":"UNBREAKABLE","x":234,"y":249.4153162899183},{"type":"UNBREAKABLE","x":153,"y":420.88834623923714},{"type":"UNBREAKABLE","x":126,"y":405.29988897111724},{"type":"UNBREAKABLE","x":126,"y":436.47680350735703},{"type":"UNBREAKABLE","x":153,"y":452.06526077547693}]}];
 
 function _makeStampFromCells(cells) {
   // Pre-compute offsets from the design's center
@@ -5162,6 +5355,18 @@ function spawnChunk(chunkTop, depth, seed) {
     const ch = portalChannelCounter++;
     if (paired[i])   paired[i].portalChannel   = ch;
     if (paired[i+1]) paired[i+1].portalChannel = ch;
+    // Assign one-way roles: lower portal (higher Y) = sender, upper = receiver
+    if (paired[i] && paired[i+1]) {
+      if (paired[i].y >= paired[i+1].y) {
+        paired[i].portalRole   = 'sender';
+        paired[i+1].portalRole = 'receiver';
+      } else {
+        paired[i].portalRole   = 'receiver';
+        paired[i+1].portalRole = 'sender';
+      }
+    } else if (paired[i]) {
+      paired[i].portalRole = 'sender'; // unpaired fallback
+    }
   }
 
   return newHexes;
@@ -5488,7 +5693,7 @@ function update() {
 
   // ── WAX chain reaction (staggered domino effect) ──
   if (window._waxChainQueue && window._waxChainQueue.length > 0) {
-    const WAX_CHAIN_DELAY = 4; // frames between chain waves
+    const WAX_CHAIN_DELAY = 8; // frames between chain waves (visible domino)
     const toProcess = [];
     for (let i = window._waxChainQueue.length - 1; i >= 0; i--) {
       const entry = window._waxChainQueue[i];
@@ -5502,7 +5707,12 @@ function update() {
     }
     for (const entry of toProcess) {
       const src = entry.src;
-      sfx.wax(); haptic(HAPTIC.wax);
+      // Limit concurrent WAX sounds to prevent clipping
+      if (!window._waxSfxTimes) window._waxSfxTimes = [];
+      const _wNow = performance.now();
+      window._waxSfxTimes = window._waxSfxTimes.filter(t => _wNow - t < 100);
+      if (window._waxSfxTimes.length < 2) { sfx.wax(); window._waxSfxTimes.push(_wNow); }
+      haptic(HAPTIC.wax);
       triggerShake(2, 4);
       spawnParts(src.x, src.y, 8, ['#e8d8a0','#c0b070','#d0c080']);
       spawnDebris(src.x, src.y, 3, ['#e2d9b2','#c8bf98']);
@@ -5539,7 +5749,7 @@ function update() {
       const seed     = levelSeed + totalDepth * 1000003;
 
       // Boss gate check — skip if blueprint cells are nearby
-      const _hasBlueprintNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 3);
+      const _hasBlueprintNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 5);
       if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_hasBlueprintNear) {
         const gateIndex = bossGates.length;
         const guardCells = spawnBossGateChunk(chunkTop);
@@ -5661,7 +5871,7 @@ function update() {
     const seed     = levelSeed + totalDepth * 1000003;
 
     // Boss gate check: every BOSS_GATE_INTERVAL chunks, skip if blueprint nearby
-    const _bpNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 3);
+    const _bpNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 5);
     if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_bpNear) {
       const gateIndex = bossGates.length;
       const guardCells = spawnBossGateChunk(chunkTop);
@@ -5717,8 +5927,8 @@ function update() {
 
     for (const h of hexes) {
       if (h.dead) continue;
-      // Instantly kill any cell that has fallen below the play line (past the paddle)
-      if (h.y > czBottom + HEX_R) {
+      // Instantly kill any cell that has fallen below the play line (at the paddle)
+      if (h.y > czBottom) {
         if (h.type !== 'PORTAL' && h.type !== 'ROYAL_GUARD' && h.type !== 'QUEEN') {
           h.dead = true;
         }
@@ -6061,8 +6271,8 @@ function render() {
     ctx.strokeStyle = 'rgba(240,200,120,0.08)';
     ctx.lineWidth = 0.5;
     ctx.beginPath();
-    ctx.moveTo(0, guideY - 2);
-    ctx.lineTo(W, guideY - 2);
+    ctx.moveTo(0, guideY - 4);
+    ctx.lineTo(W, guideY - 4);
     ctx.stroke();
   }
 
@@ -6147,6 +6357,9 @@ function render() {
 
   ctx.restore();                     // back to screen space
 
+  // Close screen shake before HUD so UI stays stable
+  if (sx !== 0 || sy !== 0) ctx.restore();
+
   // ── Attract-mode dark wash for title readability ──
   if (demoMode) {
     ctx.fillStyle = 'rgba(10, 6, 2, 0.45)';
@@ -6206,27 +6419,7 @@ function render() {
 
   } // end HUD block
 
-  // ── Active powerup HUD timer (global, e.g. honeySurge) ──
-  if (activePowerup) {
-    const bw = 120, bh = 8, bx = (W - bw) / 2, by = 4;
-    const frac = activePowerup.ticksLeft / (TEMP_POWERUPS.find(t => t.id === activePowerup.id)?.duration || 600);
-    // Flicker HUD bar when expiring
-    const expiring = activePowerup.ticksLeft < 150;
-    const flickHide = expiring && Math.floor(tick / (activePowerup.ticksLeft < 60 ? 4 : 8)) % 2 === 0;
-    ctx.globalAlpha = flickHide ? 0.35 : 1;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 14);
-    ctx.fillStyle = activePowerup.color;
-    ctx.fillRect(bx, by, bw * frac, bh);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-    ctx.strokeRect(bx, by, bw, bh);
-    ctx.fillStyle = activePowerup.color;
-    ctx.font = '5px "Press Start 2P",monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(activePowerup.name, W / 2, by + bh + 9);
-    ctx.textAlign = 'left';
-    ctx.globalAlpha = 1;
-  }
+  // ── Active powerup HUD timer removed — bee flicker is the only indicator ──
   // ── Pending per-bee powerup indicator ──
   if (pendingPowerup && powerupBeesRemaining > 0) {
     const bw = 120, bh = 8, bx = (W - bw) / 2, by = activePowerup ? 22 : 4;
@@ -6284,8 +6477,6 @@ function render() {
   // ── CRT post-processing ──
   if (crtIntensity > 0) drawCRT(crtIntensity);
 
-  // Close screen shake transform
-  if (sx !== 0 || sy !== 0) ctx.restore();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -7829,6 +8020,50 @@ function _shopLoop() {
   if (hc) {
     const hx = hc.getContext('2d');
     hx.clearRect(0, 0, 120, 120);
+
+    // Warm hive background (matches bee preview)
+    {
+      const bg = hx.createLinearGradient(0, 0, 0, 120);
+      bg.addColorStop(0, 'rgb(50,30,10)');
+      bg.addColorStop(1, 'rgb(75,48,16)');
+      hx.fillStyle = bg; hx.fillRect(0, 0, 120, 120);
+      const hR2 = 10, hCS2 = hR2 * 1.5, hRS2 = hR2 * Math.sqrt(3);
+      hx.lineWidth = 0.5;
+      for (let c = -1; c < Math.ceil(120 / hCS2) + 2; c++) {
+        for (let r = -2; r < Math.ceil(120 / hRS2) + 3; r++) {
+          const px = c * hCS2, py = r * hRS2 + (c % 2 ? hRS2 / 2 : 0);
+          if (py < -hR2 || py > 120 + hR2) continue;
+          const pp = hexPts(px, py, hR2);
+          const rv = ((c * 7 + r * 13 + 31) & 0xFF) / 255;
+          if (rv < 0.12) {
+            hx.globalAlpha = 0.15 + rv;
+            hx.fillStyle = `rgb(${110 + Math.floor(rv * 120)},${70 + Math.floor(rv * 80)},${20 + Math.floor(rv * 40)})`;
+            hx.beginPath(); hx.moveTo(pp[0][0], pp[0][1]);
+            for (let i = 1; i < 6; i++) hx.lineTo(pp[i][0], pp[i][1]);
+            hx.closePath(); hx.fill();
+          }
+          hx.globalAlpha = 0.22 + rv * 0.06;
+          hx.strokeStyle = 'rgb(85,58,18)';
+          hx.beginPath(); hx.moveTo(pp[0][0], pp[0][1]);
+          for (let i = 1; i < 6; i++) hx.lineTo(pp[i][0], pp[i][1]);
+          hx.closePath(); hx.stroke();
+        }
+      }
+      hx.globalAlpha = 1;
+      const vL = hx.createLinearGradient(0, 0, 24, 0);
+      vL.addColorStop(0, 'rgba(20,10,2,0.55)'); vL.addColorStop(1, 'rgba(20,10,2,0)');
+      hx.fillStyle = vL; hx.fillRect(0, 0, 24, 120);
+      const vR = hx.createLinearGradient(120, 0, 96, 0);
+      vR.addColorStop(0, 'rgba(20,10,2,0.55)'); vR.addColorStop(1, 'rgba(20,10,2,0)');
+      hx.fillStyle = vR; hx.fillRect(96, 0, 24, 120);
+      const vT = hx.createLinearGradient(0, 0, 0, 16);
+      vT.addColorStop(0, 'rgba(20,10,2,0.40)'); vT.addColorStop(1, 'rgba(20,10,2,0)');
+      hx.fillStyle = vT; hx.fillRect(0, 0, 120, 16);
+      const vB = hx.createLinearGradient(0, 120, 0, 104);
+      vB.addColorStop(0, 'rgba(20,10,2,0.40)'); vB.addColorStop(1, 'rgba(20,10,2,0)');
+      hx.fillStyle = vB; hx.fillRect(0, 104, 120, 16);
+    }
+
     const curSkin = selectedSkinL;
     const curAcc = _shopEditHand === 'L' ? selectedAccessoryL : selectedAccessoryR;
     const curHS = selectedHendSkinL;
@@ -7877,6 +8112,56 @@ function _shopLoop() {
   if (bc) {
     const bx = bc.getContext('2d');
     bx.clearRect(0, 0, 120, 120);
+
+    // Warm hive background
+    {
+      // Base gradient
+      const bg = bx.createLinearGradient(0, 0, 0, 120);
+      bg.addColorStop(0, 'rgb(50,30,10)');
+      bg.addColorStop(1, 'rgb(75,48,16)');
+      bx.fillStyle = bg; bx.fillRect(0, 0, 120, 120);
+      // Honeycomb grid overlay
+      const hR = 10, hCS = hR * 1.5, hRS = hR * Math.sqrt(3);
+      const pOff = 0; // static grid — no scroll to avoid fill-flicker
+      bx.lineWidth = 0.5;
+      for (let c = -1; c < Math.ceil(120 / hCS) + 2; c++) {
+        for (let r = -2; r < Math.ceil(120 / hRS) + 3; r++) {
+          const hx = c * hCS, hy = r * hRS + (c % 2 ? hRS / 2 : 0) + pOff;
+          if (hy < -hR || hy > 120 + hR) continue;
+          const pp = hexPts(hx, hy, hR);
+          const rv = ((c * 7 + r * 13 + 31) & 0xFF) / 255;
+          // Occasional warm fill
+          if (rv < 0.12) {
+            bx.globalAlpha = 0.15 + rv;
+            bx.fillStyle = `rgb(${110 + Math.floor(rv * 120)},${70 + Math.floor(rv * 80)},${20 + Math.floor(rv * 40)})`;
+            bx.beginPath(); bx.moveTo(pp[0][0], pp[0][1]);
+            for (let i = 1; i < 6; i++) bx.lineTo(pp[i][0], pp[i][1]);
+            bx.closePath(); bx.fill();
+          }
+          // Hex outlines
+          bx.globalAlpha = 0.22 + rv * 0.06;
+          bx.strokeStyle = 'rgb(85,58,18)';
+          bx.beginPath(); bx.moveTo(pp[0][0], pp[0][1]);
+          for (let i = 1; i < 6; i++) bx.lineTo(pp[i][0], pp[i][1]);
+          bx.closePath(); bx.stroke();
+        }
+      }
+      // Vignette darkening on edges
+      bx.globalAlpha = 1;
+      const vL = bx.createLinearGradient(0, 0, 24, 0);
+      vL.addColorStop(0, 'rgba(20,10,2,0.55)'); vL.addColorStop(1, 'rgba(20,10,2,0)');
+      bx.fillStyle = vL; bx.fillRect(0, 0, 24, 120);
+      const vR = bx.createLinearGradient(120, 0, 96, 0);
+      vR.addColorStop(0, 'rgba(20,10,2,0.55)'); vR.addColorStop(1, 'rgba(20,10,2,0)');
+      bx.fillStyle = vR; bx.fillRect(96, 0, 24, 120);
+      const vT = bx.createLinearGradient(0, 0, 0, 16);
+      vT.addColorStop(0, 'rgba(20,10,2,0.40)'); vT.addColorStop(1, 'rgba(20,10,2,0)');
+      bx.fillStyle = vT; bx.fillRect(0, 0, 120, 16);
+      const vB = bx.createLinearGradient(0, 120, 0, 104);
+      vB.addColorStop(0, 'rgba(20,10,2,0.40)'); vB.addColorStop(1, 'rgba(20,10,2,0)');
+      bx.fillStyle = vB; bx.fillRect(0, 104, 120, 16);
+    }
+
     const skin = BEE_SKINS.find(s => s.id === selectedBeeSkin);
     const usePNG = beeFrames.length === 4 && beeFrames[0];
     if (usePNG) {
@@ -7983,6 +8268,21 @@ function _shopLoop() {
 // Draw accessory on an arbitrary 2d context (for shop previews)
 // Rings only — partial arc on ring finger
 function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
+  if (accId === 'brownBracelet') {
+    const bx = ox + dw * 0.5, by = oy + dh * 0.82;
+    const bw = dw * 0.38, bh = dh * 0.035;
+    cx2.strokeStyle = '#6a4020';
+    cx2.lineWidth = Math.max(2.5, dw * 0.04);
+    cx2.beginPath();
+    cx2.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
+    cx2.stroke();
+    cx2.strokeStyle = '#8a5a30';
+    cx2.lineWidth = Math.max(1, dw * 0.018);
+    cx2.beginPath();
+    cx2.ellipse(bx, by - 0.5, bw * 0.85, bh * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95);
+    cx2.stroke();
+    return;
+  }
   const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
   const col = colors[accId];
   if (!col) return;
@@ -8021,8 +8321,8 @@ function menuBGLoop() {
   if (!menuBGActive) return;
   menuBGScrollY -= 0.3;  // slow upward drift
 
-  // Dark base
-  ctx.fillStyle = '#1a0f04';
+  // Warm hive base
+  ctx.fillStyle = '#2a1a08';
   ctx.fillRect(0, 0, W, H);
 
   // Hex grid with parallax — two layers for depth
@@ -8034,8 +8334,8 @@ function menuBGLoop() {
   const farOff = ((menuBGScrollY * 0.05) % (rS * 1.4) + rS * 1.4) % (rS * 1.4);
   const farR = 30;
   const farCS = farR * 1.5, farRS = farR * Math.sqrt(3);
-  ctx.globalAlpha = 0.25;
-  ctx.strokeStyle = '#c08030';
+  ctx.globalAlpha = 0.32;
+  ctx.strokeStyle = '#d09040';
   ctx.lineWidth = 1;
   for (let c = -1; c < Math.ceil(W / farCS) + 2; c++) {
     for (let r = -2; r < Math.ceil(H / farRS) + 3; r++) {
@@ -8216,8 +8516,8 @@ function playBootSFX() {
   hum2Osc.connect(hum2Gain); hum2Gain.connect(AC.destination);
   hum2Osc.start(now + 0.8); hum2Osc.stop(now + 13.1);
 
-  // 3) Brief static burst — quick and punchy, fades fast (like initial contact)
-  const staticDur = 1.0;
+  // 3) Extended static — fades in with boot, then slowly fades out as music takes over
+  const staticDur = 8.0;
   const staticBuf = AC.createBuffer(1, Math.ceil(AC.sampleRate * staticDur), AC.sampleRate);
   const sd = staticBuf.getChannelData(0);
   for (let i = 0; i < sd.length; i++) sd[i] = Math.random() * 2 - 1;
@@ -8225,15 +8525,20 @@ function playBootSFX() {
   const staticGain = AC.createGain();
   const staticFilter = AC.createBiquadFilter();
   staticFilter.type = 'bandpass';
-  staticFilter.frequency.setValueAtTime(2500, now + 1.5);
-  staticFilter.Q.setValueAtTime(1.0, now + 1.5);
+  staticFilter.frequency.setValueAtTime(2500, now + 1.0);
+  staticFilter.frequency.linearRampToValueAtTime(1800, now + 6.0); // filter darkens as it fades
+  staticFilter.Q.setValueAtTime(0.8, now + 1.0);
   staticSrc.buffer = staticBuf;
   staticSrc.connect(staticFilter); staticFilter.connect(staticGain); staticGain.connect(AC.destination);
   staticGain.gain.setValueAtTime(0, now);
-  staticGain.gain.linearRampToValueAtTime(0, now + 1.5);
-  staticGain.gain.linearRampToValueAtTime(vol * 0.10, now + 1.7);  // quick burst
-  staticGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.3);  // fades fast
-  staticSrc.start(now + 1.5); staticSrc.stop(now + 2.4);
+  staticGain.gain.linearRampToValueAtTime(0, now + 1.0);
+  staticGain.gain.linearRampToValueAtTime(vol * 0.12, now + 1.5);  // rises with boot
+  staticGain.gain.linearRampToValueAtTime(vol * 0.10, now + 2.5);  // holds steady
+  staticGain.gain.linearRampToValueAtTime(vol * 0.07, now + 4.0);  // slow fade begins
+  staticGain.gain.linearRampToValueAtTime(vol * 0.04, now + 5.5);  // fading as music enters
+  staticGain.gain.linearRampToValueAtTime(vol * 0.015, now + 7.0); // nearly gone
+  staticGain.gain.exponentialRampToValueAtTime(0.0001, now + 8.5);  // silent
+  staticSrc.start(now + 1.0); staticSrc.stop(now + 9.0);
 
   // 4) Quick crackling pops — short, sparse, like contact noise
   const crackDur = 2.0;
