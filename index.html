@@ -255,7 +255,6 @@
   #pauseBtns .ob { margin-left:auto; margin-right:auto; }
   #pauseTitle {
     font-size:0.75rem; color:#f0a020;
-    text-shadow:2px 2px 0 #6a3000;
     letter-spacing:2px; margin-bottom:8px; text-align:center;
     flex-shrink:0;
   }
@@ -494,6 +493,7 @@
     <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">DEV OPTIONS</div>
     <button id="devInspect" class="ob">INSPECT</button>
     <button id="devBuilder" class="ob">LEVEL BUILDER</button>
+    <button id="devPowerupTest" class="ob">POWER-UP TESTING</button>
     <button id="devUnlockAll" class="ob" style="margin-top:16px;font-size:0.35rem;">UNLOCK ALL</button>
     <button id="devClearSave" class="ob" style="margin-top:6px;font-size:0.35rem;">CLEAR SAVE</button>
     <button id="devBack" class="ob" style="margin-top:10px;font-size:0.35rem;">BACK</button>
@@ -619,6 +619,7 @@ const PAL = {
   hexUnbreakable: ['#505050'],    // grey stone
   hexRoyalGuard:  ['#6a2fa0'],    // rich purple
   hexQueen:       ['#c02070'],    // deep magenta
+  hexBoost:       ['#20e040'],    // bright green
   hexLine:  '#4a2200',       // darker outlines for contrast
   hexCrack: '#2a1000',
   hexHighlight: '#ffe880',   // inner gradient highlight
@@ -777,6 +778,7 @@ const HAPTIC = {
   queen:     [15, 8, 20],     // boss damage
   queenDead: [20, 10, 30, 10, 20], // queen defeated rumble
   hit:       3,               // partial hit tap
+  boost:     [4, 3, 8],       // accelerating whoosh
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -907,7 +909,8 @@ const SaveManager = {
         bees: bees.map(b => ({
           x: b.x, y: b.y, vx: b.vx, vy: b.vy, speed: b.speed,
           tpCooldown: b.tpCooldown, sizeScale: b.sizeScale,
-          phaseThrough: b.phaseThrough, effectTimer: b.effectTimer
+          phaseThrough: b.phaseThrough, effectTimer: b.effectTimer,
+          _boostCooldown: b._boostCooldown || 0
         })),
         // Hexes — skip dead cells to save space
         hexes: hexes.filter(h => !h.dead).map(h => {
@@ -915,6 +918,7 @@ const SaveManager = {
                       dead: false, flash: 0, ci: h.ci };
           if (h.portalChannel != null) o.portalChannel = h.portalChannel;
           if (h.portalRole) o.portalRole = h.portalRole;
+          if (h.boostDir != null) o.boostDir = h.boostDir;
           if (h.bossGateId != null) o.bossGateId = h.bossGateId;
           return o;
         }),
@@ -1002,6 +1006,7 @@ const SaveManager = {
         bee.sizeScale    = b.sizeScale    ?? 1;
         bee.phaseThrough = b.phaseThrough ?? false;
         bee.effectTimer  = b.effectTimer  ?? 0;
+        bee._boostCooldown = b._boostCooldown ?? 0;
         return bee;
       });
 
@@ -1011,6 +1016,7 @@ const SaveManager = {
                       dead: h.dead ?? false, flash: h.flash ?? 0, ci: h.ci ?? 0 };
         if (h.portalChannel != null) hex.portalChannel = h.portalChannel;
         if (h.portalRole) hex.portalRole = h.portalRole;
+        if (h.boostDir != null) hex.boostDir = h.boostDir;
         if (h.bossGateId != null) hex.bossGateId = h.bossGateId;
         return hex;
       });
@@ -1163,6 +1169,7 @@ const sfx = {
   teleport: () => { _tone(880,'sine',0.18,0.12,440); setTimeout(()=>_tone(440,'sine',0.18,0.18,880),120); },
   bomb:     () => { _noise(0.30,0.20); _tone(100,'sawtooth',0.25,0.30,40); },
   powerup:  () => { _tone(600,'sine',0.15,0.20); _tone(800,'sine',0.10,0.15); },
+  boost:    () => { _tone(300,'sine',0.15,0.12,900); },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1204,6 +1211,12 @@ const music = {
       this._connectWebAudio();
     } else {
       this.el.volume = musicVolume;
+    }
+    // Suppress iOS Dynamic Island / media player controls
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = null;
+      for (const a of ['play','pause','seekbackward','seekforward','previoustrack','nexttrack'])
+        navigator.mediaSession.setActionHandler(a, null);
     }
   },
 
@@ -1961,8 +1974,27 @@ let hasHendOfGod  = false;  // stored rescue flag
 let honeySurgeFills = 0;    // jar fills during HONEY SURGE (ends at 2)
 let powerupDrops = [];      // falling pickup entities
 
+// ── Power-Up Testing Mode ──
+let powerupTestMode = false;
+let puTestEnabled = {};     // { honeySurge: true, beeBee: true, ... }
+const POWERUP_TEST_LEVEL = [
+  {type:'UNBREAKABLE',x:45,y:77.94228634059947},{type:'UNBREAKABLE',x:72,y:62.35382907247958},
+  {type:'UNBREAKABLE',x:99,y:77.94228634059947},{type:'UNBREAKABLE',x:126,y:62.35382907247958},
+  {type:'UNBREAKABLE',x:153,y:77.94228634059947},{type:'UNBREAKABLE',x:180,y:62.35382907247958},
+  {type:'UNBREAKABLE',x:207,y:77.94228634059947},{type:'UNBREAKABLE',x:234,y:62.35382907247958},
+  {type:'UNBREAKABLE',x:261,y:77.94228634059947},{type:'UNBREAKABLE',x:288,y:62.35382907247958},
+  {type:'UNBREAKABLE',x:315,y:77.94228634059947},{type:'UNBREAKABLE',x:342,y:62.35382907247958},
+  {type:'UNBREAKABLE',x:18,y:62.35382907247958},
+  {type:'CHARGED',x:180,y:187.06148721743872}
+];
+
 function spawnPowerupDrop(wx, wy) {
-  const type = TEMP_POWERUPS[Math.floor(Math.random() * TEMP_POWERUPS.length)];
+  let pool = TEMP_POWERUPS;
+  if (powerupTestMode) {
+    pool = TEMP_POWERUPS.filter(p => puTestEnabled[p.id]);
+    if (pool.length === 0) return;
+  }
+  const type = pool[Math.floor(Math.random() * pool.length)];
   powerupDrops.push({ x: wx, y: wy, vy: -0.5, type, flash: 0 });
 }
 
@@ -2288,6 +2320,16 @@ function isGameRunning() { return !gameOver && !!animId; }
 
 canvas.addEventListener('touchstart', e => {
   if (!isGameRunning()) return;   // let overlay/shop handle the tap
+  // Power-up test mode: intercept HUD area taps for toggle buttons
+  if (powerupTestMode && e.touches.length > 0) {
+    const t = e.touches[0];
+    const cy = getCanvasY(t), cx = getCanvasX(t);
+    if (cy >= HUD_Y) {
+      e.preventDefault();
+      _handlePuTestTap(cx, cy);
+      return;
+    }
+  }
   if (inspectorMode) {
     e.preventDefault();
     inspectorTouchY = e.touches[0].clientY;
@@ -2478,7 +2520,7 @@ function getHandSpriteH(pw) {
   return hendCanvas ? Math.round(pw / hendAspect) : HAND_SPRITE_H;
 }
 
-function drawHand(ox, oy, side, targetW) {
+function drawHand(ox, oy, side, targetW, isStartingHend = true) {
   // Skin tone & hend skin are global; accessories are per-hand
   const isLeft = (side !== 1);
   const skinIdx = selectedSkinL;
@@ -2539,8 +2581,8 @@ function drawHand(ox, oy, side, targetW) {
       ctx.translate(Math.round(ox) + dw, Math.round(oy));
       ctx.scale(-1, 1);
       ctx.drawImage(skinCanvas, 0, 0, dw, dh);
-      // BEE>i wrist tattoo
-      if (hasHendOfGod) {
+      // BEE>i wrist tattoo (starting hend only)
+      if (isStartingHend && hasHendOfGod) {
         const fs = Math.max(3, Math.round(dw * 0.06));
         ctx.font = 'bold ' + fs + 'px "Press Start 2P",monospace';
         ctx.textAlign = 'center';
@@ -2551,8 +2593,8 @@ function drawHand(ox, oy, side, targetW) {
       drawAccessory(0, 0, dw, dh, -1);
     } else {
       ctx.drawImage(skinCanvas, Math.round(ox), Math.round(oy), dw, dh);
-      // BEE>i wrist tattoo
-      if (hasHendOfGod) {
+      // BEE>i wrist tattoo (starting hend only)
+      if (isStartingHend && hasHendOfGod) {
         const fs = Math.max(3, Math.round(dw * 0.06));
         ctx.font = 'bold ' + fs + 'px "Press Start 2P",monospace';
         ctx.textAlign = 'center';
@@ -2640,7 +2682,7 @@ function drawPaddle(p, p2) {
     const drawH = getHandSpriteH(halfW);
     const sq1 = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
     const sq2 = p2.squish > 0 ? Math.ceil(p2.squish / 4) : 0;
-    drawHand(p.x, bottomY - drawH + sq1, -1, halfW);    // left hand (flipped)
+    drawHand(p.x, bottomY - drawH + sq1, -1, halfW, favouriteHend === 'left');    // left hand (flipped)
     // Second hend rise animation in split mode
     let splitH2oy = bottomY - drawH + sq2;
     if (_hend2Intro.active) {
@@ -2652,7 +2694,7 @@ function drawPaddle(p, p2) {
       splitH2oy += _hend2Intro.offset * (1 - eased) - overshoot;
       if (prog >= 1) _hend2Intro.active = false;
     }
-    drawHand(p2.x, splitH2oy, 1, halfW);    // right hand (normal)
+    drawHand(p2.x, splitH2oy, 1, halfW, favouriteHend === 'right');    // right hand (normal)
     if (p.squish > 0) p.squish--;
     if (p2.squish > 0) p2.squish--;
   } else if (powers.twoHends >= 1) {
@@ -2666,7 +2708,7 @@ function drawPaddle(p, p2) {
     const existingX = existingSide === -1 ? p.x : p.x + halfW;
     const newX = newSide === -1 ? p.x : p.x + halfW;
     // Existing hand — no animation, stays in place
-    drawHand(existingX, oy, existingSide, halfW);
+    drawHand(existingX, oy, existingSide, halfW, true);
     // New hand — animate rising from below when first acquired
     let h2oy = oy;
     if (_hend2Intro.active) {
@@ -2678,7 +2720,7 @@ function drawPaddle(p, p2) {
       h2oy = oy + _hend2Intro.offset * (1 - eased) - overshoot;
       if (prog >= 1) _hend2Intro.active = false;
     }
-    drawHand(newX, h2oy, newSide, halfW);
+    drawHand(newX, h2oy, newSide, halfW, false);
     if (p.squish > 0) p.squish--;
   } else {
     const sq = p.squish > 0 ? Math.ceil(p.squish / 4) : 0;
@@ -3031,6 +3073,7 @@ const CELL_TYPES = {
   UNBREAKABLE:  { hp: Infinity, honey: 0, color: 'hexUnbreakable', label: 'Unbreakable', indestructible: true },
   ROYAL_GUARD:  { hp: Infinity, honey: 0, color: 'hexRoyalGuard',  label: 'Royal Guard', indestructible: true },
   QUEEN:        { hp: 1,        honey: 50, color: 'hexQueen',       label: 'Queen' },
+  BOOST:        { hp: Infinity, honey: 0, color: 'hexBoost',       label: 'Boost',       indestructible: true },
 };
 
 // ── Pre-computed hex color cache (avoids lightenCol/darkenCol per frame) ──
@@ -3053,10 +3096,10 @@ const _hexStrokeColor = {
   PORTAL: '#cc60ff', HONEY: '#e8b000', WAX: '#b0a070', BROOD: '#a86800',
   HEAVY: '#a08040', ROYAL: '#d4af37', ANCIENT: '#4a7060', TITAN: '#6060a0',
   CHARGED: '#50d0ff', BOMB: '#ff4020', UNBREAKABLE: '#707070',
-  ROYAL_GUARD: '#d4af37', QUEEN: '#ffd700'
+  ROYAL_GUARD: '#d4af37', QUEEN: '#ffd700', BOOST: '#30ff50'
 };
 const _hexLineW = {
-  QUEEN: 3, PORTAL: 2.5, UNBREAKABLE: 2.5, ROYAL_GUARD: 2.5
+  QUEEN: 3, PORTAL: 2.5, UNBREAKABLE: 2.5, ROYAL_GUARD: 2.5, BOOST: 2.5
 };
 
 // Pre-computed powerup aura color prefixes (avoids object creation per bee per frame)
@@ -3420,7 +3463,7 @@ function drawHex(h) {
     // Draw mini bee using PNG sprite if available
     const useBeeSprite = beeFrames.length === 4 && beeFrames[0];
     if (useBeeSprite) {
-      const fIdx = beeFrameSeq[Math.floor(tick / BEE_FLAP_SPEED) % beeFrameSeq.length];
+      const fIdx = 0; // static bee, no animation
       const bImg = beeFrames[fIdx];
       const beeW = HEX_R * 1.1, beeH = HEX_R * 1.1;
       ctx.save();
@@ -3517,6 +3560,42 @@ function drawHex(h) {
     ctx.lineTo(h.x - r*0.35, h.y + r*0.1);     // jut left
     ctx.lineTo(h.x - r*0.05, h.y - r*0.85);    // back up top-left
     ctx.closePath(); ctx.fill(); ctx.stroke();
+  } else if (h.type === 'BOOST') {
+    const p = (Math.floor(tick / 6) % 2) ? 0.75 : 0.35;
+    ctx.strokeStyle = `rgba(32,224,64,${p})`; ctx.lineWidth = 2; ctx.stroke();
+
+    // Chevron direction
+    const dirIdx = BOOST_DIR_MAP[h.boostDir || 0];
+    const bnx = HEX_NORMALS[dirIdx][0], bny = HEX_NORMALS[dirIdx][1];
+    const angle = Math.atan2(bny, bnx) - Math.PI / 2;
+
+    ctx.save();
+    ctx.translate(h.x, h.y);
+    ctx.rotate(angle);
+
+    const r = HEX_R * 0.42;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+    // 3 stacked chevrons — brighter toward tip
+    for (let ci = 0; ci < 3; ci++) {
+      const yOff = (ci - 1) * r * 0.6;
+      const a = 0.25 + ci * 0.15 + p * 0.2;
+      ctx.strokeStyle = `rgba(100,255,140,${a})`;
+      ctx.fillStyle = `rgba(32,224,64,${a * 0.35})`;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.55, yOff + r * 0.3);
+      ctx.lineTo(0, yOff - r * 0.3);
+      ctx.lineTo(r * 0.55, yOff + r * 0.3);
+      ctx.stroke();
+    }
+
+    // Glow dot at tip
+    const gA = 0.3 + p * 0.4;
+    ctx.fillStyle = `rgba(150,255,180,${gA})`;
+    ctx.beginPath(); ctx.arc(0, -r * 0.9, 2, 0, Math.PI * 2); ctx.fill();
+
+    ctx.restore();
   } else if (h.type === 'BOMB') {
     const p = (Math.floor(tick / 8) % 2) ? 0.45 : 0.20;
     // Inner glow
@@ -3647,6 +3726,8 @@ for (let i=0;i<6;i++) {
   HEX_NORMALS.push([Math.cos(a), Math.sin(a)]);
 }
 // BLEND_F moved to CONFIG.BLEND_F
+const BOOST_DIR_MAP = [3, 4, 5]; // boostDir 0=upper-left, 1=up, 2=upper-right
+const BOOST_SPEED_MULT = 1.35;
 
 function checkHex(b) {
   const _nearby = _hexGridQuery(b.x, b.y, BALL_R + HEX_COLL_R + 1);
@@ -3673,6 +3754,26 @@ function checkHex(b) {
       const nlen = Math.hypot(nx,ny)||1;
       nx /= nlen; ny /= nlen;
 
+// BOOST CELL: pass-through redirector — overrides bee velocity to boost direction
+      if (h.type === 'BOOST') {
+        if (b._lastBoostCell === h && b._boostCooldown > 0) continue;
+        SaveManager.discover('BOOST');
+        const dirIdx = BOOST_DIR_MAP[h.boostDir || 0];
+        const bnx = HEX_NORMALS[dirIdx][0], bny = HEX_NORMALS[dirIdx][1];
+        const newSpd = Math.min(b.speed * BOOST_SPEED_MULT, getMaxSpd());
+        b.vx = bnx * newSpd;
+        b.vy = bny * newSpd;
+        b.speed = newSpd;
+        b._lastBoostCell = h;
+        b._boostCooldown = 8;
+        h.flash = 10;
+        spawnParts(h.x, h.y, 10, ['#20e040','#60ff80','#a0ffc0','#fff']);
+        broodMsgs.push({x: h.x, y: h.y - 8, life: 40, txt: 'BOOST!'});
+        sfx.boost();
+        haptic(HAPTIC.boost);
+        return {dead: false, h};
+      }
+
 // PORTAL CELL: one-way teleporter (sender → receiver only)
       if (h.type === 'PORTAL') {
         SaveManager.discover('PORTAL');
@@ -3688,6 +3789,12 @@ function checkHex(b) {
         const dest = _portalPairCache.get(h.portalChannel)?.find(q => q !== h && !q.dead);
         if (dest) {
           b.x = dest.x; b.y = dest.y;
+          // Add small random angle offset to avoid teleport loops
+          const _tpJitter = (Math.random() - 0.5) * 2 * (Math.PI / 180); // ±1 degree
+          const _cs = Math.cos(_tpJitter), _sn = Math.sin(_tpJitter);
+          const _tvx = b.vx * _cs - b.vy * _sn;
+          const _tvy = b.vx * _sn + b.vy * _cs;
+          b.vx = _tvx; b.vy = _tvy;
           b.tpCooldown = CONFIG.PORTAL_COOLDOWN;
           h.flash = 14; dest.flash = 14;
           spawnParts(h.x,    h.y,    18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
@@ -4528,24 +4635,85 @@ function drawHexOutline(cx, cy, r) {
   ctx.closePath(); ctx.stroke();
 }
 
+// ── Power-Up Testing HUD ──
+let _puTestBtnGeom = []; // cached button rects for tap detection
+function _drawPowerupTestHUD() {
+  const F7 = '7px "Press Start 2P",monospace';
+  const F8 = '8px "Press Start 2P",monospace';
+  _puTestBtnGeom = [];
+
+  // Title
+  ctx.font = F8;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#f0a020';
+  ctx.fillText('POWER-UP TESTING', W / 2, HUD_Y + 14);
+
+  // Layout: 5 columns, 2 rows — compact to fit viewport
+  const cols = 5;
+  const btnW = 66, btnH = 22, gap = 3;
+  const totalW = cols * btnW + (cols - 1) * gap;
+  const startX = (W - totalW) / 2;
+  const startY = HUD_Y + 20;
+
+  for (let i = 0; i < TEMP_POWERUPS.length; i++) {
+    const p = TEMP_POWERUPS[i];
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const bx = startX + col * (btnW + gap);
+    const by = startY + row * (btnH + gap);
+    const enabled = puTestEnabled[p.id];
+
+    // Button background
+    ctx.fillStyle = enabled ? 'rgba(30,20,5,0.9)' : 'rgba(10,8,3,0.7)';
+    ctx.fillRect(bx, by, btnW, btnH);
+
+    // Border
+    ctx.strokeStyle = enabled ? p.color : 'rgba(80,60,30,0.4)';
+    ctx.lineWidth = enabled ? 2 : 0.8;
+    ctx.strokeRect(bx, by, btnW, btnH);
+
+    // Color indicator dot
+    if (enabled) {
+      ctx.fillStyle = p.color;
+      ctx.fillRect(bx + 2, by + 2, 4, btnH - 4);
+    }
+
+    // Label
+    ctx.font = F7;
+    ctx.textAlign = 'left';
+    ctx.fillStyle = enabled ? '#e0c060' : 'rgba(120,100,60,0.5)';
+    const label = p.name.length > 9 ? p.name.substring(0, 9) : p.name;
+    ctx.fillText(label, bx + 8, by + btnH / 2 + 3);
+
+    _puTestBtnGeom.push({ x: bx, y: by, w: btnW, h: btnH, id: p.id });
+  }
+
+  ctx.textAlign = 'left';
+}
+
+function _handlePuTestTap(screenX, screenY) {
+  for (const btn of _puTestBtnGeom) {
+    if (screenX >= btn.x && screenX <= btn.x + btn.w &&
+        screenY >= btn.y && screenY <= btn.y + btn.h) {
+      puTestEnabled[btn.id] = !puTestEnabled[btn.id];
+      return true;
+    }
+  }
+  return false;
+}
+
 function drawHUD() {
   const F7 = '7px "Press Start 2P",monospace';
   const F5 = '5px "Press Start 2P",monospace';
 
   // LV label — moved to top-left of screen (drawn separately below HUD)
 
-  // Pause icon — two bars inside a hex outline, top right (hidden in demo mode)
-  if (!demoMode) {
-    const picX = W - 15, picY = 15, picR = 10;
-    const pp = hexPts(picX, picY, picR);
-    ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
-    for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
-    ctx.closePath();
-    ctx.strokeStyle = '#c8a020'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = '#c8a020';
-    const barW = 2.5, barH = 8, barGap = 3;
-    ctx.fillRect(picX - barGap - barW/2, picY - barH/2, barW, barH);
-    ctx.fillRect(picX + barGap - barW/2, picY - barH/2, barW, barH);
+  // Pause icon — drawn later (after top fade gradient) so it's not covered
+
+  // Power-Up Testing mode HUD
+  if (powerupTestMode) {
+    _drawPowerupTestHUD();
+    return;
   }
 
   // Inspector mode label
@@ -4807,10 +4975,10 @@ function drawHUD() {
 function drawUpgradeBanner() {
   if (!upgradeBannerActive || upgradeBannerChoices.length === 0) return;
 
-  const bannerY = Math.round(H * 0.35);  // centered in play area
+  const bannerY = Math.round(H * 0.33);  // centered in play area
   const bannerX = 4;
   const bannerW = W - 8;
-  const btnH = 58;                   // tall buttons: icon + name + description
+  const btnH = 72;                   // tall buttons: icon + name + description
   const gap = 4;
   const bannerH = 14 + btnH + gap + 4; // title + button + padding
   const cr = 6;
@@ -4892,7 +5060,7 @@ function drawUpgradeBanner() {
     // Estimate total text height, then centre on btnH/2
     const desc = pu.desc || '';
     const availW = btnW - textLeft - 4;
-    const maxChars = Math.floor(availW / 5.2); // approx chars per line at 6px font
+    const maxChars = Math.floor(availW / 4.8); // approx chars per line at 5px font
     const lines = [];
     let remaining = desc;
     while (remaining.length > 0) {
@@ -4903,20 +5071,20 @@ function drawUpgradeBanner() {
       remaining = remaining.substring(split).trimStart();
     }
     const descLines = Math.min(lines.length, 3);
-    const nameH = 8;                // name font height
-    const descLineH = 9;            // desc line spacing
+    const nameH = 7;                // name font height
+    const descLineH = 8;            // desc line spacing
     const gapBetween = 4;           // gap between name and desc
     const totalTextH = nameH + gapBetween + descLines * descLineH;
     const textTopY = btnY + (btnH - totalTextH) / 2;
 
     // Upgrade name — bold, sized to fit
-    ctx.font = '8px "Press Start 2P",monospace';
+    ctx.font = '7px "Press Start 2P",monospace';
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#f0c020';
     ctx.fillText(pu.name, btnX + textLeft, textTopY);
 
     // Description subtext — below name, wrapped
-    ctx.font = '6px "Press Start 2P",monospace';
+    ctx.font = '5px "Press Start 2P",monospace';
     ctx.fillStyle = '#b09050';
     for (let ln = 0; ln < descLines; ln++) {
       ctx.fillText(lines[ln], btnX + textLeft, textTopY + nameH + gapBetween + ln * descLineH);
@@ -4939,6 +5107,11 @@ function getCanvasXY(clientX, clientY) {
 }
 
 function handleCanvasTap(cx, cy, e) {
+  // Power-up test mode: intercept HUD taps
+  if (powerupTestMode && cy >= HUD_Y) {
+    _handlePuTestTap(cx, cy);
+    return;
+  }
   // ── Upgrade banner tap detection ──
   if (upgradeBannerActive && upgradeBannerGeom) {
     const g = upgradeBannerGeom;
@@ -5141,6 +5314,18 @@ const STRUCTURES = [
       h.type = 'CHARGED'; h.hp = CELL_TYPES.CHARGED.hp;
     },
   },
+  {
+    id: 'BOOST_PAD', minDepth: 5, weight: 8,
+    stamp(hexMap, rng) {
+      const vals = [...hexMap.values()].filter(h =>
+        !isNearEdge(h.x) && !SPECIAL_TYPES.has(h.type) &&
+        hasMinDist(h, 'BOOST', hexMap, MIN_SPECIAL_DIST));
+      if (vals.length === 0) return;
+      const h = vals[Math.floor(rng() * vals.length)];
+      h.type = 'BOOST'; h.hp = CELL_TYPES.BOOST.hp;
+      h.boostDir = Math.floor(rng() * 3);
+    },
+  },
   // WAX_WALL stamp removed — UNBREAKABLE cells are blueprint-only
   // Dynamic blueprints from LevelExports/ are injected here by loadBlueprints()
   // See _loadedBlueprints array and the loadBlueprints() function below
@@ -5303,7 +5488,7 @@ const MIN_PORTAL_Y_SEP = HEX_R * Math.sqrt(3) * 3;  // min 3 rows vertical separ
 const MIN_SPECIAL_DIST = HEX_R * Math.sqrt(3) * 1.5; // 1.5 cell spaces between different specials
 const MIN_BOMB_DIST    = HEX_R * Math.sqrt(3) * 3;   // 3 cell spaces between bombs
 const MIN_CHARGED_DIST = HEX_R * Math.sqrt(3) * 20;  // 20 row levels between charged cells
-const SPECIAL_TYPES = new Set(['PORTAL','BROOD','HONEY','CHARGED','BOMB','UNBREAKABLE']);
+const SPECIAL_TYPES = new Set(['PORTAL','BROOD','HONEY','CHARGED','BOMB','UNBREAKABLE','BOOST']);
 
 // Check if a hex has minimum distance from all same-type cells in the map
 function hasMinDist(hex, type, hexMap, minDist) {
@@ -5314,6 +5499,31 @@ function hasMinDist(hex, type, hexMap, minDist) {
 }
 
 // ── Single-chunk generator ───────────────────────────────
+// Remove procedural cells that overlap blueprint cells from adjacent chunks
+function _dedupBlueprintOverlap(newCells, existingCells) {
+  const minDist = HEX_R * Math.sqrt(3) * 0.9;
+  const bpCells = [];
+  for (let i = 0; i < existingCells.length; i++) {
+    const h = existingCells[i];
+    if (!h.dead && h._blueprint) bpCells.push(h);
+  }
+  if (bpCells.length === 0) return newCells;
+  let w = 0;
+  for (let i = 0; i < newCells.length; i++) {
+    const c = newCells[i];
+    if (c._blueprint) { newCells[w++] = c; continue; }
+    let overlap = false;
+    for (let j = 0; j < bpCells.length; j++) {
+      if (Math.hypot(c.x - bpCells[j].x, c.y - bpCells[j].y) < minDist) {
+        overlap = true; break;
+      }
+    }
+    if (!overlap) newCells[w++] = c;
+  }
+  newCells.length = w;
+  return newCells;
+}
+
 // chunkTop: world y of the chunk's upper edge (smaller number = visually higher)
 // chunk spans [chunkTop, chunkTop + CHUNK_HEIGHT]
 function spawnChunk(chunkTop, depth, seed) {
@@ -5570,7 +5780,7 @@ function buildGrid(lvl) {
     const chunkTop = chunkBot   -     HIVE_CONFIG.CHUNK_HEIGHT;
     const depth    = (lvl - 1) + ci;
     const seed     = levelSeed + ci * 1000003;
-    allHexes.push(...spawnChunk(chunkTop, depth, seed));
+    allHexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), allHexes));
     totalDepth = ci + 1;
   }
 
@@ -5632,7 +5842,10 @@ let _isRushing           = false; // true when camera scrolling fast with multip
 // ── Boss Gate system ──
 let bossGates = []; // { guardCells:[], queenCells:[], hp, maxHp, gateY, dead }
 const BOSS_GATE_INTERVAL = 20;        // chunks between boss gates (~100 hex rows)
-const BOSS_GATE_QUEEN_HP = 100;       // shared HP pool for queen cluster
+const BOSS_GATE_QUEEN_HP_BASE = 100;  // base HP for first queen
+function getBossGateHP() {
+  return Math.min(500, BOSS_GATE_QUEEN_HP_BASE + bossGates.length * 50);
+}
 const BOSS_GATE_PORTAL_EXCLUSION = 15; // rows of no-portal zone each side
 
 // ═══════════════════════════════════════════════════════
@@ -5667,6 +5880,7 @@ function mkBee(x,y,vx,vy,spd) {
     sizeScale:    1.0,    // BEE-GER / BEE-BEE size modifier
     phaseThrough: false,  // BEE-BOO phase flag
     effectTimer:  0,      // duration counter for temporary effects
+    _boostCooldown: 0, _lastBoostCell: null,
   };
 }
 function startBee(xOff) {
@@ -5821,7 +6035,7 @@ function update() {
       for (let _wi = 0; _wi < _waxNear.length; _wi++) {
         const n = _waxNear[_wi];
         if (n.dead || n === src) continue;
-        if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
+        if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN' || n.type === 'BOOST') continue;
         if (Math.hypot(n.x - src.x, n.y - src.y) < HEX_R * 2.2) {
           n.hp -= CONFIG.WAX_DAMAGE;
           n.flash = 8;
@@ -5856,9 +6070,10 @@ function update() {
       if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_hasBlueprintNear) {
         const gateIndex = bossGates.length;
         const guardCells = spawnBossGateChunk(chunkTop);
+        const gateHP = getBossGateHP();
         const gate = {
-          guardCells, queenCells: [], hp: BOSS_GATE_QUEEN_HP,
-          maxHp: BOSS_GATE_QUEEN_HP, gateY: chunkTop, dead: false
+          guardCells, queenCells: [], hp: gateHP,
+          maxHp: gateHP, gateY: chunkTop, dead: false
         };
         bossGates.push(gate);
         hexes.push(...guardCells);
@@ -5866,7 +6081,7 @@ function update() {
         gate.queenCells = queenCells;
         hexes.push(...queenCells);
       } else {
-        hexes.push(...spawnChunk(chunkTop, depth, seed));
+        hexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), hexes));
       }
 
       generatedTop = chunkTop;
@@ -5955,7 +6170,8 @@ function update() {
   // Camera: smooth-follow the topmost bee upward
   // Can fall back down at most H/2 from the highest point reached this run
   // Freeze camera entirely during picker blur transition to prevent pops
-  if (pickerTransition) { /* hold camera still during blur transition */ }
+  if (powerupTestMode) { scrollY = 0; scrollYTarget = 0; }
+  else if (pickerTransition) { /* hold camera still during blur transition */ }
   else if (bees.length > 0) {
     const topBeeY = bees.reduce((m, b) => Math.min(m, b.y), Infinity);
     const rawTarget = topBeeY - HIVE_CONFIG.CAMERA_LEAD;
@@ -5976,7 +6192,7 @@ function update() {
   _prevScrollY = scrollY;
 
   // Infinite chunk streaming: generate new chunks 2 chunk-heights ahead of camera top
-  if (!pickerTransition) {
+  if (!pickerTransition && !powerupTestMode) {
   const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
   while (scrollY - generatedTop < LOOK_AHEAD) {
     const chunkTop = generatedTop - HIVE_CONFIG.CHUNK_HEIGHT;
@@ -5988,9 +6204,10 @@ function update() {
     if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_bpNear) {
       const gateIndex = bossGates.length;
       const guardCells = spawnBossGateChunk(chunkTop);
+      const gateHP = getBossGateHP();
       const gate = {
-        guardCells, queenCells: [], hp: BOSS_GATE_QUEEN_HP,
-        maxHp: BOSS_GATE_QUEEN_HP, gateY: chunkTop, dead: false
+        guardCells, queenCells: [], hp: gateHP,
+        maxHp: gateHP, gateY: chunkTop, dead: false
       };
       bossGates.push(gate);
       hexes.push(...guardCells);
@@ -5999,7 +6216,7 @@ function update() {
       gate.queenCells = queenCells;
       hexes.push(...queenCells);
     } else {
-      hexes.push(...spawnChunk(chunkTop, depth, seed));
+      hexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), hexes));
     }
 
     generatedTop = chunkTop;
@@ -6056,7 +6273,7 @@ function update() {
         }
         continue;
       }
-      if (h.type === 'PORTAL' || h.type === 'UNBREAKABLE' || h.type === 'ROYAL_GUARD' || h.type === 'QUEEN') continue;
+      if (h.type === 'PORTAL' || h.type === 'UNBREAKABLE' || h.type === 'ROYAL_GUARD' || h.type === 'QUEEN' || h.type === 'BOOST') continue;
 
       // Determine which tier this cell falls into
       let inZone = false;
@@ -6144,22 +6361,29 @@ function update() {
       }
     }
 
-    // Magnet Hends: pull ALL bees toward paddle when falling (global timed)
+    // Magnet Hends: heat-seek toward nearest hend when bee is falling
     if (activePowerup?.id === 'magnetHends' && b.vy > 0) {
       const pw = getPW();
-      let targetX = paddle.x + pw / 2;
+      let tx = paddle.x + pw / 2, ty = paddleWorldY;
       if (powers.twoHends > 0) {
-        const d1 = Math.abs(b.x - (paddle.x + pw / 2));
-        const d2 = Math.abs(b.x - (paddle2.x + pw / 2));
-        if (d2 < d1) targetX = paddle2.x + pw / 2;
+        const d1 = Math.hypot(b.x - (paddle.x + pw / 2), b.y - paddleWorldY);
+        const d2 = Math.hypot(b.x - (paddle2.x + pw / 2), b.y - paddleWorldY);
+        if (d2 < d1) { tx = paddle2.x + pw / 2; }
       }
-      const dx = targetX - b.x;
-      const dist = Math.abs(dx);
-      const MAGNET_RADIUS = 120;
-      if (dist < MAGNET_RADIUS) {
-        const strength = 0.04 * (1 - dist / MAGNET_RADIUS);
-        b.vx += Math.sign(dx) * strength;
-        normSpd(b, b.speed);
+      const dx = tx - b.x, dy = ty - b.y;
+      const dist = Math.hypot(dx, dy);
+      const MAGNET_RADIUS = 400;
+      if (dist < MAGNET_RADIUS && dist > 1) {
+        // Strong pull that ramps up as bee gets closer
+        const t = 1 - dist / MAGNET_RADIUS;
+        const pull = 0.35 * t * t;  // quadratic ramp for aggressive close-range pull
+        // Blend velocity toward hend direction
+        const toHendX = dx / dist, toHendY = dy / dist;
+        b.vx = b.vx * (1 - pull) + toHendX * b.speed * pull;
+        b.vy = b.vy * (1 - pull) + toHendY * b.speed * pull;
+        // Maintain original speed
+        const spd = Math.hypot(b.vx, b.vy);
+        if (spd > 0) { b.vx = b.vx / spd * b.speed; b.vy = b.vy / spd * b.speed; }
       }
     }
 
@@ -6206,7 +6430,10 @@ function update() {
     // hex — skip collision when rushing and bee is falling toward paddle (forgiveness)
     const _rushPhase = _isRushing && b.vy > 0;
 if (b.tpCooldown > 0) b.tpCooldown--;
-    const hit = _rushPhase ? null : checkHex(b);
+if (b._boostCooldown > 0) b._boostCooldown--;
+    let hit = _rushPhase ? null : checkHex(b);
+    // Second pass catches bees pushed into adjacent cells (BEE-BEE tunneling fix)
+    if (hit && !hit.dead) { const h2 = checkHex(b); if (h2) hit = h2; }
     if (hit) {
       const h=hit.h;
       if (hit.dead) {
@@ -6260,6 +6487,16 @@ if (b.tpCooldown > 0) b.tpCooldown--;
         } else if (h.type === 'CHARGED') {
           sfx.honey(); haptic(HAPTIC.charged); spawnParts(h.x,h.y,12,PAL.hexCharged);
           spawnPowerupDrop(h.x, h.y);
+          if (powerupTestMode) {
+            // Respawn CHARGED cell after 2 seconds
+            const _cx = h.x, _cy = h.y;
+            setTimeout(() => {
+              const ct = CELL_TYPES['CHARGED'];
+              hexes.push({ x: _cx, y: _cy, dead: false, flash: 0, type: 'CHARGED',
+                           hp: ct.hp, ci: 0 });
+              _hexGridRebuild();
+            }, 2000);
+          }
         } else if (h.type === 'BOMB') {
           sfx.bomb(); haptic(HAPTIC.bomb); spawnParts(h.x,h.y,28,PAL.hexBomb);
           triggerShake(6, 12);
@@ -6268,7 +6505,7 @@ if (b.tpCooldown > 0) b.tpCooldown--;
           const _bombNear = _hexGridQuery(h.x, h.y, HEX_R * 3.5);
           for (let _bi = 0; _bi < _bombNear.length; _bi++) {
             const n = _bombNear[_bi];
-            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
+            if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN' || n.type === 'BOOST') continue;
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 3.5) {
               n.hp -= 2; n.flash = 10;
               if (n.hp <= 0) {
@@ -6297,7 +6534,12 @@ if (b.tpCooldown > 0) b.tpCooldown--;
   }
 
   bees.push(...newBees);
-  bees=bees.filter(b=>b.y-BALL_R<paddleWorldY+CONFIG.HEND_COLL_H+12);
+  if (powerupTestMode) {
+    // Let bees fall past the hend and off-screen, respawn handled below
+    bees = bees.filter(b => b.y - BALL_R < paddleWorldY + CONFIG.HEND_COLL_H + 120);
+  } else {
+    bees=bees.filter(b=>b.y-BALL_R<paddleWorldY+CONFIG.HEND_COLL_H+12);
+  }
 
   for (const h of hexes) if(h.flash>0) h.flash--;
   broodMsgs=broodMsgs.filter(m=>m.life>0);
@@ -6362,15 +6604,19 @@ if (b.tpCooldown > 0) b.tpCooldown--;
     broodMsgs.push({ x: W / 2, y: scrollY + PADDLE_Y - 40, life: 80, txt: 'SAVED!' });
     triggerShake(5, 15);
   } else if (bees.length === 0 && !hendOfGodAnim) {
-    if (demoMode) {
+    if (powerupTestMode) {
+      // Test mode fallback — respawn bee, never game over
+      bees.push(startBee());
+    } else if (demoMode) {
       // Attract-mode: silently restart demo
       resetRun(); startLevel(1); return;
+    } else {
+      gameOver=true;touchX=null;touchX2=null;touchIdLeft=null;touchIdRight=null;
+      upgradeBannerActive=false;upgradeBannerChoices=[];upgradeBannerGeom=null;
+      triggerShake(4,10);
+      SaveManager.saveMeta(); // persist best scores before game-over
+      render();setTimeout(showLose,350);return;
     }
-    gameOver=true;touchX=null;touchX2=null;touchIdLeft=null;touchIdRight=null;
-    upgradeBannerActive=false;upgradeBannerChoices=[];upgradeBannerGeom=null;
-    triggerShake(4,10);
-    SaveManager.saveMeta(); // persist best scores before game-over
-    render();setTimeout(showLose,350);return;
   }
 
   // Debounced autosave — check once per second (every 60 ticks)
@@ -6419,10 +6665,17 @@ function render() {
     ctx.stroke();
   }
 
-  // Bee proximity shadow on hend — helps track bee height
+  // Bee proximity shadow on hend — only over paddle sprites
   {
     const renderPadY = demoMode ? H - 17 : PADDLE_Y;
+    const pw = getPW();
     for (const b of bees) {
+      // Only show shadow when bee is directly above a hend sprite
+      let overHend = (b.x >= paddle.x && b.x <= paddle.x + pw);
+      if (powers.twoHends > 0 && paddle2) {
+        overHend = overHend || (b.x >= paddle2.x && b.x <= paddle2.x + pw);
+      }
+      if (!overHend) continue;
       const beeScreenY = b.y - scrollY;
       const dist = renderPadY - beeScreenY;
       if (dist > 0 && dist < 200 && b.vy > 0) {
@@ -6449,16 +6702,18 @@ function render() {
     const a = hendOfGodAnim;
     ctx.save();
     ctx.globalAlpha = a.alpha;
-    // Golden glow behind the hand
-    const glowR = 60;
+    // Bright white glow aura behind the hand
+    const glowR = 100;
     const glow = ctx.createRadialGradient(a.x, a.y, 0, a.x, a.y, glowR);
-    glow.addColorStop(0, 'rgba(255,200,60,0.4)');
-    glow.addColorStop(1, 'rgba(255,200,60,0)');
+    glow.addColorStop(0, 'rgba(255,255,255,0.7)');
+    glow.addColorStop(0.3, 'rgba(255,255,255,0.35)');
+    glow.addColorStop(0.6, 'rgba(255,240,200,0.15)');
+    glow.addColorStop(1, 'rgba(255,240,200,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(a.x - glowR, a.y - glowR, glowR * 2, glowR * 2);
-    // Draw hand sprite at 3× normal size, centered
+    // Draw hand sprite, centered
     const pw = getPW();
-    const ghostW = pw * 2.5;
+    const ghostW = pw * 1.8;
     const ghostH = Math.round(ghostW / hendAspect);
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
@@ -6546,6 +6801,31 @@ function render() {
   drawHUD();                         // screen space
   drawUpgradeBanner();               // upgrade choices over HUD
 
+  // ── Top bar gradient fade (windshield tint) — drawn BEFORE depth/pause so they sit on top ──
+  { const fadeH = 50;
+    const fadeGrad = ctx.createLinearGradient(0, 0, 0, fadeH);
+    fadeGrad.addColorStop(0, 'rgba(0,0,0,0.85)');
+    fadeGrad.addColorStop(0.45, 'rgba(0,0,0,0.55)');
+    fadeGrad.addColorStop(0.75, 'rgba(0,0,0,0.2)');
+    fadeGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fadeGrad;
+    ctx.fillRect(0, 0, W, fadeH);
+  }
+
+  // Pause icon — two bars inside a hex outline, top right (hidden in demo mode)
+  {
+    const picX = W - 15, picY = 15, picR = 10;
+    const pp = hexPts(picX, picY, picR);
+    ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
+    for (let i = 1; i < 6; i++) ctx.lineTo(pp[i][0], pp[i][1]);
+    ctx.closePath();
+    ctx.strokeStyle = '#c8a020'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#c8a020';
+    const barW = 2.5, barH = 8, barGap = 3;
+    ctx.fillRect(picX - barGap - barW/2, picY - barH/2, barW, barH);
+    ctx.fillRect(picX + barGap - barW/2, picY - barH/2, barW, barH);
+  }
+
   // ── Hive Depth — top-left corner of screen ──
   ctx.font = '6px "Press Start 2P",monospace';
   ctx.textAlign = 'left';
@@ -6567,7 +6847,7 @@ function render() {
   {
     const activeBoss = bossGates.find(g => !g.dead &&
       scrollY < g.gateY + HIVE_CONFIG.CHUNK_HEIGHT * 4 &&
-      scrollY > g.gateY - H * 2);
+      scrollY > g.gateY - H * 0.5);
     if (activeBoss) {
       const bw = 160, bh = 10;
       const bx = (W - bw) / 2, by = 20;
@@ -7374,6 +7654,8 @@ let builderSelectedType = 'NORMAL';
 let builderHexes = [];
 let builderScrollY = 0;
 let builderTouchY = null;
+let _builderPendingSender = null;   // portal waiting for its receiver
+let _builderPortalChannel = 0;     // next portal channel ID
 let _builderAnimId = 0;
 
 // Passcode system
@@ -7510,6 +7792,60 @@ document.getElementById('devBack').onclick = () => {
   showSettings(_settingsReturnTo);
 };
 
+// ── Power-Up Testing ──────────────────────────────────
+document.getElementById('devPowerupTest').onclick = () => {
+  hideDevMenu();
+  enterPowerupTestMode();
+};
+
+function enterPowerupTestMode() {
+  powerupTestMode = true;
+  // Enable all powerups by default
+  puTestEnabled = {};
+  for (const p of TEMP_POWERUPS) puTestEnabled[p.id] = true;
+  // Reset game state
+  demoMode = false;
+  gameOver = false; paused = false; tick = 0; lastTime = 0;
+  scrollY = 0; scrollYTarget = 0; scrollYMin = 0;
+  generatedTop = -9999; // prevent chunk streaming
+  particles = []; broodMsgs = []; droplets = []; powerupDrops = [];
+  activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
+  puAnnounce = null; hendOfGodAnim = null;
+  upgradeBannerActive = false; upgradeBannerChoices = []; upgradeBannerGeom = null;
+  touchX = null; touchX2 = null; touchIdLeft = null; touchIdRight = null;
+  bossGates = [];
+  // Load test level cells
+  hexes = [];
+  for (const c of POWERUP_TEST_LEVEL) {
+    const ct = CELL_TYPES[c.type];
+    if (!ct) continue;
+    hexes.push({ x: c.x, y: c.y, dead: false, flash: 0, type: c.type,
+                 hp: ct.hp, ci: Math.floor(Math.random() * 5) });
+  }
+  _hexGridRebuild();
+  // Spawn paddle and bee
+  paddle = mkPaddle();
+  paddle2 = mkPaddle2();
+  bees = [startBee()];
+  // Hide overlays and start loop
+  hideOv(); hidePause(); hideSettings();
+  if (animId) cancelAnimationFrame(animId);
+  loop();
+}
+
+function exitPowerupTestMode() {
+  powerupTestMode = false;
+  activePowerup = null;
+  hasHendOfGod = false;
+  honeySurgeFills = 0;
+  powerupDrops = [];
+  puAnnounce = null;
+  hendOfGodAnim = null;
+  gameOver = false;
+  paused = true;
+  showDevMenu();
+}
+
 // ── Level Builder ──────────────────────────────────────
 document.getElementById('devBuilder').onclick = () => {
   hideDevMenu();
@@ -7521,6 +7857,8 @@ function enterLevelBuilder() {
   builderHexes = [];
   builderScrollY = 0;
   builderSelectedType = 'NORMAL';
+  _builderPendingSender = null;
+  _builderPortalChannel = 0;
   // Stop any running game loop
   if (animId) { cancelAnimationFrame(animId); animId = 0; }
   // Hide any overlays
@@ -7558,17 +7896,17 @@ function _builderRender() {
   ctx.save();
   ctx.translate(0, gridTop);
 
-  // Draw hairline grid
+  // Draw hairline grid (start from c=-1 so left-wall cells are reachable)
   const startRow = Math.floor((builderScrollY + visTop) / rowH) - 1;
   const endRow = Math.ceil((builderScrollY + visBot) / rowH) + 1;
-  const numCols = Math.ceil(W / colW) + 1;
+  const numCols = Math.ceil(W / colW) + 2;
 
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 0.5;
-  for (let c = 0; c < numCols; c++) {
+  for (let c = -1; c < numCols; c++) {
     for (let r = startRow; r <= endRow; r++) {
       const cx = HEX_R + c * colW;
-      const cy = r * rowH + (c % 2 ? rowH * 0.5 : 0);
+      const cy = r * rowH + (((c % 2) + 2) % 2 ? rowH * 0.5 : 0);
       const pts = hexPts(cx, cy, HEX_R);
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
@@ -7583,16 +7921,52 @@ function _builderRender() {
     if (!h.dead) drawHex(h);
   }
 
+  // Pending sender portal indicator — pulsing ring
+  if (_builderPendingSender) {
+    const ps = _builderPendingSender;
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.006);
+    ctx.strokeStyle = `rgba(200,100,255,${0.4 + pulse * 0.5})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(ps.x, ps.y, HEX_R + 4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.font = '5px "Press Start 2P",monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = `rgba(200,100,255,${0.5 + pulse * 0.5})`;
+    ctx.fillText('TAP RECEIVER', ps.x, ps.y - HEX_R - 6);
+    ctx.textAlign = 'left';
+  }
+
   ctx.restore();
 
   // Draw palette bar at bottom
   _builderDrawPalette();
 
-  // Draw exit button hint
-  ctx.font = '6px "Press Start 2P",monospace';
-  ctx.fillStyle = '#f0a020';
-  ctx.textAlign = 'center';
-  ctx.fillText('TAP HERE TO EXIT', W / 2, 12);
+  // Top bar — EXIT, CLEAR, EXPORT buttons
+  ctx.fillStyle = 'rgba(10,6,2,0.9)';
+  ctx.fillRect(0, 0, W, 28);
+  ctx.strokeStyle = '#4a2200'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, 28); ctx.lineTo(W, 28); ctx.stroke();
+
+  const tbH = 20, tbY = 4;
+  // EXIT button — left
+  const exW = 44, exX = 4;
+  ctx.fillStyle = '#1a0e04'; ctx.fillRect(exX, tbY, exW, tbH);
+  ctx.strokeStyle = '#ff4020'; ctx.lineWidth = 1.5; ctx.strokeRect(exX, tbY, exW, tbH);
+  ctx.font = '6px "Press Start 2P",monospace'; ctx.textAlign = 'center';
+  ctx.fillStyle = '#ff6040'; ctx.fillText('EXIT', exX + exW / 2, tbY + tbH / 2 + 3);
+
+  // CLEAR button — center
+  const clW = 50, clX = Math.round(W / 2 - clW / 2);
+  ctx.fillStyle = '#1a0e04'; ctx.fillRect(clX, tbY, clW, tbH);
+  ctx.strokeStyle = '#f04020'; ctx.lineWidth = 1.5; ctx.strokeRect(clX, tbY, clW, tbH);
+  ctx.fillStyle = '#f04020'; ctx.fillText('CLEAR', clX + clW / 2, tbY + tbH / 2 + 3);
+
+  // EXPORT button — right
+  const epW = 54, epX = W - epW - 4;
+  ctx.fillStyle = '#1a0e04'; ctx.fillRect(epX, tbY, epW, tbH);
+  ctx.strokeStyle = '#f0a020'; ctx.lineWidth = 1.5; ctx.strokeRect(epX, tbY, epW, tbH);
+  ctx.fillStyle = '#f0a020'; ctx.fillText('EXPORT', epX + epW / 2, tbY + tbH / 2 + 3);
   ctx.textAlign = 'left';
 
   // CRT
@@ -7654,30 +8028,7 @@ function _builderDrawPalette() {
     ctx.font = '5px "Press Start 2P",monospace';
   }
 
-  // Clear button — bottom-left corner
-  const cbW = 40, cbH = 24;
-  const cbX = 4, cbY = H - cbH - 4;
-  ctx.fillStyle = '#1a0e04';
-  ctx.fillRect(cbX, cbY, cbW, cbH);
-  ctx.strokeStyle = '#f04020';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(cbX, cbY, cbW, cbH);
-  ctx.font = '5px "Press Start 2P",monospace';
-  ctx.fillStyle = '#f04020';
-  ctx.textAlign = 'center';
-  ctx.fillText('CLEAR', cbX + cbW / 2, cbY + cbH / 2 + 2);
-
-  // Export button — bottom-right corner
-  const ebW = 40, ebH = 24;
-  const ebX = W - ebW - 4, ebY = H - ebH - 4;
-  ctx.fillStyle = '#1a0e04';
-  ctx.fillRect(ebX, ebY, ebW, ebH);
-  ctx.strokeStyle = '#f0a020';
-  ctx.lineWidth = 1.5;
-  ctx.strokeRect(ebX, ebY, ebW, ebH);
-  ctx.font = '5px "Press Start 2P",monospace';
-  ctx.fillStyle = '#f0a020';
-  ctx.fillText('EXPORT', ebX + ebW / 2, ebY + ebH / 2 + 2);
+  // Clear and Export buttons are drawn at top (see _builderRender)
   ctx.textAlign = 'left';
 }
 
@@ -7699,14 +8050,14 @@ function _builderExport() {
   // Draw hairline grid
   const startRow = Math.floor(builderScrollY / rowH) - 1;
   const endRow = Math.ceil((builderScrollY + HUD_Y) / rowH) + 1;
-  const numCols = Math.ceil(W / colW) + 1;
+  const numCols = Math.ceil(W / colW) + 2;
 
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 0.5;
-  for (let c = 0; c < numCols; c++) {
+  for (let c = -1; c < numCols; c++) {
     for (let r = startRow; r <= endRow; r++) {
       const hx = HEX_R + c * colW;
-      const hy = r * rowH + (c % 2 ? rowH * 0.5 : 0);
+      const hy = r * rowH + (((c % 2) + 2) % 2 ? rowH * 0.5 : 0);
       const pts = hexPts(hx, hy, HEX_R);
       ctx.beginPath();
       ctx.moveTo(pts[0][0], pts[0][1]);
@@ -7731,9 +8082,13 @@ function _builderExport() {
 
   // Export PNG + JSON
   const pngData = expCvs.toDataURL('image/png');
-  const cellData = builderHexes.filter(h => !h.dead).map(h => ({
-    type: h.type, x: h.x, y: h.y
-  }));
+  const cellData = builderHexes.filter(h => !h.dead).map(h => {
+    const o = { type: h.type, x: h.x, y: h.y };
+    if (h.portalChannel != null) o.portalChannel = h.portalChannel;
+    if (h.portalRole) o.portalRole = h.portalRole;
+    if (h.boostDir != null) o.boostDir = h.boostDir;
+    return o;
+  });
   const ts = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
 
   // Try server POST first (writes directly to LevelExports/)
@@ -7776,22 +8131,15 @@ function _builderHandleTap(clientX, clientY) {
   const cx = (clientX - r.left) * (canvas.width / r.width);
   const cy = (clientY - r.top) * (canvas.height / r.height);
 
-  // Exit zone (top bar)
-  if (cy < 20) { exitLevelBuilder(); return; }
-
-  // Clear button zone (bottom-left corner)
-  const clW = _CLEAR_BTN.w, clH = _CLEAR_BTN.h, clM = _CLEAR_BTN.margin;
-  if (cx >= clM && cx <= clM + clW && cy >= H - clH - clM && cy <= H - clM) {
-    builderHexes = [];
-    builderScrollY = 0;
-    return;
-  }
-
-  // Export button zone (bottom-right corner) — enlarged hit zone for mobile
-  const ebW = _EXPORT_BTN.w + 10, ebH = _EXPORT_BTN.h + 10, ebM = _EXPORT_BTN.margin;
-  const ebX = W - ebW - ebM, ebY = H - ebH - ebM;
-  if (cx >= ebX && cy >= ebY) {
-    _builderExport();
+  // Top bar buttons (y < 28)
+  if (cy < 28) {
+    // EXIT — left
+    if (cx < 52) { exitLevelBuilder(); return; }
+    // CLEAR — center
+    const clX = Math.round(W / 2 - 25);
+    if (cx >= clX && cx <= clX + 50) { builderHexes = []; builderScrollY = 0; return; }
+    // EXPORT — right
+    if (cx >= W - 58) { _builderExport(); return; }
     return;
   }
 
@@ -7816,13 +8164,13 @@ function _builderHandleTap(clientX, clientY) {
   const worldY = cy + builderScrollY;
 
   let bestDist = Infinity, bestX = 0, bestY = 0;
-  const numCols = Math.ceil(W / colW) + 1;
+  const numCols = Math.ceil(W / colW) + 2;
   const approxRow = Math.round(worldY / rowH);
 
-  for (let c = 0; c < numCols; c++) {
+  for (let c = -1; c < numCols; c++) {
     for (let rr = approxRow - 2; rr <= approxRow + 2; rr++) {
       const hx = HEX_R + c * colW;
-      const hy = rr * rowH + (c % 2 ? rowH * 0.5 : 0);
+      const hy = rr * rowH + (((c % 2) + 2) % 2 ? rowH * 0.5 : 0);
       const dx = cx - hx, dy = (cy + builderScrollY) - hy;
       const dist = Math.sqrt(dx * dx + dy * dy);
       if (dist < bestDist) { bestDist = dist; bestX = hx; bestY = hy; }
@@ -7833,26 +8181,88 @@ function _builderHandleTap(clientX, clientY) {
 
   // Check if cell already exists at this position
   const existing = builderHexes.findIndex(h => Math.abs(h.x - bestX) < 2 && Math.abs(h.y - bestY) < 2);
+
+  // Portal two-click placement: sender first, then receiver
+  if (builderSelectedType === 'PORTAL') {
+    if (existing >= 0 && builderHexes[existing].type === 'PORTAL') {
+      // Clicking existing portal removes it (and its partner if linked)
+      const removed = builderHexes[existing];
+      if (removed.portalChannel != null) {
+        // Also remove the paired portal
+        const partnerIdx = builderHexes.findIndex(h => h !== removed && h.portalChannel === removed.portalChannel);
+        if (partnerIdx >= 0) builderHexes.splice(partnerIdx, 1);
+      }
+      // Re-find index after possible partner removal
+      const ri = builderHexes.indexOf(removed);
+      if (ri >= 0) builderHexes.splice(ri, 1);
+      if (_builderPendingSender === removed) _builderPendingSender = null;
+      return;
+    }
+    // Remove any non-portal cell at this spot
+    if (existing >= 0) builderHexes.splice(existing, 1);
+
+    if (!_builderPendingSender) {
+      // First click — place sender
+      const sender = {
+        x: bestX, y: bestY, type: 'PORTAL',
+        hp: CELL_TYPES.PORTAL.hp, dead: false, flash: 0,
+        ci: 0, portalRole: 'sender', portalChannel: null,
+      };
+      builderHexes.push(sender);
+      _builderPendingSender = sender;
+    } else {
+      // Second click — place receiver and link pair
+      const ch = _builderPortalChannel++;
+      _builderPendingSender.portalChannel = ch;
+      const receiver = {
+        x: bestX, y: bestY, type: 'PORTAL',
+        hp: CELL_TYPES.PORTAL.hp, dead: false, flash: 0,
+        ci: 0, portalRole: 'receiver', portalChannel: ch,
+      };
+      builderHexes.push(receiver);
+      _builderPendingSender = null;
+    }
+    return;
+  }
+
+  // Cancel pending portal if switching to a non-portal type
+  if (_builderPendingSender) {
+    // Remove the orphan sender
+    const si = builderHexes.indexOf(_builderPendingSender);
+    if (si >= 0) builderHexes.splice(si, 1);
+    _builderPendingSender = null;
+  }
+
   if (existing >= 0) {
     if (builderHexes[existing].type === builderSelectedType) {
-      // Toggle off — remove
-      builderHexes.splice(existing, 1);
+      if (builderSelectedType === 'BOOST') {
+        // Cycle direction: 0 → 1 → 2 → remove
+        const cur = builderHexes[existing].boostDir || 0;
+        if (cur < 2) { builderHexes[existing].boostDir = cur + 1; }
+        else { builderHexes.splice(existing, 1); }
+      } else {
+        // Toggle off — remove
+        builderHexes.splice(existing, 1);
+      }
     } else {
       // Replace with selected type
       builderHexes[existing].type = builderSelectedType;
       builderHexes[existing].hp = CELL_TYPES[builderSelectedType].hp;
       builderHexes[existing].flash = 0;
       builderHexes[existing].ci = Math.floor(Math.random() * 5);
+      if (builderSelectedType === 'BOOST') builderHexes[existing].boostDir = 0;
     }
   } else {
     // Place new cell
-    builderHexes.push({
+    const newCell = {
       x: bestX, y: bestY,
       type: builderSelectedType,
       hp: CELL_TYPES[builderSelectedType].hp,
       dead: false, flash: 0,
       ci: Math.floor(Math.random() * 5),
-    });
+    };
+    if (builderSelectedType === 'BOOST') newCell.boostDir = 0;
+    builderHexes.push(newCell);
   }
 }
 
@@ -7870,7 +8280,7 @@ canvas.addEventListener('touchstart', e => {
   _builderTouchStartX = t.clientX;
   _builderTouchStartY = t.clientY;
   _builderTouchMoved = false;
-  if (cy < palY && cy >= 20) {
+  if (cy < palY && cy >= 28) {
     builderTouchY = t.clientY; // potential scroll
   } else {
     builderTouchY = null;
@@ -7903,9 +8313,90 @@ canvas.addEventListener('touchend', e => {
   _builderTouchMoved = false;
 }, {passive: false, capture: false});
 
-canvas.addEventListener('click', e => {
+// Mouse drag-to-place support for level builder
+let _builderMouseDown = false;
+let _builderMouseStartX = 0, _builderMouseStartY = 0;
+let _builderMouseMoved = false;
+let _builderLastPlacedKey = '';  // prevents re-placing same cell during drag
+
+function _builderPlaceAt(clientX, clientY) {
+  // Portal placement requires two discrete clicks — skip drag painting
+  if (builderSelectedType === 'PORTAL') return;
+  // Place-only version (no toggle) for drag painting
+  const r = canvas.getBoundingClientRect();
+  const cx = (clientX - r.left) * (canvas.width / r.width);
+  const cy = (clientY - r.top) * (canvas.height / r.height);
+  if (cy < 28 || cy >= H - _BUILDER_PAL_H) return;
+
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+  const worldY = cy + builderScrollY;
+  let bestDist = Infinity, bestX = 0, bestY = 0;
+  const numCols = Math.ceil(W / colW) + 2;
+  const approxRow = Math.round(worldY / rowH);
+  for (let c = -1; c < numCols; c++) {
+    for (let rr = approxRow - 2; rr <= approxRow + 2; rr++) {
+      const hx = HEX_R + c * colW;
+      const hy = rr * rowH + (((c % 2) + 2) % 2 ? rowH * 0.5 : 0);
+      const dx = cx - hx, dy = worldY - hy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < bestDist) { bestDist = dist; bestX = hx; bestY = hy; }
+    }
+  }
+  if (bestDist > HEX_R * 1.2) return;
+
+  const key = bestX + ',' + bestY;
+  if (key === _builderLastPlacedKey) return;
+  _builderLastPlacedKey = key;
+
+  const existing = builderHexes.findIndex(h => Math.abs(h.x - bestX) < 2 && Math.abs(h.y - bestY) < 2);
+  if (existing >= 0) {
+    builderHexes[existing].type = builderSelectedType;
+    builderHexes[existing].hp = CELL_TYPES[builderSelectedType].hp;
+    builderHexes[existing].flash = 0;
+    builderHexes[existing].ci = Math.floor(Math.random() * 5);
+  } else {
+    builderHexes.push({
+      x: bestX, y: bestY, type: builderSelectedType,
+      hp: CELL_TYPES[builderSelectedType].hp,
+      dead: false, flash: 0, ci: Math.floor(Math.random() * 5),
+    });
+  }
+}
+
+canvas.addEventListener('mousedown', e => {
   if (!levelBuilderMode) return;
-  _builderHandleTap(e.clientX, e.clientY);
+  _builderMouseDown = true;
+  _builderMouseStartX = e.clientX;
+  _builderMouseStartY = e.clientY;
+  _builderMouseMoved = false;
+  _builderLastPlacedKey = '';
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!levelBuilderMode || !_builderMouseDown) return;
+  if (Math.abs(e.clientX - _builderMouseStartX) > 6 ||
+      Math.abs(e.clientY - _builderMouseStartY) > 6) {
+    _builderMouseMoved = true;
+  }
+  if (_builderMouseMoved) {
+    _builderPlaceAt(e.clientX, e.clientY);
+  }
+});
+
+canvas.addEventListener('mouseup', e => {
+  if (!levelBuilderMode || !_builderMouseDown) return;
+  _builderMouseDown = false;
+  if (!_builderMouseMoved) {
+    _builderHandleTap(e.clientX, e.clientY);
+  }
+  _builderMouseMoved = false;
+  _builderLastPlacedKey = '';
+});
+
+canvas.addEventListener('mouseleave', () => {
+  _builderMouseDown = false;
+  _builderMouseMoved = false;
 });
 
 ;(function() {
