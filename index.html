@@ -907,9 +907,7 @@ const SaveManager = {
         bees: bees.map(b => ({
           x: b.x, y: b.y, vx: b.vx, vy: b.vy, speed: b.speed,
           tpCooldown: b.tpCooldown, sizeScale: b.sizeScale,
-          phaseThrough: b.phaseThrough, effectTimer: b.effectTimer,
-          powerupId: b.powerupId, powerupColor: b.powerupColor,
-          powerupTimer: b.powerupTimer
+          phaseThrough: b.phaseThrough, effectTimer: b.effectTimer
         })),
         // Hexes — skip dead cells to save space
         hexes: hexes.filter(h => !h.dead).map(h => {
@@ -926,8 +924,6 @@ const SaveManager = {
         activePowerup: activePowerup ? { ...activePowerup } : null,
         hasHendOfGod,
         honeySurgeFills,
-        pendingPowerupId: pendingPowerup ? pendingPowerup.id : null,
-        powerupBeesRemaining,
         upgradeSlots: upgradeSlots.map(s => ({ ...s })),
         powerupDrops: powerupDrops.map(d => ({
           x: d.x, y: d.y, vy: d.vy, typeId: d.type.id, flash: d.flash
@@ -1006,9 +1002,6 @@ const SaveManager = {
         bee.sizeScale    = b.sizeScale    ?? 1;
         bee.phaseThrough = b.phaseThrough ?? false;
         bee.effectTimer  = b.effectTimer  ?? 0;
-        bee.powerupId    = b.powerupId    ?? null;
-        bee.powerupColor = b.powerupColor ?? null;
-        bee.powerupTimer = b.powerupTimer ?? 0;
         return bee;
       });
 
@@ -1040,13 +1033,7 @@ const SaveManager = {
       activePowerup        = data.activePowerup        ?? null;
       hasHendOfGod         = data.hasHendOfGod         ?? false;
       honeySurgeFills      = data.honeySurgeFills      ?? 0;
-      powerupBeesRemaining = data.powerupBeesRemaining ?? 0;
       upgradeSlots         = data.upgradeSlots         ?? [];
-
-      // Restore pendingPowerup by id lookup
-      pendingPowerup = data.pendingPowerupId
-        ? TEMP_POWERUPS.find(t => t.id === data.pendingPowerupId) || null
-        : null;
 
       // Restore powerupDrops with type lookup
       powerupDrops = (data.powerupDrops || []).map(d => ({
@@ -1258,21 +1245,29 @@ const music = {
   },
 
   muffle() {
-    if (!this.filter) return;
     this.muffled = true;
-    // Fade filter cutoff down to 400Hz over 500ms for muffled sound
-    this.filter.frequency.cancelScheduledValues(AC.currentTime);
-    this.filter.frequency.setValueAtTime(this.filter.frequency.value, AC.currentTime);
-    this.filter.frequency.exponentialRampToValueAtTime(400, AC.currentTime + 0.5);
+    if (this.filter) {
+      // Desktop: lowpass filter for true muffle
+      this.filter.frequency.cancelScheduledValues(AC.currentTime);
+      this.filter.frequency.setValueAtTime(this.filter.frequency.value, AC.currentTime);
+      this.filter.frequency.exponentialRampToValueAtTime(400, AC.currentTime + 0.5);
+    } else if (this._isMobile && this.el) {
+      // Mobile fallback: drop volume to simulate muffle
+      this.el.volume = musicVolume * 0.3;
+    }
   },
 
   unmuffle() {
-    if (!this.filter) return;
     this.muffled = false;
-    // Fade filter cutoff back to 22kHz over 400ms
-    this.filter.frequency.cancelScheduledValues(AC.currentTime);
-    this.filter.frequency.setValueAtTime(this.filter.frequency.value, AC.currentTime);
-    this.filter.frequency.exponentialRampToValueAtTime(22000, AC.currentTime + 0.4);
+    if (this.filter) {
+      // Desktop: restore lowpass to wide open
+      this.filter.frequency.cancelScheduledValues(AC.currentTime);
+      this.filter.frequency.setValueAtTime(this.filter.frequency.value, AC.currentTime);
+      this.filter.frequency.exponentialRampToValueAtTime(22000, AC.currentTime + 0.4);
+    } else if (this._isMobile && this.el) {
+      // Mobile fallback: restore full volume
+      this.el.volume = musicVolume;
+    }
   },
 
   stop() {
@@ -1954,10 +1949,11 @@ const TEMP_POWERUPS = [
   { id:'booBee',     name:'BOO-BEE',     color:'#a040ff', duration:600, desc:'BEES TURN INTO GHOSTS AND PHASE THROUGH CELLS DEALING DAMAGE' },
   { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'BEES MOVE SLOWER AND IN A WAVY TRAJECTORY' },
   { id:'beeGer',     name:'BEE-GER',     color:'#ff6030', duration:600, desc:'BEES GET TWICE AS BIG AND DO DOUBLE DAMAGE' },
-  { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:360, desc:'BEES BECOME MASSIVE AND DEAL TRIPLE DAMAGE' },
+  { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:600, desc:'BEES BECOME MASSIVE AND DEAL TRIPLE DAMAGE' },
   { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'A DEVIL BEE APPEARS AND TURNS MULTIPLE CELLS INTO BOMBS' },
   { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
   { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
+  { id:'magnetHends', name:'MAGNET HENDS', color:'#60c0ff', duration:600, desc:'BEES GET PULLED TOWARD THE HENDS AS THEY FALL' },
 ];
 let activePowerup = null;   // { id, name, color, ticksLeft } or null
 let puAnnounce = null;      // { text, color, timer, maxTimer } — pickup text announcement
@@ -1975,20 +1971,13 @@ function deactivatePowerup() {
   honeySurgeFills = 0;
 }
 
-// Per-bee powerup IDs (applied on paddle bounce, limited to 6 bees)
-const PER_BEE_POWERUPS = new Set(['beeGer','beeHemoth','booBee','beeR']);
-
 function activatePowerup(type, px, py) {
   sfx.powerup();
   SaveManager.discover(type.id); // track powerup discovery for guide
   // Large centered text announcement
   puAnnounce = { text: type.name, color: type.color, timer: 120, maxTimer: 120 };
-  if (type.duration > 0 && PER_BEE_POWERUPS.has(type.id)) {
-    // Per-bee timed — store as pending, applied on next 6 paddle bounces
-    pendingPowerup = type;
-    powerupBeesRemaining = 6;
-  } else if (type.duration > 0) {
-    // Global timed (honeySurge) — replace any existing
+  if (type.duration > 0) {
+    // Global timed — applies to ALL bees on screen for duration
     activePowerup = { id: type.id, name: type.name, color: type.color, ticksLeft: type.duration };
   } else if (type.duration === -1) {
     // Stored (HEND OF GOD)
@@ -2168,7 +2157,11 @@ function updateDroplets() {
     d.y += (d.ty - d.y) * d.prog * 0.18;
     if (d.prog >= 0.98) { totalHoney++; levelHoneyEarned++; lifetimeHoney++; d.done = true; checkMeterFull(); }
   }
-  droplets = droplets.filter(d => !d.done);
+  let _dw = 0;
+  for (let i = 0; i < droplets.length; i++) {
+    if (!droplets[i].done) { if (i !== _dw) droplets[_dw] = droplets[i]; _dw++; }
+  }
+  droplets.length = _dw;
 }
 
 // ── Falling (non-collectible) honey drops — from side wall cleanup zone ──
@@ -2180,7 +2173,12 @@ function updateFallingDrops() {
     d.vy += 0.06; // gravity
     d.life -= 0.012;
   }
-  _fallingDrops = _fallingDrops.filter(d => d.life > 0 && d.y < H + 20);
+  let _fw = 0;
+  for (let i = 0; i < _fallingDrops.length; i++) {
+    const d = _fallingDrops[i];
+    if (d.life > 0 && d.y < H + 20) { if (i !== _fw) _fallingDrops[_fw] = d; _fw++; }
+  }
+  _fallingDrops.length = _fw;
 }
 function drawFallingDrops() {
   for (const d of _fallingDrops) {
@@ -2777,7 +2775,7 @@ function drawTrail(b) {
   // Resolve active tracer for color — powerup overrides cosmetic choice
   let tracerObj = null;
   let _puTrailOverride = null;
-  if (b.powerupId) {
+  if (activePowerup) {
     // Powerup trail override colors
     const puTrails = {
       beeGer:     { color:'rgba(255,160,40,', width: 3.0 },
@@ -2785,7 +2783,7 @@ function drawTrail(b) {
       booBee:     { color:'rgba(200,220,255,', width: 1.5 },
       beeR:       { color:'rgba(80,220,80,',   width: 2.0 },
     };
-    _puTrailOverride = puTrails[b.powerupId] || null;
+    _puTrailOverride = puTrails[activePowerup?.id] || null;
   }
   if (!_puTrailOverride) {
     if (selectedTracer !== 'classic') {
@@ -2898,14 +2896,8 @@ function drawBee(b) {
   {
     let auraColor = null;
     // Powerup aura override
-    if (b.powerupId) {
-      const puAuras = {
-        beeGer:    'rgba(255,160,40,',
-        beeHemoth: 'rgba(255,60,20,',
-        booBee:    'rgba(180,200,255,',
-        beeR:      'rgba(80,200,80,',
-      };
-      auraColor = puAuras[b.powerupId] || null;
+    if (activePowerup) {
+      auraColor = _puAuras[activePowerup.id] || null;
     }
     // Fall back to cosmetic aura
     if (!auraColor && selectedAura !== 'none') {
@@ -2914,7 +2906,7 @@ function drawBee(b) {
     }
     if (auraColor) {
       const pulse = 0.7 + 0.3 * Math.sin(tick * 0.06);
-      const auraR = b.powerupId ? 20 + pulse * 6 : 16 + pulse * 4; // bigger for powerups
+      const auraR = activePowerup ? 20 + pulse * 6 : 16 + pulse * 4; // bigger for powerups
       const glow = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, auraR);
       glow.addColorStop(0, auraColor + (0.35 * pulse).toFixed(2) + ')');
       glow.addColorStop(0.5, auraColor + (0.15 * pulse).toFixed(2) + ')');
@@ -2927,19 +2919,19 @@ function drawBee(b) {
   const angle = Math.atan2(b.vy, b.vx) + Math.PI/2;
   // Powerup-based size scaling — smooth transitions
   let targetScale = b.sizeScale || 1;
-  if (b.powerupId === 'beeGer') targetScale *= 1.5;
-  if (b.powerupId === 'beeHemoth') targetScale *= 3;
+  if (activePowerup?.id === 'beeGer') targetScale *= 1.5;
+  if (activePowerup?.id === 'beeHemoth') targetScale *= 3;
   // Smooth lerp toward target scale
   if (!b._displayScale) b._displayScale = targetScale;
   b._displayScale += (targetScale - b._displayScale) * 0.12; // ~8 frames to reach target
   const scale = b._displayScale;
 
   // BOO-BEE transparency
-  if (b.powerupId === 'booBee') ctx.globalAlpha = 0.5;
+  if (activePowerup?.id === 'booBee') ctx.globalAlpha = 0.5;
 
   // Flicker effect for expiring timed powerups (last ~2.5 seconds)
-  if (b.powerupId && b.powerupTimer > 0 && b.powerupTimer < 150) {
-    const flickRate = b.powerupTimer < 60 ? 4 : 8; // faster flicker in last second
+  if (activePowerup && activePowerup.ticksLeft > 0 && activePowerup.ticksLeft < 150) {
+    const flickRate = activePowerup.ticksLeft < 60 ? 4 : 8; // faster flicker in last second
     if (Math.floor(tick / flickRate) % 2 === 0) ctx.globalAlpha *= 0.3;
   }
 
@@ -2951,14 +2943,14 @@ function drawBee(b) {
   // Use PNG bee frames if loaded
   const usePNG = beeFrames.length === 4 && beeFrames[0];
   if (usePNG) {
-    const flap = (b.powerupId === 'beeHemoth' || b.powerupId === 'beeR') ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
+    const flap = (activePowerup?.id === 'beeHemoth' || activePowerup?.id === 'beeR') ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
     const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / flap) % beeFrameSeq.length];
     const img = beeFrames[frameIdx];
     // Draw centered, scaled to match the pixel sprite bounding box
     const dw = BOX * 2.4, dh = BOY * 2.4;
 
     // Determine if we need tinting
-    const needsBeeRTint = b.powerupId === 'beeR';
+    const needsBeeRTint = activePowerup?.id === 'beeR';
     const needsSkinTint = !needsBeeRTint && selectedBeeSkin !== 'classic';
     const bskin = needsSkinTint ? BEE_SKINS.find(s => s.id === selectedBeeSkin) : null;
     const hasTint = needsBeeRTint || (bskin && bskin.tint && lifetimeHoney >= bskin.cost);
@@ -3004,7 +2996,7 @@ function drawBee(b) {
   ctx.globalAlpha = 1;
 
   // BEE-R burp bubbles
-  if (b.powerupId === 'beeR' && tick % 20 < 1) {
+  if (activePowerup?.id === 'beeR' && tick % 20 < 1) {
     for (let i = 0; i < 2; i++) {
       particles.push({
         x: b.x + (Math.random()-0.5)*8,
@@ -3041,11 +3033,104 @@ const CELL_TYPES = {
   QUEEN:        { hp: 1,        honey: 50, color: 'hexQueen',       label: 'Queen' },
 };
 
+// ── Pre-computed hex color cache (avoids lightenCol/darkenCol per frame) ──
+const _hexColorCache = {};
+for (const typeName in CELL_TYPES) {
+  const ct = CELL_TYPES[typeName];
+  const cols = PAL[ct.color];
+  for (let ci = 0; ci < cols.length; ci++) {
+    const baseCol = cols[ci % cols.length];
+    _hexColorCache[typeName + '_' + ci] = {
+      light: lightenCol(baseCol, 15),
+      base:  baseCol,
+      dark:  darkenCol(baseCol, 35)
+    };
+  }
+}
+
+// ── Pre-computed stroke colors & line widths per cell type ──
+const _hexStrokeColor = {
+  PORTAL: '#cc60ff', HONEY: '#e8b000', WAX: '#b0a070', BROOD: '#a86800',
+  HEAVY: '#a08040', ROYAL: '#d4af37', ANCIENT: '#4a7060', TITAN: '#6060a0',
+  CHARGED: '#50d0ff', BOMB: '#ff4020', UNBREAKABLE: '#707070',
+  ROYAL_GUARD: '#d4af37', QUEEN: '#ffd700'
+};
+const _hexLineW = {
+  QUEEN: 3, PORTAL: 2.5, UNBREAKABLE: 2.5, ROYAL_GUARD: 2.5
+};
+
+// Pre-computed powerup aura color prefixes (avoids object creation per bee per frame)
+const _puAuras = {
+  beeGer:    'rgba(255,160,40,',
+  beeHemoth: 'rgba(255,60,20,',
+  booBee:    'rgba(180,200,255,',
+  beeR:      'rgba(80,200,80,',
+};
+
+// Pre-computed crack stroke styles (avoids template literal + toFixed per frame)
+const _crackStroke = [];
+const _crackHighlight = [];
+for (let lvl = 0; lvl <= 5; lvl++) {
+  _crackStroke[lvl] = `rgba(0,0,0,${(0.3 + lvl * 0.1).toFixed(2)})`;
+  _crackHighlight[lvl] = `rgba(40,25,10,${(0.2 + lvl * 0.05).toFixed(2)})`;
+}
+
 // ═══════════════════════════════════════════════════════
 // HEXAGONS — smaller radius for less crowding
 // ═══════════════════════════════════════════════════════
 const HEX_R      = CONFIG.HEX_R;        // alias — value lives in CONFIG
 // HEX_COLL_R defined as derived constant in CONFIG section above
+
+// ── Spatial hash grid for fast hex neighbor/collision queries ──
+const _HEX_GRID_SIZE = 54; // 3 × HEX_R — each bucket covers ~3 cell widths
+const _hexGrid = new Map();
+function _hexGridClear() { _hexGrid.clear(); }
+function _hexGridInsert(h) {
+  const key = (Math.floor(h.x / _HEX_GRID_SIZE) << 16) | (Math.floor(h.y / _HEX_GRID_SIZE) & 0xFFFF);
+  const bucket = _hexGrid.get(key);
+  if (bucket) bucket.push(h);
+  else _hexGrid.set(key, [h]);
+}
+function _hexGridRebuild() {
+  _hexGrid.clear();
+  for (let i = 0; i < hexes.length; i++) {
+    const h = hexes[i];
+    if (!h.dead) _hexGridInsert(h);
+  }
+}
+// Returns all live hexes within radius of (x,y) — checks only nearby grid cells
+const _hexGridQueryBuf = [];
+function _hexGridQuery(x, y, radius) {
+  _hexGridQueryBuf.length = 0;
+  const gs = _HEX_GRID_SIZE;
+  const minC = Math.floor((x - radius) / gs), maxC = Math.floor((x + radius) / gs);
+  const minR = Math.floor((y - radius) / gs), maxR = Math.floor((y + radius) / gs);
+  for (let c = minC; c <= maxC; c++) {
+    for (let r = minR; r <= maxR; r++) {
+      const bucket = _hexGrid.get((c << 16) | (r & 0xFFFF));
+      if (bucket) {
+        for (let i = 0; i < bucket.length; i++) {
+          _hexGridQueryBuf.push(bucket[i]);
+        }
+      }
+    }
+  }
+  return _hexGridQueryBuf;
+}
+
+// Portal pair cache — maps portalChannel → array of portal hexes
+const _portalPairCache = new Map();
+function _portalCacheRebuild() {
+  _portalPairCache.clear();
+  for (let i = 0; i < hexes.length; i++) {
+    const h = hexes[i];
+    if (!h.dead && h.type === 'PORTAL' && h.portalChannel != null) {
+      const arr = _portalPairCache.get(h.portalChannel);
+      if (arr) arr.push(h);
+      else _portalPairCache.set(h.portalChannel, [h]);
+    }
+  }
+}
 let tick = 0;
 
 function hexPts(cx, cy, r) {
@@ -3065,7 +3150,7 @@ function hexPath(pts) {
 
 function getCrackLevel(h) {
   const max = CELL_TYPES[h.type].hp;
-  if (max <= 1 || h.hp >= max) return 0;
+  if (h.hp >= max) return 0;  // undamaged — no cracks
   const ratio = h.hp / max;
   if (ratio > 0.8) return 1;
   if (ratio > 0.6) return 2;
@@ -3154,14 +3239,14 @@ function drawCracks(cx, cy, level, cellSeed) {
   }
 
   // Stroke the entire connected path at once
-  ctx.strokeStyle = `rgba(0,0,0,${(0.3 + level * 0.1).toFixed(2)})`;
+  ctx.strokeStyle = _crackStroke[level];
   ctx.lineWidth = 0.8 + level * 0.2;
   ctx.lineJoin = 'bevel';
   ctx.stroke();
 
   // Secondary thinner highlight alongside (depth effect)
   if (level >= 3) {
-    ctx.strokeStyle = `rgba(40,25,10,${(0.2 + level * 0.05).toFixed(2)})`;
+    ctx.strokeStyle = _crackHighlight[level];
     ctx.lineWidth = 0.4;
     ctx.stroke();
   }
@@ -3174,42 +3259,20 @@ function drawHex(h) {
   const pts = hexPts(h.x, h.y, HEX_R);
   hexPath(pts);
 
-  // Fill color — radial gradient for 3D depth
-  if (h.flash > 0) {
-    ctx.fillStyle = h.type === 'PORTAL' ? '#e0a0ff' : h.type === 'HONEY' ? '#ffffff'
-                  : h.type === 'CHARGED' ? '#a0e8ff' : h.type === 'BOMB' ? '#ff8060'
-                  : h.type === 'UNBREAKABLE' ? '#909090'
-                  : h.type === 'ROYAL_GUARD' ? '#c090ff'
-                  : h.type === 'QUEEN' ? '#ff80c0' : '#fff';
-  } else {
-    const cols = PAL[CELL_TYPES[h.type].color];
-    const baseCol = cols[h.ci % cols.length];
-    const fillBright = 15; // uniform brightness — one shade per type
+  // Fill color — radial gradient for 3D depth (uses cached colors)
+  {
+    const cc = _hexColorCache[h.type + '_' + (h.ci % (PAL[CELL_TYPES[h.type].color].length))];
     const grad = ctx.createRadialGradient(h.x, h.y - HEX_R*0.15, 0, h.x, h.y, HEX_R);
-    grad.addColorStop(0, lightenCol(baseCol, fillBright));
-    grad.addColorStop(0.55, baseCol);
-    grad.addColorStop(1.0, darkenCol(baseCol, 35));
+    grad.addColorStop(0, cc.light);
+    grad.addColorStop(0.55, cc.base);
+    grad.addColorStop(1.0, cc.dark);
     ctx.fillStyle = grad;
   }
   ctx.fill();
 
-  // Outline color
-  ctx.strokeStyle = h.type === 'PORTAL' ? '#cc60ff'
-                  : h.type === 'HONEY'  ? '#e8b000'
-                  : h.type === 'WAX'    ? '#b0a070'
-                  : h.type === 'BROOD'  ? '#a86800'
-                  : h.type === 'HEAVY'  ? '#a08040'
-                  : h.type === 'ROYAL'  ? '#d4af37'
-                  : h.type === 'ANCIENT' ? '#4a7060'
-                  : h.type === 'TITAN'  ? '#6060a0'
-                  : h.type === 'CHARGED' ? '#50d0ff'
-                  : h.type === 'BOMB'   ? '#ff4020'
-                  : h.type === 'UNBREAKABLE' ? '#707070'
-                  : h.type === 'ROYAL_GUARD' ? '#d4af37'
-                  : h.type === 'QUEEN'  ? '#ffd700'
-                  : PAL.hexLine;
-  ctx.lineWidth = (h.type === 'QUEEN') ? 3
-                : (h.type === 'PORTAL' || h.type === 'UNBREAKABLE' || h.type === 'ROYAL_GUARD') ? 2.5 : 2;
+  // Outline color (cached lookups)
+  ctx.strokeStyle = _hexStrokeColor[h.type] || PAL.hexLine;
+  ctx.lineWidth = _hexLineW[h.type] || 2;
   ctx.stroke();
 
   // Honey drip teardrops — multiple variants, cluster-sized
@@ -3219,7 +3282,9 @@ function drawHex(h) {
     // Skip drips if a living cell sits directly below (prevents overlap)
     const rowH = HEX_R * Math.sqrt(3);
     let hasBelow = false;
-    for (const n of hexes) {
+    const _dripNear = _hexGridQuery(h.x, h.y + rowH * 0.6, HEX_R * 1.5);
+    for (let _di = 0; _di < _dripNear.length; _di++) {
+      const n = _dripNear[_di];
       if (!n.dead && n !== h && Math.abs(n.x - h.x) < HEX_R * 1.2 && n.y > h.y && n.y - h.y < rowH * 1.2) {
         hasBelow = true; break;
       }
@@ -3256,8 +3321,6 @@ function drawHex(h) {
     ctx.globalAlpha = 1;
     } // end !hasBelow
   }
-
-  if (h.flash > 0) return;
 
   // Inner accent / detail
   hexPath(hexPts(h.x, h.y, HEX_R * 0.52));
@@ -3586,7 +3649,9 @@ for (let i=0;i<6;i++) {
 // BLEND_F moved to CONFIG.BLEND_F
 
 function checkHex(b) {
-  for (const h of hexes) {
+  const _nearby = _hexGridQuery(b.x, b.y, BALL_R + HEX_COLL_R + 1);
+  for (let _qi = 0; _qi < _nearby.length; _qi++) {
+    const h = _nearby[_qi];
     if (h.dead) continue;
     const dx = b.x - h.x, dy = b.y - h.y;
     const dist = Math.hypot(dx, dy);
@@ -3620,7 +3685,7 @@ function checkHex(b) {
           h.flash = 6;
           return {dead:false, h};
         }
-        const dest = hexes.find(q => q.type === 'PORTAL' && q !== h && q.portalChannel === h.portalChannel);
+        const dest = _portalPairCache.get(h.portalChannel)?.find(q => q !== h && !q.dead);
         if (dest) {
           b.x = dest.x; b.y = dest.y;
           b.tpCooldown = CONFIG.PORTAL_COOLDOWN;
@@ -3668,8 +3733,8 @@ function checkHex(b) {
         const gate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
         if (gate && !gate.dead) {
           let qdmg = 1 + powers.beefyBees;
-          if (b.powerupId === 'beeGer') qdmg *= 2;
-          if (b.powerupId === 'beeHemoth') qdmg = 5;
+          if (activePowerup?.id === 'beeGer') qdmg *= 2;
+          if (activePowerup?.id === 'beeHemoth') qdmg = 5;
           gate.hp -= qdmg;
           h.flash = 8; haptic(HAPTIC.queen);
           if (gate.hp <= 0) {
@@ -3686,7 +3751,7 @@ function checkHex(b) {
       }
 
       // Phase-through check (BOO-BEE or BEE-HEMOTH)
-      const phasing = b.powerupId === 'booBee' || b.powerupId === 'beeHemoth';
+      const phasing = activePowerup?.id === 'booBee' || activePowerup?.id === 'beeHemoth';
       if (!phasing) {
         // reflect velocity
         const dot = b.vx*nx + b.vy*ny;
@@ -3701,8 +3766,8 @@ function checkHex(b) {
       let dmg = 1 + powers.beefyBees;
       if (h.type === 'THICK') dmg += powers.waxBreaker;
       if (h.type === 'ROYAL') dmg += powers.royalFury;
-      if (b.powerupId === 'beeGer') dmg *= 2;
-      if (b.powerupId === 'beeHemoth') dmg = 5;
+      if (activePowerup?.id === 'beeGer') dmg *= 2;
+      if (activePowerup?.id === 'beeHemoth') dmg = 5;
       h.hp -= dmg; h.flash = 10;
       SaveManager.discover(h.type); // track cell discovery for guide
 
@@ -3736,10 +3801,14 @@ function checkHex(b) {
 // ═══════════════════════════════════════════════════════
 // PARTICLES — square pixels for 8-bit look
 // ═══════════════════════════════════════════════════════
+const MAX_PARTICLES = 300;
+const MAX_DEBRIS = 80;
 let particles = [];
 
 function spawnParts(x, y, n, cols) {
-  for (let i=0;i<n;i++) {
+  const room = MAX_PARTICLES - particles.length;
+  const count = Math.min(_perfMode ? Math.ceil(n / 2) : n, room);
+  for (let i=0;i<count;i++) {
     const a=Math.random()*Math.PI*2, s=0.4+Math.random()*1.6;
     particles.push({x,y, vx:Math.cos(a)*s, vy:Math.sin(a)*s,
                     life:1, r:1+Math.random()*2,
@@ -3750,7 +3819,9 @@ function spawnParts(x, y, n, cols) {
 // Falling debris chunks — angular armor pieces that tumble with gravity
 let _debris = [];
 function spawnDebris(x, y, n, cols) {
-  for (let i = 0; i < n; i++) {
+  const room = MAX_DEBRIS - _debris.length;
+  const count = Math.min(_perfMode ? Math.ceil(n / 2) : n, room);
+  for (let i = 0; i < count; i++) {
     const a = Math.random() * Math.PI * 2;
     const spd = 0.3 + Math.random() * 1.0;
     _debris.push({
@@ -3768,8 +3839,14 @@ function spawnDebris(x, y, n, cols) {
 }
 
 function drawParts() {
-  particles = particles.filter(p=>p.life>0);
-  for (const p of particles) {
+  // In-place compaction (avoids .filter() array rebuild)
+  let pw = 0;
+  for (let i = 0; i < particles.length; i++) {
+    if (particles[i].life > 0) { if (i !== pw) particles[pw] = particles[i]; pw++; }
+  }
+  particles.length = pw;
+  for (let i = 0; i < particles.length; i++) {
+    const p = particles[i];
     p.vx *= 0.97; p.vy *= 0.97;  // honey-sticky drag
     p.x += p.vx; p.y += p.vy; p.vy += 0.04; p.life -= 0.018;
     ctx.globalAlpha = Math.max(0, p.life);
@@ -3777,9 +3854,14 @@ function drawParts() {
     const sz = Math.max(1, Math.round(p.r * p.life));
     ctx.fillRect(Math.round(p.x)-sz/2|0, Math.round(p.y)-sz/2|0, sz, sz);
   }
-  // Debris chunks — angular falling pieces
-  _debris = _debris.filter(d => d.life > 0);
-  for (const d of _debris) {
+  // Debris chunks — angular falling pieces (in-place compaction)
+  let dw = 0;
+  for (let i = 0; i < _debris.length; i++) {
+    if (_debris[i].life > 0) { if (i !== dw) _debris[dw] = _debris[i]; dw++; }
+  }
+  _debris.length = dw;
+  for (let i = 0; i < _debris.length; i++) {
+    const d = _debris[i];
     d.vx *= 0.99;
     d.vy += 0.06; // gravity
     d.x += d.vx; d.y += d.vy;
@@ -3815,30 +3897,30 @@ function bgRand(seed) {
 const BG_THEMES = [
   { name:'Old Hive Base',
     scrollStart: 0,
-    topCol:[55,35,12],   botCol:[85,55,20],      // warm amber cave
-    gridCol:[70,45,12],  accentCol:[90,60,18],
-    fillChance:0.14,     fillCol:[170,140,70],
+    topCol:[25,14,5],    botCol:[40,24,8],       // dark cave
+    gridCol:[35,22,8],   accentCol:[50,30,10],
+    fillChance:0.14,     fillCol:[100,70,25],
     gridAlpha:0.06,
     particleCol:[80,50,20], particleAlpha:0.20, particleRate:0.18 },
   { name:'Active Comb',
     scrollStart: -1500,
-    topCol:[90,60,22],   botCol:[140,95,35],     // bright amber
-    gridCol:[80,55,16],  accentCol:[110,75,24],
-    fillChance:0.22,     fillCol:[180,110,30],
+    topCol:[40,25,10],   botCol:[65,40,15],      // warm dark amber
+    gridCol:[45,30,10],  accentCol:[60,40,14],
+    fillChance:0.22,     fillCol:[120,75,20],
     gridAlpha:0.08,
     particleCol:[180,140,30], particleAlpha:0.18, particleRate:0.22 },
   { name:'Royal Chambers',
     scrollStart: -3000,
-    topCol:[150,105,40], botCol:[190,145,55],    // rich gold
-    gridCol:[130,90,30], accentCol:[170,125,50],
-    fillChance:0.20,     fillCol:[210,165,60],
+    topCol:[70,45,16],   botCol:[95,65,22],      // darker gold
+    gridCol:[60,40,14],  accentCol:[85,58,20],
+    fillChance:0.20,     fillCol:[140,100,30],
     gridAlpha:0.10,
     particleCol:[200,160,50], particleAlpha:0.15, particleRate:0.30 },
   { name:'Ancient Depths',
     scrollStart: -5000,
-    topCol:[75,40,75],   botCol:[115,55,120],    // warm purple
-    gridCol:[80,45,90],  accentCol:[110,65,125],
-    fillChance:0.16,     fillCol:[140,85,165],
+    topCol:[35,18,35],   botCol:[55,28,58],      // dark purple
+    gridCol:[40,22,45],  accentCol:[55,32,62],
+    fillChance:0.16,     fillCol:[80,45,90],
     gridAlpha:0.12,
     particleCol:[120,80,170], particleAlpha:0.12, particleRate:0.40 },
 ];
@@ -3923,6 +4005,30 @@ function _drawOrganicBlob(c, cx, cy, rx, ry, segs, rng, jitter) {
   c.fill();
 }
 
+// ── Draw a craggy, rocky wall edge profile ──
+// Generates a jagged wall silhouette from top to bottom on one side
+function _drawCraggyWall(c, rng, side, baseWidth, jag, LH) {
+  const steps = Math.ceil(LH / 12);
+  const pts = [];
+  for (let i = 0; i <= steps; i++) {
+    const y = (i / steps) * LH;
+    const wiggle = baseWidth + (rng() - 0.4) * jag;
+    const x = side === 'left' ? wiggle : W - wiggle;
+    pts.push({ x, y });
+  }
+  c.beginPath();
+  if (side === 'left') {
+    c.moveTo(0, 0);
+    for (const p of pts) c.lineTo(p.x, p.y);
+    c.lineTo(0, LH);
+  } else {
+    c.moveTo(W, 0);
+    for (const p of pts) c.lineTo(p.x, p.y);
+    c.lineTo(W, LH);
+  }
+  c.closePath();
+}
+
 // ── Draw a single hex on an offscreen context ──
 function _drawHexOn(c, hx, hy, r) {
   const pp = hexPts(hx, hy, r);
@@ -3935,199 +4041,165 @@ function _drawHexOn(c, hx, hy, r) {
 function _generateBGLayers() {
   const LH = BG_LAYER_H;
 
-  // --- FAR LAYER: dense honeycomb + tunnels + glows ---
+  // --- FAR LAYER: dark cave base + faint honeycomb grid + warm glow ---
   _bgLayerFar = document.createElement('canvas');
   _bgLayerFar.width = W; _bgLayerFar.height = LH;
   const fc = _bgLayerFar.getContext('2d');
-  fc.fillStyle = 'rgb(45,28,8)';
+  // Dark cave base
+  fc.fillStyle = 'rgb(18,10,4)';
   fc.fillRect(0, 0, W, LH);
-  // Honeycomb grid
-  const hR = 18, hCS = hR * 1.5, hRS = hR * Math.sqrt(3);
+  // Subtle dark texture noise
   const fRng = bgRand(7331);
-  fc.lineWidth = 0.7;
+  for (let i = 0; i < 600; i++) {
+    const nx = fRng() * W, ny = fRng() * LH;
+    const ns = 8 + fRng() * 25;
+    fc.fillStyle = `rgba(${10 + Math.floor(fRng() * 20)},${6 + Math.floor(fRng() * 12)},${2 + Math.floor(fRng() * 6)},${0.3 + fRng() * 0.4})`;
+    fc.beginPath(); fc.ellipse(nx, ny, ns, ns * (0.5 + fRng() * 0.5), fRng() * Math.PI, 0, Math.PI * 2); fc.fill();
+    if (ny < ns) { fc.beginPath(); fc.ellipse(nx, ny + LH, ns, ns * 0.7, 0, 0, Math.PI * 2); fc.fill(); }
+    if (ny > LH - ns) { fc.beginPath(); fc.ellipse(nx, ny - LH, ns, ns * 0.7, 0, 0, Math.PI * 2); fc.fill(); }
+  }
+  // Very faint honeycomb grid — barely visible in the dark
+  const hR = 18, hCS = hR * 1.5, hRS = hR * Math.sqrt(3);
+  fc.lineWidth = 0.5;
   for (let c = -1; c < Math.ceil(W / hCS) + 2; c++) {
     for (let r = -1; r < Math.ceil(LH / hRS) + 2; r++) {
       const bx = c * hCS, by = r * hRS + (c % 2 ? hRS / 2 : 0);
-      const rv = fRng();
-      // Fill some cells
-      if (rv < 0.15) {
-        fc.globalAlpha = 0.20 + rv;
-        fc.fillStyle = `rgb(${80 + Math.floor(rv * 200)},${55 + Math.floor(rv * 120)},${15 + Math.floor(rv * 60)})`;
-        _drawHexOn(fc, bx, by, hR); fc.fill();
-      }
-      // Stroke all cells
-      fc.globalAlpha = 0.30 + fRng() * 0.10;
-      fc.strokeStyle = 'rgb(75,50,16)';
+      fc.globalAlpha = 0.06 + fRng() * 0.06;
+      fc.strokeStyle = `rgb(${50 + Math.floor(fRng() * 30)},${30 + Math.floor(fRng() * 20)},${8 + Math.floor(fRng() * 10)})`;
       _drawHexOn(fc, bx, by, hR); fc.stroke();
     }
   }
-  // Tunnel openings
   fc.globalAlpha = 1;
-  for (let i = 0; i < 10; i++) {
-    const tx = fRng() < 0.5 ? fRng() * W * 0.35 : W * 0.65 + fRng() * W * 0.35;
-    const ty = fRng() * LH;
-    const trx = 35 + fRng() * 50, trY = 25 + fRng() * 40;
-    fc.fillStyle = `rgba(15,8,2,${0.5 + fRng() * 0.3})`;
-    fc.beginPath(); fc.ellipse(tx, ty, trx, trY, fRng() * 0.5, 0, Math.PI * 2); fc.fill();
-    // Wrap near edges for seamless tiling
-    if (ty < trY + 20) { fc.beginPath(); fc.ellipse(tx, ty + LH, trx, trY, 0, 0, Math.PI * 2); fc.fill(); }
-    if (ty > LH - trY - 20) { fc.beginPath(); fc.ellipse(tx, ty - LH, trx, trY, 0, 0, Math.PI * 2); fc.fill(); }
-  }
-  // Glow spots
-  for (let i = 0; i < 8; i++) {
-    const gx = fRng() < 0.5 ? fRng() * W * 0.3 + 10 : W * 0.7 + fRng() * W * 0.25;
+  // Warm glow patches — scattered amber light pools
+  for (let i = 0; i < 14; i++) {
+    const gx = fRng() * W;
     const gy = fRng() * LH;
-    const gr = 60 + fRng() * 50;
+    const gr = 50 + fRng() * 80;
     const glow = fc.createRadialGradient(gx, gy, 0, gx, gy, gr);
-    glow.addColorStop(0, 'rgba(140,90,25,0.14)');
-    glow.addColorStop(0.6, 'rgba(120,75,20,0.06)');
-    glow.addColorStop(1, 'rgba(100,60,15,0)');
+    glow.addColorStop(0, `rgba(${100 + Math.floor(fRng() * 60)},${55 + Math.floor(fRng() * 35)},${10 + Math.floor(fRng() * 15)},0.10)`);
+    glow.addColorStop(0.5, 'rgba(80,45,10,0.04)');
+    glow.addColorStop(1, 'rgba(40,20,5,0)');
     fc.fillStyle = glow; fc.fillRect(gx - gr, gy - gr, gr * 2, gr * 2);
-    if (gy < gr) { const g2 = fc.createRadialGradient(gx, gy + LH, 0, gx, gy + LH, gr); g2.addColorStop(0, 'rgba(140,90,25,0.14)'); g2.addColorStop(1, 'rgba(100,60,15,0)'); fc.fillStyle = g2; fc.fillRect(gx - gr, gy + LH - gr, gr * 2, gr * 2); }
+    if (gy < gr) { const g2 = fc.createRadialGradient(gx, gy + LH, 0, gx, gy + LH, gr); g2.addColorStop(0, 'rgba(100,55,10,0.10)'); g2.addColorStop(1, 'rgba(40,20,5,0)'); fc.fillStyle = g2; fc.fillRect(gx - gr, gy + LH - gr, gr * 2, gr * 2); }
   }
-  fc.globalAlpha = 1;
 
-  // --- MID LAYER: wax walls on edges, center ~55% transparent ---
+  // --- MID LAYER: rocky cave walls on edges with warm highlights ---
   _bgLayerMid = document.createElement('canvas');
   _bgLayerMid.width = W; _bgLayerMid.height = LH;
   const mc = _bgLayerMid.getContext('2d');
   mc.clearRect(0, 0, W, LH);
   const mRng = bgRand(4219);
-  const mSegH = 350;
-  const mSegs = Math.ceil(LH / mSegH);
-  for (let s = 0; s < mSegs; s++) {
-    const sy = s * mSegH;
-    // Left edge blobs
-    const lCount = 1 + Math.floor(mRng() * 2.5);
-    for (let j = 0; j < lCount; j++) {
-      const bx = -10 + mRng() * 15;
-      const by = sy + mSegH * 0.2 + mRng() * mSegH * 0.6;
-      const brx = 40 + mRng() * 55;
-      const bry = 40 + mRng() * 70;
-      mc.fillStyle = `rgba(55,35,10,${0.75 + mRng() * 0.15})`;
-      _drawOrganicBlob(mc, bx, by, brx, bry, 8 + Math.floor(mRng() * 4), mRng, 0.6);
-      // Wrap
-      if (by - bry < 20 && s === 0) _drawOrganicBlob(mc, bx, by + LH, brx, bry, 8, mRng, 0.4);
-      if (by + bry > LH - 20 && s === mSegs - 1) _drawOrganicBlob(mc, bx, by - LH, brx, bry, 8, mRng, 0.4);
-    }
-    // Right edge blobs
-    const rCount = 1 + Math.floor(mRng() * 2.5);
-    for (let j = 0; j < rCount; j++) {
-      const bx = W + 10 - mRng() * 15;
-      const by = sy + mSegH * 0.2 + mRng() * mSegH * 0.6;
-      const brx = 40 + mRng() * 55;
-      const bry = 40 + mRng() * 70;
-      mc.fillStyle = `rgba(55,35,10,${0.75 + mRng() * 0.15})`;
-      _drawOrganicBlob(mc, bx, by, brx, bry, 8 + Math.floor(mRng() * 4), mRng, 0.6);
-      if (by - bry < 20 && s === 0) _drawOrganicBlob(mc, bx, by + LH, brx, bry, 8, mRng, 0.4);
-      if (by + bry > LH - 20 && s === mSegs - 1) _drawOrganicBlob(mc, bx, by - LH, brx, bry, 8, mRng, 0.4);
-    }
-    // Comb clusters on edges (20% chance)
-    if (mRng() < 0.20) {
-      const side = mRng() < 0.5 ? 0 : 1;
-      const cx = side === 0 ? 25 + mRng() * 40 : W - 25 - mRng() * 40;
-      const cy = sy + mRng() * mSegH;
-      const cnt = 3 + Math.floor(mRng() * 4);
-      mc.fillStyle = 'rgba(70,45,14,0.60)';
-      mc.strokeStyle = 'rgba(90,60,20,0.40)'; mc.lineWidth = 0.8;
-      for (let h = 0; h < cnt; h++) {
-        const hx = cx + (h % 3 - 1) * 16, hy = cy + Math.floor(h / 3) * 14;
-        _drawHexOn(mc, hx, hy, 9); mc.fill(); mc.stroke();
-      }
-    }
-    // Thin wax tendril (10% chance)
-    if (mRng() < 0.10) {
-      const side = mRng() < 0.5;
-      const sx = side ? 30 + mRng() * 40 : W - 30 - mRng() * 40;
-      const ex = side ? 80 + mRng() * 20 : W - 80 - mRng() * 20;
-      const ty = sy + mRng() * mSegH;
-      mc.strokeStyle = 'rgba(65,42,12,0.50)'; mc.lineWidth = 2 + mRng();
-      mc.beginPath(); mc.moveTo(sx, ty);
-      mc.quadraticCurveTo((sx + ex) / 2, ty + (mRng() - 0.5) * 50, ex, ty + (mRng() - 0.5) * 30);
-      mc.stroke();
-    }
+
+  // Draw craggy rock walls — LEFT side
+  _drawCraggyWall(mc, mRng, 'left', 55, 40, LH);
+  mc.fillStyle = 'rgba(35,18,5,0.90)'; mc.fill();
+  // Layer 2: slightly narrower, different shade for depth
+  _drawCraggyWall(mc, mRng, 'left', 40, 35, LH);
+  mc.fillStyle = 'rgba(50,28,8,0.70)'; mc.fill();
+  // RIGHT side
+  _drawCraggyWall(mc, mRng, 'right', 55, 40, LH);
+  mc.fillStyle = 'rgba(35,18,5,0.90)'; mc.fill();
+  _drawCraggyWall(mc, mRng, 'right', 40, 35, LH);
+  mc.fillStyle = 'rgba(50,28,8,0.70)'; mc.fill();
+
+  // Rocky texture bumps on the walls
+  for (let i = 0; i < 200; i++) {
+    const side = mRng() < 0.5;
+    const bx = side ? mRng() * 70 : W - mRng() * 70;
+    const by = mRng() * LH;
+    const br = 5 + mRng() * 18;
+    const bright = Math.floor(30 + mRng() * 50);
+    mc.fillStyle = `rgba(${bright + 20},${bright},${Math.floor(bright * 0.4)},${0.3 + mRng() * 0.4})`;
+    _drawOrganicBlob(mc, bx, by, br, br * (0.6 + mRng() * 0.6), 6 + Math.floor(mRng() * 3), mRng, 0.7);
+    if (by < br + 10) _drawOrganicBlob(mc, bx, by + LH, br, br * 0.7, 6, mRng, 0.5);
+    if (by > LH - br - 10) _drawOrganicBlob(mc, bx, by - LH, br, br * 0.7, 6, mRng, 0.5);
   }
-  // Hex grid texture on solid edge regions
-  mc.globalAlpha = 0.12; mc.strokeStyle = 'rgb(80,55,18)'; mc.lineWidth = 0.5;
-  const mhR = 12, mhCS = mhR * 1.5, mhRS = mhR * Math.sqrt(3);
+
+  // Warm amber/orange highlights on wall edges — like firelight
+  for (let i = 0; i < 24; i++) {
+    const side = mRng() < 0.5;
+    const hx = side ? 15 + mRng() * 50 : W - 15 - mRng() * 50;
+    const hy = mRng() * LH;
+    const hr = 20 + mRng() * 40;
+    const glow = mc.createRadialGradient(hx, hy, 0, hx, hy, hr);
+    const r = 160 + Math.floor(mRng() * 80), g = 90 + Math.floor(mRng() * 50), b = 15 + Math.floor(mRng() * 25);
+    glow.addColorStop(0, `rgba(${r},${g},${b},0.25)`);
+    glow.addColorStop(0.5, `rgba(${r - 40},${g - 20},${b},0.10)`);
+    glow.addColorStop(1, 'rgba(80,40,10,0)');
+    mc.fillStyle = glow; mc.fillRect(hx - hr, hy - hr, hr * 2, hr * 2);
+    if (hy < hr) { const g2 = mc.createRadialGradient(hx, hy + LH, 0, hx, hy + LH, hr); g2.addColorStop(0, `rgba(${r},${g},${b},0.20)`); g2.addColorStop(1, 'rgba(80,40,10,0)'); mc.fillStyle = g2; mc.fillRect(hx - hr, hy + LH - hr, hr * 2, hr * 2); }
+  }
+
+  // Honeycomb grid texture on solid wall areas (subtle)
+  mc.lineWidth = 0.6;
+  const mhR = 10, mhCS = mhR * 1.5, mhRS = mhR * Math.sqrt(3);
   for (let c = -1; c < Math.ceil(W / mhCS) + 2; c++) {
     const bx = c * mhCS;
-    if (bx > 85 && bx < W - 85) continue; // skip center
+    if (bx > 75 && bx < W - 75) continue;
     for (let r = -1; r < Math.ceil(LH / mhRS) + 2; r++) {
       const by = r * mhRS + (c % 2 ? mhRS / 2 : 0);
+      mc.globalAlpha = 0.08 + mRng() * 0.08;
+      mc.strokeStyle = `rgb(${70 + Math.floor(mRng() * 30)},${45 + Math.floor(mRng() * 20)},${12 + Math.floor(mRng() * 10)})`;
       _drawHexOn(mc, bx, by, mhR); mc.stroke();
     }
   }
   mc.globalAlpha = 1;
 
-  // --- NEAR LAYER: bold wax walls, center ~70% transparent ---
+  // --- NEAR LAYER: foreground rock framing with bold highlights ---
   _bgLayerNear = document.createElement('canvas');
   _bgLayerNear.width = W; _bgLayerNear.height = LH;
   const nc = _bgLayerNear.getContext('2d');
   nc.clearRect(0, 0, W, LH);
   const nRng = bgRand(8503);
-  const nSegH = 280;
-  const nSegs = Math.ceil(LH / nSegH);
-  for (let s = 0; s < nSegs; s++) {
-    const sy = s * nSegH;
-    // Left edge blobs (bold, thick)
-    const lC = 1 + Math.floor(nRng() * 1.5);
-    for (let j = 0; j < lC; j++) {
-      const bx = -15 + nRng() * 10;
-      const by = sy + nSegH * 0.15 + nRng() * nSegH * 0.7;
-      const brx = 30 + nRng() * 40;
-      const bry = 35 + nRng() * 55;
-      nc.fillStyle = `rgba(40,22,6,${0.85 + nRng() * 0.10})`;
-      _drawOrganicBlob(nc, bx, by, brx, bry, 7 + Math.floor(nRng() * 3), nRng, 0.5);
-      if (by - bry < 15 && s === 0) _drawOrganicBlob(nc, bx, by + LH, brx, bry, 7, nRng, 0.4);
-      if (by + bry > LH - 15 && s === nSegs - 1) _drawOrganicBlob(nc, bx, by - LH, brx, bry, 7, nRng, 0.4);
-    }
-    // Right edge blobs
-    const rC = 1 + Math.floor(nRng() * 1.5);
-    for (let j = 0; j < rC; j++) {
-      const bx = W + 15 - nRng() * 10;
-      const by = sy + nSegH * 0.15 + nRng() * nSegH * 0.7;
-      const brx = 30 + nRng() * 40;
-      const bry = 35 + nRng() * 55;
-      nc.fillStyle = `rgba(40,22,6,${0.85 + nRng() * 0.10})`;
-      _drawOrganicBlob(nc, bx, by, brx, bry, 7 + Math.floor(nRng() * 3), nRng, 0.5);
-      if (by - bry < 15 && s === 0) _drawOrganicBlob(nc, bx, by + LH, brx, bry, 7, nRng, 0.4);
-      if (by + bry > LH - 15 && s === nSegs - 1) _drawOrganicBlob(nc, bx, by - LH, brx, bry, 7, nRng, 0.4);
-    }
-    // Structural ridges (15%)
-    if (nRng() < 0.15) {
-      const side = nRng() < 0.5;
-      const sx = side ? 5 + nRng() * 20 : W - 5 - nRng() * 20;
-      const ang = (side ? 0.2 : Math.PI - 0.2) + (nRng() - 0.5) * 0.4;
-      const len = 30 + nRng() * 35;
-      nc.strokeStyle = 'rgba(50,30,8,0.70)'; nc.lineWidth = 3 + nRng() * 2; nc.lineCap = 'round';
-      nc.beginPath();
-      nc.moveTo(sx, sy + nRng() * nSegH);
-      nc.lineTo(sx + Math.cos(ang) * len, sy + nRng() * nSegH + Math.sin(ang) * len);
-      nc.stroke();
-    }
-    // Edge hex clusters (15%)
-    if (nRng() < 0.15) {
-      const side = nRng() < 0.5 ? 0 : 1;
-      const cx = side === 0 ? 15 + nRng() * 25 : W - 15 - nRng() * 25;
-      const cy = sy + nRng() * nSegH;
-      nc.fillStyle = 'rgba(50,30,10,0.55)';
-      nc.strokeStyle = 'rgba(70,45,15,0.35)'; nc.lineWidth = 0.7;
-      for (let h = 0; h < 3 + Math.floor(nRng() * 3); h++) {
-        const hx = cx + (h % 2 - 0.5) * 14, hy = cy + Math.floor(h / 2) * 12;
-        _drawHexOn(nc, hx, hy, 8); nc.fill(); nc.stroke();
-      }
-    }
+
+  // Thick craggy wall edges — LEFT
+  _drawCraggyWall(nc, nRng, 'left', 35, 30, LH);
+  nc.fillStyle = 'rgba(22,12,3,0.95)'; nc.fill();
+  _drawCraggyWall(nc, nRng, 'left', 22, 20, LH);
+  nc.fillStyle = 'rgba(45,25,8,0.80)'; nc.fill();
+  // RIGHT
+  _drawCraggyWall(nc, nRng, 'right', 35, 30, LH);
+  nc.fillStyle = 'rgba(22,12,3,0.95)'; nc.fill();
+  _drawCraggyWall(nc, nRng, 'right', 22, 20, LH);
+  nc.fillStyle = 'rgba(45,25,8,0.80)'; nc.fill();
+
+  // Rock texture on near walls
+  for (let i = 0; i < 120; i++) {
+    const side = nRng() < 0.5;
+    const bx = side ? nRng() * 45 : W - nRng() * 45;
+    const by = nRng() * LH;
+    const br = 4 + nRng() * 14;
+    const bright = Math.floor(25 + nRng() * 40);
+    nc.fillStyle = `rgba(${bright + 15},${bright},${Math.floor(bright * 0.35)},${0.35 + nRng() * 0.45})`;
+    _drawOrganicBlob(nc, bx, by, br, br * (0.5 + nRng() * 0.7), 5 + Math.floor(nRng() * 3), nRng, 0.6);
+    if (by < br + 10) _drawOrganicBlob(nc, bx, by + LH, br, br * 0.6, 5, nRng, 0.4);
+    if (by > LH - br - 10) _drawOrganicBlob(nc, bx, by - LH, br, br * 0.6, 5, nRng, 0.4);
   }
-  // Inner-shadow gradient at cutout edges
-  const lShadow = nc.createLinearGradient(0, 0, 65, 0);
-  lShadow.addColorStop(0, 'rgba(35,20,5,0.40)');
-  lShadow.addColorStop(1, 'rgba(35,20,5,0)');
-  nc.fillStyle = lShadow; nc.fillRect(0, 0, 65, LH);
-  const rShadow = nc.createLinearGradient(W, 0, W - 65, 0);
-  rShadow.addColorStop(0, 'rgba(35,20,5,0.40)');
-  rShadow.addColorStop(1, 'rgba(35,20,5,0)');
-  nc.fillStyle = rShadow; nc.fillRect(W - 65, 0, 65, LH);
+
+  // Bright amber rim highlights on near wall inner edges
+  for (let i = 0; i < 18; i++) {
+    const side = nRng() < 0.5;
+    const hx = side ? 8 + nRng() * 30 : W - 8 - nRng() * 30;
+    const hy = nRng() * LH;
+    const hr = 15 + nRng() * 30;
+    const glow = nc.createRadialGradient(hx, hy, 0, hx, hy, hr);
+    const r = 180 + Math.floor(nRng() * 60), g = 110 + Math.floor(nRng() * 40), b = 20 + Math.floor(nRng() * 20);
+    glow.addColorStop(0, `rgba(${r},${g},${b},0.30)`);
+    glow.addColorStop(0.4, `rgba(${r - 30},${g - 15},${b},0.12)`);
+    glow.addColorStop(1, 'rgba(60,30,8,0)');
+    nc.fillStyle = glow; nc.fillRect(hx - hr, hy - hr, hr * 2, hr * 2);
+    if (hy < hr) { const g2 = nc.createRadialGradient(hx, hy + LH, 0, hx, hy + LH, hr); g2.addColorStop(0, `rgba(${r},${g},${b},0.25)`); g2.addColorStop(1, 'rgba(60,30,8,0)'); nc.fillStyle = g2; nc.fillRect(hx - hr, hy + LH - hr, hr * 2, hr * 2); }
+  }
+
+  // Inner-shadow gradient from walls into center
+  const lShadow = nc.createLinearGradient(0, 0, 80, 0);
+  lShadow.addColorStop(0, 'rgba(15,8,2,0.50)');
+  lShadow.addColorStop(1, 'rgba(15,8,2,0)');
+  nc.fillStyle = lShadow; nc.fillRect(0, 0, 80, LH);
+  const rShadow = nc.createLinearGradient(W, 0, W - 80, 0);
+  rShadow.addColorStop(0, 'rgba(15,8,2,0.50)');
+  rShadow.addColorStop(1, 'rgba(15,8,2,0)');
+  nc.fillStyle = rShadow; nc.fillRect(W - 80, 0, 80, LH);
 
   _bgLayersReady = true;
 }
@@ -4151,7 +4223,7 @@ function drawBGParticles(blend) {
   const cb = H * PLAY_BOTTOM;
 
   // Spawn new particles
-  if (bgParticles.length < BG_PARTICLE_MAX && Math.random() < rate) {
+  if (bgParticles.length < (_perfMode ? 45 : BG_PARTICLE_MAX) && Math.random() < rate) {
     bgParticles.push({
       x: Math.random() * W,
       y: cb + Math.random() * 20,
@@ -4179,9 +4251,19 @@ function drawBGParticles(blend) {
   ctx.globalAlpha = 1;
 }
 
+// Pre-rendered scanline overlay (1 drawImage vs ~227 fillRect per frame)
+let _scanlineCvs = null;
+function _ensureScanlineCvs() {
+  if (_scanlineCvs) return;
+  _scanlineCvs = document.createElement('canvas');
+  _scanlineCvs.width = W; _scanlineCvs.height = H;
+  const sc = _scanlineCvs.getContext('2d');
+  sc.fillStyle = 'rgba(0,0,0,0.03)';
+  for (let y = 0; y < H; y += 3) sc.fillRect(0, y, W, 1);
+}
 function drawBGScanlines() {
-  ctx.fillStyle = 'rgba(0,0,0,0.03)';
-  for (let y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+  _ensureScanlineCvs();
+  ctx.drawImage(_scanlineCvs, 0, 0);
 }
 
 // ── CRT Post-Processing Filter ──────────────────────────────────
@@ -4422,7 +4504,10 @@ const JAR_NW  = 36;            // neck width (widened mouth)
 const JAR_NH  = 0;             // neck height (absorbed into lid)
 const JAR_RW  = 59;            // rim width (matches jar body width)
 const JAR_RH  = 10;            // rim height (lowered)
-const JAR_NY  = H - JAR_NH - JAR_BH - 12;   // neck top y — 12px above canvas bottom
+// Adaptive HUD: ensure content fits regardless of canvas height
+const _HUD_SPACE = H - HUD_Y;                // available pixels for HUD
+const _HUD_PAD   = Math.max(4, Math.min(12, _HUD_SPACE - 74)); // adaptive padding
+const JAR_NY  = H - JAR_NH - JAR_BH - _HUD_PAD;   // neck top y — adaptive above canvas bottom
 const JAR_RY  = JAR_NY - JAR_RH; // rim top y
 const JAR_BY  = JAR_NY + JAR_NH; // body top y
 const JAR_BB  = JAR_BY + JAR_BH; // body bottom
@@ -4430,10 +4515,10 @@ const JAR_BX  = JAR_CX - JAR_BW / 2;
 const JAR_NX  = JAR_CX - JAR_NW / 2;
 const JAR_RX  = JAR_CX - JAR_RW / 2;
 // Upgrade slot constants — 6 tessellated flat-top hexes
-const SLOT_R   = 22;
-const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center (~35.6)
-const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols (~19)
-const SLOT_Y   = HUD_Y + 42;                 // base row center y (raised)
+const SLOT_R   = Math.min(22, (_HUD_SPACE - 24) / 2.8); // scale down on short HUDs
+const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center
+const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols
+const SLOT_Y   = HUD_Y + 6 + SLOT_R + 12;   // anchored relative to HUD top
 const SLOT0_X  = 30;
 
 function drawHexOutline(cx, cy, r) {
@@ -4932,23 +5017,23 @@ const DEPTH_TABLE = [
   { fill:0.22, weights:{NORMAL:92,THICK:8} },                                                                                                              // 0  very open start
   { fill:0.24, weights:{NORMAL:88,THICK:10,HONEY:1,WAX:1} },                                                                                               // 1  first specials
   { fill:0.25, weights:{NORMAL:84,THICK:12,HONEY:2,WAX:2,HEAVY:1} },                                                                                       // 2  heavy enters
-  { fill:0.26, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,BROOD:1,HEAVY:2} },                                                                               // 3  brood enters
-  { fill:0.27, weights:{NORMAL:77,THICK:14,HONEY:3,WAX:3,BROOD:1,HEAVY:3} },                                                                               // 4  (charged via stamp only)
-  { fill:0.28, weights:{NORMAL:74,THICK:14,HONEY:3,WAX:3,BROOD:2,HEAVY:3,BOMB:1} },                                                                        // 5  bomb enters
-  { fill:0.29, weights:{NORMAL:70,THICK:14,HONEY:4,WAX:4,BROOD:2,HEAVY:4,BOMB:2,ROYAL:1} },                                                                // 6  royal enters
-  { fill:0.30, weights:{NORMAL:65,THICK:15,HONEY:4,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:2} },                                                      // 7  charged enters (rare)
-  { fill:0.30, weights:{NORMAL:63,THICK:15,HONEY:5,WAX:4,BROOD:3,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3} },                                                      // 8
-  { fill:0.31, weights:{NORMAL:60,THICK:16,HONEY:5,WAX:5,BROOD:3,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3} },                                                      // 9
-  { fill:0.32, weights:{NORMAL:56,THICK:16,HONEY:5,WAX:5,BROOD:4,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,ANCIENT:2} },                                            // 10 ancient enters
-  { fill:0.33, weights:{NORMAL:55,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,ANCIENT:3} },                                            // 11
-  { fill:0.34, weights:{NORMAL:53,THICK:17,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:3,TITAN:1} },                                    // 12 titan enters
-  { fill:0.35, weights:{NORMAL:51,THICK:18,HONEY:5,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:4,TITAN:2} },                                    // 13
-  { fill:0.36, weights:{NORMAL:49,THICK:18,HONEY:6,WAX:5,BROOD:4,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:4,TITAN:3} },                                    // 14
-  { fill:0.36, weights:{NORMAL:48,THICK:18,HONEY:6,WAX:6,BROOD:4,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:4,TITAN:3} },                                    // 15
-  { fill:0.37, weights:{NORMAL:48,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:3} },                                    // 16
-  { fill:0.37, weights:{NORMAL:47,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 17
-  { fill:0.38, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 18
-  { fill:0.38, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:6,BROOD:5,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 19+ cap
+  { fill:0.26, weights:{NORMAL:80,THICK:13,HONEY:2,WAX:2,HEAVY:2} },                                                                               // 3  brood enters
+  { fill:0.27, weights:{NORMAL:77,THICK:14,HONEY:3,WAX:3,HEAVY:3} },                                                                               // 4  (charged via stamp only)
+  { fill:0.28, weights:{NORMAL:74,THICK:14,HONEY:3,WAX:3,HEAVY:3,BOMB:1} },                                                                        // 5  bomb enters
+  { fill:0.29, weights:{NORMAL:70,THICK:14,HONEY:4,WAX:4,HEAVY:4,BOMB:2,ROYAL:1} },                                                                // 6  royal enters
+  { fill:0.30, weights:{NORMAL:65,THICK:15,HONEY:4,WAX:4,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:2} },                                                      // 7  charged enters (rare)
+  { fill:0.30, weights:{NORMAL:63,THICK:15,HONEY:5,WAX:4,HEAVY:4,CHARGED:1,BOMB:2,ROYAL:3} },                                                      // 8
+  { fill:0.31, weights:{NORMAL:60,THICK:16,HONEY:5,WAX:5,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3} },                                                      // 9
+  { fill:0.32, weights:{NORMAL:56,THICK:16,HONEY:5,WAX:5,HEAVY:4,CHARGED:1,BOMB:3,ROYAL:3,ANCIENT:2} },                                            // 10 ancient enters
+  { fill:0.33, weights:{NORMAL:55,THICK:17,HONEY:5,WAX:5,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:3,ANCIENT:3} },                                            // 11
+  { fill:0.34, weights:{NORMAL:53,THICK:17,HONEY:5,WAX:5,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:3,TITAN:1} },                                    // 12 titan enters
+  { fill:0.35, weights:{NORMAL:51,THICK:18,HONEY:5,WAX:5,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:4,TITAN:2} },                                    // 13
+  { fill:0.36, weights:{NORMAL:49,THICK:18,HONEY:6,WAX:5,HEAVY:5,CHARGED:1,BOMB:3,ROYAL:4,ANCIENT:4,TITAN:3} },                                    // 14
+  { fill:0.36, weights:{NORMAL:48,THICK:18,HONEY:6,WAX:6,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:4,TITAN:3} },                                    // 15
+  { fill:0.37, weights:{NORMAL:48,THICK:18,HONEY:6,WAX:6,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:3} },                                    // 16
+  { fill:0.37, weights:{NORMAL:47,THICK:18,HONEY:6,WAX:6,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 17
+  { fill:0.38, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:6,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 18
+  { fill:0.38, weights:{NORMAL:46,THICK:18,HONEY:6,WAX:6,HEAVY:5,CHARGED:1,BOMB:4,ROYAL:4,ANCIENT:5,TITAN:4} },                                    // 19+ cap
 ];
 function getDepthEntry(depth) {
   return DEPTH_TABLE[Math.min(Math.max(0, depth), DEPTH_TABLE.length - 1)];
@@ -5001,7 +5086,7 @@ const STRUCTURES = [
     },
   },
   {
-    id: 'BROOD_CHAMBER', minDepth: 4, weight: 8,
+    id: 'BROOD_CHAMBER', minDepth: 9999, weight: 0,
     stamp(hexMap, rng) {
       // Place 1 BROOD cell, but not on edges and not adjacent to other specials
       const vals = [...hexMap.values()].filter(h =>
@@ -5013,7 +5098,7 @@ const STRUCTURES = [
     },
   },
   {
-    id: 'PORTAL_PAIR', minDepth: 4, weight: 6,
+    id: 'PORTAL_PAIR', minDepth: 9999, weight: 0,
     stamp(hexMap, rng) {
       // Portals: not on edges, not near edges, min 3-cell distance from other portals
       const candidates = [...hexMap.values()].filter(h =>
@@ -5541,6 +5626,8 @@ let _nextBlueprintDepth  = 3;   // first blueprint spawns around depth 3
 let portalChannelCounter = 0;   // unique portal channel IDs across streaming chunks
 let scrollYMin           = 0;   // highest (most negative) scroll reached — camera floor
 let hiveDepthMax         = 0;   // high-water mark: deepest row reached by any bee
+let _prevScrollY         = 0;   // previous frame scrollY for rush speed detection
+let _isRushing           = false; // true when camera scrolling fast with multiple bees
 
 // ── Boss Gate system ──
 let bossGates = []; // { guardCells:[], queenCells:[], hp, maxHp, gateY, dead }
@@ -5570,7 +5657,7 @@ function resetRun() {
   upgradeSlots = []; levelHoneyEarned = 0; upgradeCount = 0;
   levelHoneyEarned = 0;
   activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
-  powerupDrops = []; pendingPowerup = null; powerupBeesRemaining = 0;
+  powerupDrops = [];
   bossGates = [];
   touchX2 = null; touchIdLeft = null; touchIdRight = null;
 }
@@ -5580,13 +5667,8 @@ function mkBee(x,y,vx,vy,spd) {
     sizeScale:    1.0,    // BEE-GER / BEE-BEE size modifier
     phaseThrough: false,  // BEE-BOO phase flag
     effectTimer:  0,      // duration counter for temporary effects
-    powerupId:    null,   // per-bee powerup id (e.g. 'beeGer')
-    powerupColor: null,   // per-bee powerup color for HUD
-    powerupTimer: 0,      // ticks remaining for this bee's powerup
   };
 }
-let pendingPowerup = null;    // powerup type waiting to be applied via paddle bounce
-let powerupBeesRemaining = 0; // how many more bees can receive the pending powerup
 function startBee(xOff) {
   const ang = (Math.random() * 120 - 60) * Math.PI / 180;
   const vx = CONFIG.BASE_SPD * Math.sin(ang);
@@ -5635,6 +5717,12 @@ function _startCrtLoop() {
   _crtLoopId = requestAnimationFrame(_crtPausedLoop);
 }
 
+// Adaptive performance tracking
+let _perfMode = 0;       // 0 = normal, 1 = reduced
+let _fpsAccum = 0;
+let _fpsSamples = 0;
+let _lowFpsFrames = 0;
+
 function loop(ts=0) {
   if (gameOver && !inspectorMode) {
     _startCrtLoop(); // keep CRT rolling on game-over screen
@@ -5648,6 +5736,19 @@ function loop(ts=0) {
   if (_crtLoopId) { cancelAnimationFrame(_crtLoopId); _crtLoopId = 0; }
   dt = Math.min((ts - lastTime) / 1000, 1/20); // cap at 50ms to avoid spiral
   if (lastTime === 0) dt = 1/60; // first frame
+  // FPS monitoring for adaptive quality
+  if (lastTime > 0) {
+    const frameFps = 1000 / (ts - lastTime);
+    _fpsAccum += frameFps;
+    _fpsSamples++;
+    if (_fpsSamples >= 60) {
+      const avgFps = _fpsAccum / _fpsSamples;
+      if (avgFps < 40) _lowFpsFrames++;
+      else _lowFpsFrames = 0;
+      _perfMode = _lowFpsFrames >= 2 ? 1 : 0;
+      _fpsAccum = 0; _fpsSamples = 0;
+    }
+  }
   lastTime = ts;
   update(); render();
   animId=requestAnimationFrame(loop);
@@ -5716,7 +5817,9 @@ function update() {
       triggerShake(2, 4);
       spawnParts(src.x, src.y, 8, ['#e8d8a0','#c0b070','#d0c080']);
       spawnDebris(src.x, src.y, 3, ['#e2d9b2','#c8bf98']);
-      for (const n of hexes) {
+      const _waxNear = _hexGridQuery(src.x, src.y, HEX_R * 2.2);
+      for (let _wi = 0; _wi < _waxNear.length; _wi++) {
+        const n = _waxNear[_wi];
         if (n.dead || n === src) continue;
         if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
         if (Math.hypot(n.x - src.x, n.y - src.y) < HEX_R * 2.2) {
@@ -5770,16 +5873,21 @@ function update() {
       totalDepth++;
       HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
     }
-    // Cull hexes far below screen — preserve living boss gate cells
+    // Cull hexes far below screen — preserve living boss gate cells (in-place)
     const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
-    hexes = hexes.filter(h => {
-      if (h.y < cullY) return true;
-      if (h.bossGateId != null) {
+    let _hw = 0;
+    for (let i = 0; i < hexes.length; i++) {
+      const h = hexes[i];
+      let keep = h.y < cullY;
+      if (!keep && h.bossGateId != null) {
         const gate = bossGates[h.bossGateId];
-        if (gate && !gate.dead) return true;
+        keep = gate && !gate.dead;
       }
-      return false;
-    });
+      if (keep) { if (i !== _hw) hexes[_hw] = h; _hw++; }
+    }
+    hexes.length = _hw;
+    _hexGridRebuild();
+    _portalCacheRebuild();
     return;
   }
 
@@ -5862,6 +5970,11 @@ function update() {
     scrollY += (scrollYTarget - scrollY) * HIVE_CONFIG.CAMERA_LERP;
   }
 
+  // Rush detection: when camera scrolls fast with multiple bees, enable forgiveness
+  const RUSH_THRESHOLD = 3.0;
+  _isRushing = Math.abs(scrollY - _prevScrollY) > RUSH_THRESHOLD && bees.length > 1;
+  _prevScrollY = scrollY;
+
   // Infinite chunk streaming: generate new chunks 2 chunk-heights ahead of camera top
   if (!pickerTransition) {
   const LOOK_AHEAD = HIVE_CONFIG.CHUNK_HEIGHT * 2;
@@ -5894,17 +6007,26 @@ function update() {
     HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
   }
   }
-  // Cull hexes more than 2 chunks below the screen bottom (camera can never reach them)
+  // Cull hexes more than 2 chunks below the screen bottom (in-place compaction)
   // Boss gate cells with living gates are preserved
   const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
-  hexes = hexes.filter(h => {
-    if (h.y < cullY) return true;
-    if (h.bossGateId != null) {
-      const gate = bossGates[h.bossGateId];
-      if (gate && !gate.dead) return true;
+  {
+    let _hw = 0;
+    for (let i = 0; i < hexes.length; i++) {
+      const h = hexes[i];
+      let keep = h.y < cullY;
+      if (!keep && h.bossGateId != null) {
+        const gate = bossGates[h.bossGateId];
+        keep = gate && !gate.dead;
+      }
+      if (keep) { if (i !== _hw) hexes[_hw] = h; _hw++; }
     }
-    return false;
-  });
+    hexes.length = _hw;
+  }
+
+  // Rebuild spatial hash grid + portal cache after culling
+  _hexGridRebuild();
+  _portalCacheRebuild();
 
   // World-space constants for this frame
   // Ceiling is pegged just above the camera's max scroll — never appears on-screen
@@ -5998,14 +6120,16 @@ function update() {
 
   for (const b of bees) {
     pushTrail(b);
-    const spdMul = (b.powerupId === 'beeR') ? 0.5 : 1;
+    const spdMul = (activePowerup?.id === 'beeR') ? 0.5 : 1;
     b.x+=b.vx*dt*60*spdMul; b.y+=b.vy*dt*60*spdMul;
-    if (b.powerupId === 'beeR') b.x += Math.sin(tick * 0.15 + b.y * 0.05) * 1.2;
+    if (activePowerup?.id === 'beeR') b.x += Math.sin(tick * 0.15 + b.y * 0.05) * 1.2;
 
     // Swarm Instinct: homing toward nearest cell
     if (powers.swarmInstinct > 0) {
       let nearest = null, nearDist = 120;
-      for (const h of hexes) {
+      const _swarmNear = _hexGridQuery(b.x, b.y, 120);
+      for (let _si = 0; _si < _swarmNear.length; _si++) {
+        const h = _swarmNear[_si];
         if (h.dead || h.type === 'PORTAL' || h.type === 'UNBREAKABLE') continue;
         const d = Math.hypot(h.x - b.x, h.y - b.y);
         if (d < nearDist) { nearDist = d; nearest = h; }
@@ -6016,6 +6140,25 @@ function update() {
         const dist = Math.hypot(dx, dy) || 1;
         b.vx += (dx / dist) * strength;
         b.vy += (dy / dist) * strength;
+        normSpd(b, b.speed);
+      }
+    }
+
+    // Magnet Hends: pull ALL bees toward paddle when falling (global timed)
+    if (activePowerup?.id === 'magnetHends' && b.vy > 0) {
+      const pw = getPW();
+      let targetX = paddle.x + pw / 2;
+      if (powers.twoHends > 0) {
+        const d1 = Math.abs(b.x - (paddle.x + pw / 2));
+        const d2 = Math.abs(b.x - (paddle2.x + pw / 2));
+        if (d2 < d1) targetX = paddle2.x + pw / 2;
+      }
+      const dx = targetX - b.x;
+      const dist = Math.abs(dx);
+      const MAGNET_RADIUS = 120;
+      if (dist < MAGNET_RADIUS) {
+        const strength = 0.04 * (1 - dist / MAGNET_RADIUS);
+        b.vx += Math.sign(dx) * strength;
         normSpd(b, b.speed);
       }
     }
@@ -6049,13 +6192,6 @@ function update() {
           b.vy = -minVy;
           normSpd(b, b.speed);
         }
-        if (pendingPowerup && powerupBeesRemaining > 0) {
-          b.powerupId = pendingPowerup.id;
-          b.powerupColor = pendingPowerup.color;
-          b.powerupTimer = pendingPowerup.duration;
-          powerupBeesRemaining--;
-          if (powerupBeesRemaining <= 0) pendingPowerup = null;
-        }
         return true;
       }
       return false;
@@ -6067,9 +6203,10 @@ function update() {
       bouncePaddle(b, paddle, pw);
     }
 
-    // hex
+    // hex — skip collision when rushing and bee is falling toward paddle (forgiveness)
+    const _rushPhase = _isRushing && b.vy > 0;
 if (b.tpCooldown > 0) b.tpCooldown--;
-    const hit=checkHex(b);
+    const hit = _rushPhase ? null : checkHex(b);
     if (hit) {
       const h=hit.h;
       if (hit.dead) {
@@ -6128,7 +6265,9 @@ if (b.tpCooldown > 0) b.tpCooldown--;
           triggerShake(6, 12);
           // Explosion: 2 damage, wider radius than WAX — chain to WAX/BOMB
           if (!window._waxChainQueue) window._waxChainQueue = [];
-          for (const n of hexes) {
+          const _bombNear = _hexGridQuery(h.x, h.y, HEX_R * 3.5);
+          for (let _bi = 0; _bi < _bombNear.length; _bi++) {
+            const n = _bombNear[_bi];
             if (n.dead || n === h || n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'QUEEN') continue;
             if (Math.hypot(n.x - h.x, n.y - h.y) < HEX_R * 3.5) {
               n.hp -= 2; n.flash = 10;
@@ -6181,19 +6320,17 @@ if (b.tpCooldown > 0) b.tpCooldown--;
     // Fell off screen
     if (d.y > scrollY + H + 40) d.caught = true;
   }
-  powerupDrops = powerupDrops.filter(d => !d.caught);
+  { let w = 0;
+    for (let i = 0; i < powerupDrops.length; i++) {
+      if (!powerupDrops[i].caught) powerupDrops[w++] = powerupDrops[i];
+    }
+    powerupDrops.length = w;
+  }
 
   // ── Tick down active powerup (global, e.g. honeySurge) ──
   if (activePowerup && activePowerup.ticksLeft > 0) {
     activePowerup.ticksLeft--;
     if (activePowerup.ticksLeft <= 0) deactivatePowerup();
-  }
-  // ── Tick down per-bee powerup timers ──
-  for (const b of bees) {
-    if (b.powerupTimer > 0) {
-      b.powerupTimer--;
-      if (b.powerupTimer <= 0) { b.powerupId = null; b.powerupColor = null; }
-    }
   }
 
   // ── HEND OF GOD animation tick ──
@@ -6258,7 +6395,13 @@ function render() {
   ctx.save();
   ctx.translate(0, -scrollY);        // enter world space
 
-  for (const h of hexes) drawHex(h);
+  { // Visibility-culled hex rendering
+    const _vTop = scrollY - HEX_R, _vBot = scrollY + H + HEX_R;
+    for (let _hi = 0; _hi < hexes.length; _hi++) {
+      const h = hexes[_hi];
+      if (!h.dead && h.y >= _vTop && h.y <= _vBot) drawHex(h);
+    }
+  }
   drawParts();
 
   // Draw paddle UNDER bees (in world space temporarily)
@@ -6419,22 +6562,7 @@ function render() {
 
   } // end HUD block
 
-  // ── Active powerup HUD timer removed — bee flicker is the only indicator ──
-  // ── Pending per-bee powerup indicator ──
-  if (pendingPowerup && powerupBeesRemaining > 0) {
-    const bw = 120, bh = 8, bx = (W - bw) / 2, by = activePowerup ? 22 : 4;
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 14);
-    ctx.fillStyle = pendingPowerup.color;
-    ctx.fillRect(bx, by, bw * (powerupBeesRemaining / 6), bh);
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-    ctx.strokeRect(bx, by, bw, bh);
-    ctx.fillStyle = pendingPowerup.color;
-    ctx.font = '5px "Press Start 2P",monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText(pendingPowerup.name + ' x' + powerupBeesRemaining, W / 2, by + bh + 9);
-    ctx.textAlign = 'left';
-  }
+  // ── Powerup timer bars removed — bee flicker is the only indicator ──
   // ── Boss HP bar — shown when camera is near a living boss gate ──
   {
     const activeBoss = bossGates.find(g => !g.dead &&
@@ -6442,7 +6570,7 @@ function render() {
       scrollY > g.gateY - H * 2);
     if (activeBoss) {
       const bw = 160, bh = 10;
-      const bx = (W - bw) / 2, by = activePowerup ? 40 : (pendingPowerup && powerupBeesRemaining > 0) ? 40 : 20;
+      const bx = (W - bw) / 2, by = 20;
       // Background
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
       ctx.fillRect(bx - 3, by - 3, bw + 6, bh + 16);
@@ -8987,8 +9115,15 @@ function playNeonBootSequence() {
 ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H); // start with black screen for boot animation
 // Save on tab-switch / phone lock
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && !gameOver && !menuBGActive) {
-    SaveManager.saveRun();
+  if (document.hidden) {
+    // App switched / screen locked — stop music immediately
+    if (music.el && !music.el.paused) music.el.pause();
+    if (!gameOver && !menuBGActive) SaveManager.saveRun();
+  } else {
+    // Returning to app — resume music if it was playing
+    if (music.playing && music.el && music.el.paused) {
+      music.el.play().catch(() => {});
+    }
   }
 });
 
