@@ -892,6 +892,8 @@ const SaveManager = {
     if (typeof menuBGActive !== 'undefined' && menuBGActive) return;
     if (typeof hexes === 'undefined' || !hexes || hexes.length === 0) return;
     if (typeof bees === 'undefined' || !bees || bees.length === 0) return;
+    // Don't save until meaningful progress (prevents stale CONTINUE)
+    if (typeof hiveDepthMax !== 'undefined' && hiveDepthMax < 3) return;
 
     try {
       const data = {
@@ -1891,9 +1893,12 @@ const powers = {
   twoHends:      0,  // widens paddle to two mirrored hands
 };
 
+function getChubScale() {
+  return 1 + (powers.waxBreaker || 0) * 0.15;
+}
 function getPW() {
-  const base = W * 0.27 * HEND_VISUAL_SCALE;
-  return Math.round(powers.twoHends >= 1 ? base * 2 : base);
+  const base = W * 0.27 * HEND_VISUAL_SCALE * getChubScale();
+  return Math.min(Math.round(powers.twoHends >= 1 ? base * 2 : base), Math.round(W * 0.8));
 }
 
 // Flat list of all available upgrades with metadata
@@ -1930,19 +1935,19 @@ const ALL_POWERUPS = [
   },
   {
     id: 'waxBreaker',
-    name: 'WAX BREAKER',
-    short: 'WAX',
-    desc: 'EXTRA DAMAGE TO REINFORCED CELLS.',
-    tag:  'DAMAGE',
+    name: 'CHUBBY HENDS',
+    short: 'CHUB',
+    desc: 'HENDS GROW WIDER.',
+    tag:  'PADDLE',
     color: '#7a4800', outline: '#4a2800',
     max:  6,
     apply() { powers.waxBreaker++; }
   },
   {
     id: 'royalFury',
-    name: 'ROYAL FURY',
-    short: 'FURY',
-    desc: '+1 DAMAGE TO ROYAL CELLS.',
+    name: 'ROYAL RAGE',
+    short: 'RAGE',
+    desc: '+1 DAMAGE TO QUEEN CELLS.',
     tag:  'DAMAGE',
     color: '#a060d0', outline: '#603080',
     max:  6,
@@ -3836,7 +3841,7 @@ function checkHex(b) {
         triggerDiscovery('QUEEN');
         const gate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
         if (gate && !gate.dead) {
-          let qdmg = 1 + powers.beefyBees;
+          let qdmg = 1 + powers.beefyBees + powers.royalFury;
           if (activePowerup?.id === 'beeGer') qdmg *= 2;
           if (activePowerup?.id === 'beeHemoth') qdmg = 5;
           gate.hp -= qdmg;
@@ -3906,8 +3911,7 @@ function checkHex(b) {
 
       // damage
       let dmg = 1 + powers.beefyBees;
-      if (h.type === 'THICK') dmg += powers.waxBreaker;
-      if (h.type === 'ROYAL') dmg += powers.royalFury;
+      // waxBreaker (CHUBBY HENDS) now affects paddle size, not damage
       if (activePowerup?.id === 'beeGer') dmg *= 2;
       if (activePowerup?.id === 'beeHemoth') dmg = 5;
       h.hp -= dmg; h.flash = 10;
@@ -6188,17 +6192,16 @@ function update() {
       totalDepth++;
       HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
     }
-    // Cull hexes far below screen — preserve living boss gate cells (in-place)
-    const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
+    // Cull ALL hexes below screen (including immune/boss cells)
+    const cullY = scrollY + H + HIVE_CONFIG.CHUNK_HEIGHT * 0.5;
     let _hw = 0;
     for (let i = 0; i < hexes.length; i++) {
       const h = hexes[i];
-      let keep = h.y < cullY;
-      if (!keep && h.bossGateId != null) {
+      if (h.y < cullY) { if (i !== _hw) hexes[_hw] = h; _hw++; }
+      else if (h.bossGateId != null) {
         const gate = bossGates[h.bossGateId];
-        keep = gate && !gate.dead;
+        if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
       }
-      if (keep) { if (i !== _hw) hexes[_hw] = h; _hw++; }
     }
     hexes.length = _hw;
     _hexGridRebuild();
@@ -6324,19 +6327,17 @@ function update() {
     HIVE_CONFIG.CAMERA_MIN = generatedTop - HIVE_CONFIG.CAMERA_LEAD;
   }
   }
-  // Cull hexes more than 2 chunks below the screen bottom (in-place compaction)
-  // Boss gate cells with living gates are preserved
-  const cullY = scrollY + H + 2 * HIVE_CONFIG.CHUNK_HEIGHT;
+  // Cull ALL hexes below screen (including immune/boss cells)
+  const cullY = scrollY + H + HIVE_CONFIG.CHUNK_HEIGHT * 0.5;
   {
     let _hw = 0;
     for (let i = 0; i < hexes.length; i++) {
       const h = hexes[i];
-      let keep = h.y < cullY;
-      if (!keep && h.bossGateId != null) {
+      if (h.y < cullY) { if (i !== _hw) hexes[_hw] = h; _hw++; }
+      else if (h.bossGateId != null) {
         const gate = bossGates[h.bossGateId];
-        keep = gate && !gate.dead;
+        if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
       }
-      if (keep) { if (i !== _hw) hexes[_hw] = h; _hw++; }
     }
     hexes.length = _hw;
   }
@@ -7086,6 +7087,7 @@ function render() {
   // ── Boss HP bar — shown when camera is near a living boss gate ──
   {
     const activeBoss = bossGates.find(g => !g.dead &&
+      g.hp < g.maxHp &&
       scrollY < g.gateY + HIVE_CONFIG.CHUNK_HEIGHT * 4 &&
       scrollY > g.gateY - H * 0.5);
     if (activeBoss) {
@@ -7934,7 +7936,7 @@ function showMenu() {
   clearBtns();
   const hasSave = SaveManager.hasSavedRun();
   const s = hasSave ? SaveManager.getSummary() : null;
-  const hasValidSave = hasSave && s && s.depth > 1 && s.hasRun;
+  const hasValidSave = hasSave && s && s.depth > 3 && s.hasRun;
 
   // Always show PLAY button (new game / fresh start)
   mkBtn('PLAY', true, () => {
