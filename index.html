@@ -1172,6 +1172,8 @@ const sfx = {
   bomb:     () => { _noise(0.30,0.20); _tone(100,'sawtooth',0.25,0.30,40); },
   powerup:  () => { _tone(600,'sine',0.15,0.20); _tone(800,'sine',0.10,0.15); },
   boost:    () => { _tone(300,'sine',0.15,0.12,900); },
+  gameStart:() => { [262,330,392,523].forEach((f,i) => setTimeout(() => _tone(f,'square',0.14,0.12,f*1.2), i*60)); },
+  gameOver: () => { [392,330,262,196].forEach((f,i) => setTimeout(() => _tone(f,'sine',0.18,0.35,f*0.6), i*120)); },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1891,14 +1893,15 @@ const powers = {
   royalFury:     0,  // +1 damage to ROYAL cells
   broodFrenzy:   0,  // +1 extra bee from BROOD cells
   twoHends:      0,  // widens paddle to two mirrored hands
+  powerExtend:   0,  // +2s powerup duration per stack
 };
 
 function getChubScale() {
-  return 1 + (powers.waxBreaker || 0) * 0.15;
+  return 1 + (powers.waxBreaker || 0) * 0.08;
 }
 function getPW() {
   const base = W * 0.27 * HEND_VISUAL_SCALE * getChubScale();
-  return Math.min(Math.round(powers.twoHends >= 1 ? base * 2 : base), Math.round(W * 0.8));
+  return Math.min(Math.round(powers.twoHends >= 1 ? base * 2 : base), Math.round(W * 0.65));
 }
 
 // Flat list of all available upgrades with metadata
@@ -1973,6 +1976,16 @@ const ALL_POWERUPS = [
     max:  1,
     apply() { powers.twoHends++; _hend2Intro = { active: true, offset: 100, t: 0 }; }
   },
+  {
+    id: 'powerExtend',
+    name: 'LONG BUZZ',
+    short: 'BUZZ',
+    desc: 'POWER-UPS LAST +2S LONGER.',
+    tag:  'POWERUP',
+    color: '#40c0ff', outline: '#2080a0',
+    max:  6,
+    apply() { powers.powerExtend++; }
+  },
 ];
 
 // Second hend rise-from-below animation state
@@ -1986,7 +1999,7 @@ const TEMP_POWERUPS = [
   { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'BEES MOVE SLOWER AND IN A WAVY TRAJECTORY' },
   { id:'beeGer',     name:'BEE-GER',     color:'#ff6030', duration:600, desc:'BEES GET TWICE AS BIG AND DO DOUBLE DAMAGE' },
   { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:600, desc:'BEES BECOME MASSIVE AND DEAL TRIPLE DAMAGE' },
-  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'A DEVIL BEE APPEARS AND TURNS MULTIPLE CELLS INTO BOMBS' },
+  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'BEES BECOME DEMONS AND BOMB THE NEXT 3 CELLS' },
   { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
   { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
   { id:'magnetHends', name:'MAGNET HENDS', color:'#60c0ff', duration:600, desc:'BEES GET PULLED TOWARD THE HENDS AS THEY FALL' },
@@ -2049,9 +2062,9 @@ function activatePowerup(type, px, py) {
   if (type.duration > 0) {
     // Global timed — refresh timer if same type, otherwise replace
     if (activePowerup && activePowerup.id === type.id) {
-      activePowerup.ticksLeft = type.duration; // refresh timer
+      activePowerup.ticksLeft = type.duration + (powers.powerExtend || 0) * 120; // refresh timer
     } else {
-      activePowerup = { id: type.id, name: type.name, color: type.color, ticksLeft: type.duration };
+      activePowerup = { id: type.id, name: type.name, color: type.color, ticksLeft: type.duration + (powers.powerExtend || 0) * 120 };
     }
   } else if (type.duration === -1) {
     // Stored (HEND OF GOD)
@@ -2090,7 +2103,7 @@ function activatePowerup(type, px, py) {
       break;
     }
     case 'beeElzebub': { // All bees become bomb-bees — explode on next cell impact
-      for (const b of bees) b._bombBee = true;
+      for (const b of bees) b._bombBee = 3;
       break;
     }
   }
@@ -2639,9 +2652,9 @@ function drawAccessory(ox, oy, dw, dh, side) {
   // Draw bracelet if equipped
   if (bracId === 'brownBracelet') {
     const bx = ox + dw * 0.33, by = oy + dh * 0.88;
-    const bw = dw * 0.22, bh = dh * 0.055;
+    const bw = dw * 0.25, bh = dh * 0.065;
     ctx.strokeStyle = '#6a4020';
-    ctx.lineWidth = Math.max(3, dw * 0.05);
+    ctx.lineWidth = Math.max(3.5, dw * 0.055);
     ctx.beginPath();
     ctx.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
     ctx.stroke();
@@ -3873,7 +3886,7 @@ function checkHex(b) {
 
       // Bomb-bee explosion — detonates on impact, then bee returns to normal
       if (b._bombBee) {
-        b._bombBee = false;
+        b._bombBee--;
         sfx.bomb(); haptic(HAPTIC.bomb);
         spawnParts(h.x, h.y, 28, PAL.hexBomb);
         triggerShake(6, 12);
@@ -4986,7 +4999,7 @@ function drawHUD() {
   }
   const TAG_COL = {
     PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
-    SWARM:'#80e060',  HONEY:'#f0a020',
+    SWARM:'#80e060',  HONEY:'#f0a020',  POWERUP:'#40c0ff',
   };
 
   for (let i = 0; i < ALL_POWERUPS.length; i++) {
@@ -5993,7 +6006,7 @@ function startBee(xOff) {
 
 function startLevel(lvl) {
   music.play();
-  if (!demoMode) music.unmuffle();
+  if (!demoMode) { music.unmuffle(); sfx.gameStart(); }
   // Auto-discover common starter cells
   SaveManager.discover('NORMAL');
   SaveManager.discover('THICK');
@@ -6648,6 +6661,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
       const collapseCells = hexes.filter(h => !h.dead && h.y >= vTop && h.y <= vBot)
         .map(h => ({ h, origY: h.y, delay: Math.random() * 25, vy: 0 }));
       deathAnim = { frame: 0, maxFrames: 120, cells: collapseCells };
+      sfx.gameOver();
     }
   }
 
@@ -7197,14 +7211,14 @@ const summaryPanel = document.getElementById('summary');
 
 const TAG_COL_MAP = {
   PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
-  SWARM:'#80e060',  HONEY:'#f0a020'
+  SWARM:'#80e060',  HONEY:'#f0a020',  POWERUP:'#40c0ff'
 };
 
 function drawSummary() {
   const el = document.getElementById('sumContent');
   const TAG_COL_CSS = {
     PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
-    SWARM:'#80e060',  HONEY:'#f0a020'
+    SWARM:'#80e060',  HONEY:'#f0a020',  POWERUP:'#40c0ff'
   };
 
   let html = '';
@@ -7331,7 +7345,7 @@ function _renderGuideIcons() {
 }
 
 function buildGuide() {
-  const TAG_C = { PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040', SWARM:'#80e060', HONEY:'#f0a020' };
+  const TAG_C = { PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040', SWARM:'#80e060', HONEY:'#f0a020', POWERUP:'#40c0ff' };
 
   // ── HEX CELLS tab ──────────────────────────────────
   // Interleaved: left column = breakable cells, right column = special cells
