@@ -124,6 +124,13 @@
     display:flex; gap:6px; justify-content:center;
     flex-wrap:wrap; padding:2px 8px 8px 8px;
   }
+  .shop-dots.swatch-grid {
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
+  }
+  .swatch-grid .shop-tile { width:auto; padding:4px; justify-content:center; }
+  .swatch-grid .shop-tile-info { display:none !important; }
+  .swatch-grid .shop-tile-cost { display:none !important; }
+  .swatch-grid .shop-tile-swatch { width:100%; aspect-ratio:1; height:auto; }
   .shop-dot {
     width:16px; height:16px; border-radius:50%;
     border:2px solid #604020; cursor:pointer;
@@ -276,13 +283,14 @@
   }
   .gc-row {
     display:flex; align-items:center; gap:5px;
-    padding:4px 2px;
+    padding:4px 2px; min-height:52px;
   }
   .gc-hex { flex-shrink:0; }
   .gc-info { flex:1; min-width:0; }
   .gc-name { font-size:0.50rem; letter-spacing:0.3px; margin-bottom:1px; }
   .gc-note { font-size:0.36rem; color:#907040; letter-spacing:0.2px; margin-bottom:2px; }
   .gc-stats { font-size:0.38rem; color:#c8a060; letter-spacing:0.3px; white-space:nowrap; }
+  .gc-hp { display:inline-block; min-width:6ch; }
   .gc-queen-row {
     grid-column: 1 / -1;
     display:flex; align-items:center; gap:8px;
@@ -463,11 +471,11 @@
     <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.65rem;letter-spacing:2px;margin-bottom:18px;">SETTINGS</div>
     <div style="width:80%;max-width:280px;">
       <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">MUSIC</label>
-      <input type="range" id="sliderMusic" min="0" max="100" value="50" style="width:100%;accent-color:#f0a020;margin-bottom:16px;">
+      <input type="range" id="sliderMusic" min="0" max="100" value="50" style="width:100%;accent-color:#f0a020;margin-bottom:16px;touch-action:none;">
       <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">SFX</label>
-      <input type="range" id="sliderSfx" min="0" max="100" value="100" style="width:100%;accent-color:#f0a020;margin-bottom:16px;">
+      <input type="range" id="sliderSfx" min="0" max="100" value="100" style="width:100%;accent-color:#f0a020;margin-bottom:16px;touch-action:none;">
       <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;display:block;margin-bottom:6px;">CRT FILTER</label>
-      <input type="range" id="sliderCRT" min="0" max="100" value="0" style="width:100%;accent-color:#f0a020;margin-bottom:20px;">
+      <input type="range" id="sliderCRT" min="0" max="100" value="0" style="width:100%;accent-color:#f0a020;margin-bottom:20px;touch-action:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <label style="font-family:'Press Start 2P',monospace;color:#f5d040;font-size:0.40rem;">SCREEN SHAKE</label>
         <button id="toggleShake" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
@@ -550,7 +558,7 @@
   </div>
 
   <div id="statsPanel" class="panel" style="background:rgba(4,1,0,0.97);">
-    <div class="neon-glow-title" style="font-size:0.7rem;margin-bottom:8px;">STATS</div>
+    <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.7rem;letter-spacing:2px;margin-bottom:8px;">STATS</div>
     <div id="statsBody" style="width:300px;max-width:90%;background:rgba(10,5,0,0.6);border:1px solid #3a1e00;border-radius:4px;padding:14px;"></div>
     <button class="ob" id="statsBackBtn" style="margin-top:12px;">BACK</button>
   </div>
@@ -1946,7 +1954,12 @@ function getChubScale() {
 }
 function getPW() {
   const base = W * 0.27 * HEND_VISUAL_SCALE * getChubScale();
-  return Math.min(Math.round(powers.twoHends >= 1 ? base * 2 : base), Math.round(W * 0.65));
+  // Queen stinger debuff temporarily removes twoHends bonus
+  const twoH = (queenDebuffs.stinger > 0) ? 0 : powers.twoHends;
+  let pw = Math.min(Math.round(twoH >= 1 ? base * 2 : base), Math.round(W * 0.65));
+  // Queen babyHends debuff shrinks paddle
+  if (queenDebuffs.babyHends > 0) pw = Math.round(pw * QUEEN_ATK.shrinkFactor);
+  return pw;
 }
 
 // Flat list of all available upgrades with metadata
@@ -1955,7 +1968,7 @@ const ALL_POWERUPS = [
     id: 'beefyBees',
     name: 'BEEFY BEES',
     short: 'BEEFY',
-    desc: 'BEES DEAL +1 DAMAGE TO CELLS.',
+    desc: '+1 DAMAGE TO STANDARD CELLS.',
     tag:  'DAMAGE',
     color: '#ff6030', outline: '#a03010',
     max:  6,
@@ -2035,7 +2048,7 @@ const ALL_POWERUPS = [
     id: 'fireBees',
     name: 'FIRE BEES',
     short: 'FIRE',
-    desc: 'CELLS BURN FOR RESIDUAL DAMAGE.',
+    desc: '+1 DAMAGE / SECOND.',
     tag:  'DAMAGE',
     color: '#ff4010', outline: '#a02008',
     max:  6,
@@ -2045,7 +2058,7 @@ const ALL_POWERUPS = [
     id: 'electricBees',
     name: 'LIGHTNING BEES',
     short: 'LGHT',
-    desc: 'HITS CHAIN TO ADJACENT CELLS.',
+    desc: '+1 DAMAGE TO LINKED CELLS.',
     tag:  'DAMAGE',
     color: '#40d0ff', outline: '#2080b0',
     max:  6,
@@ -2974,25 +2987,67 @@ function drawTrail(b) {
       if (tracerObj.id === 'rainbow') {
         const hue = ((now * 120 + i * 30) % 360);
         ctx.strokeStyle = `hsla(${hue},90%,60%,${alpha.toFixed(3)})`;
+      } else if (tracerObj.id === 'honeyDrip') {
+        // Thick glowing golden trail
+        ctx.lineWidth = DASH_WIDTH * 3;
+        const pulse = 0.85 + 0.15 * Math.sin(now * 3 + i * 1.7);
+        const ga = alpha * pulse;
+        ctx.strokeStyle = `rgba(255,210,60,${ga.toFixed(3)})`;
+        ctx.shadowColor = 'rgba(255,180,30,0.6)';
+        ctx.shadowBlur = 6 * alpha;
       } else if (tracerObj.id === 'stardust') {
-        const sparkle = Math.sin(now * 4 + i * 2.3) * 0.3 + 0.9;
+        // Bright sparkly trail with abundant particles
+        const sparkle = Math.sin(now * 5 + i * 2.3) * 0.3 + 0.9;
+        ctx.lineWidth = DASH_WIDTH * 1.4;
         ctx.strokeStyle = `rgba(255,250,220,${(alpha * sparkle).toFixed(3)})`;
-        // Flickering sparks — small bright dots near each dash
-        if (Math.sin(now * 6 + i * 3.1) > 0.6) {
-          const sx = d.x + (Math.sin(now * 3 + i) * 3);
-          const sy = d.y + (Math.cos(now * 2.5 + i) * 3);
-          const sa = alpha * (0.6 + Math.random() * 0.4);
-          ctx.fillStyle = `rgba(255,255,240,${sa.toFixed(3)})`;
-          ctx.fillRect(sx - 0.5, sy - 0.5, 1, 1);
+        // Multiple flickering sparks — bright dots scattered around each dash
+        for (let sp = 0; sp < 3; sp++) {
+          const phase = now * (5 + sp * 2) + i * (3.1 + sp * 0.7);
+          if (Math.sin(phase) > 0.3) {
+            const spread = 4 + sp;
+            const sx = d.x + Math.sin(now * (3 + sp) + i + sp * 2.2) * spread;
+            const sy = d.y + Math.cos(now * (2.5 + sp) + i + sp * 1.8) * spread;
+            const sa = alpha * (0.5 + Math.random() * 0.5);
+            const sr = 0.5 + Math.random() * 0.8;
+            // Alternate white, gold, and pale blue sparkles
+            const cols = ['rgba(255,255,255,','rgba(255,240,160,','rgba(200,220,255,'];
+            ctx.fillStyle = `${cols[sp]}${sa.toFixed(3)})`;
+            ctx.fillRect(sx - sr/2, sy - sr/2, sr, sr);
+          }
+        }
+        // Star cross sparkle on every 3rd dash
+        if (i % 3 === 0 && alpha > 0.2) {
+          const sFlash = 0.5 + 0.5 * Math.sin(now * 8 + i);
+          const sA = alpha * sFlash * 0.6;
+          const _prevStroke = ctx.strokeStyle;
+          ctx.strokeStyle = `rgba(255,255,240,${sA.toFixed(3)})`;
+          ctx.lineWidth = 0.6;
+          const cr = 2.5;
+          ctx.beginPath(); ctx.moveTo(d.x - cr, d.y); ctx.lineTo(d.x + cr, d.y); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(d.x, d.y - cr); ctx.lineTo(d.x, d.y + cr); ctx.stroke();
+          ctx.strokeStyle = _prevStroke;
+          ctx.lineWidth = DASH_WIDTH * 1.4;
         }
       } else if (tracerObj.id === 'poopLogs') {
-        // Thicker, mottled brown — alternates between dark and light brown per dash
+        // Thicker, mottled brown with yellow corn bits
         ctx.lineWidth = DASH_WIDTH * 2.2;
         const seed = (i * 7 + 3) & 0xFF;
         const r = 60 + (seed % 40);       // 60-100
         const g = 35 + (seed % 25);       // 35-60
         const b2 = 10 + (seed % 15);      // 10-25
         ctx.strokeStyle = `rgba(${r},${g},${b2},${alpha.toFixed(3)})`;
+        // Matte yellow corn bits — dull specks within each log (no glow)
+        if (alpha > 0.1) {
+          const cornSeed = seed * 13;
+          const numCorn = 1 + (cornSeed % 3); // 1-3 corn bits per log
+          for (let ci = 0; ci < numCorn; ci++) {
+            const cx = d.x + ((((cornSeed + ci * 37) % 7) - 3) * 0.7);
+            const cy = d.y + ((((cornSeed + ci * 53) % 7) - 3) * 0.7);
+            const cs = 0.8 + ((cornSeed + ci * 17) % 3) * 0.3; // 0.8-1.4px
+            ctx.fillStyle = `rgba(190,170,50,${(alpha * 0.65).toFixed(3)})`;
+            ctx.fillRect(cx - cs/2, cy - cs/2, cs, cs);
+          }
+        }
       } else {
         ctx.strokeStyle = `${tracerObj.color}${alpha.toFixed(3)})`;
       }
@@ -3036,6 +3091,7 @@ function drawTrail(b) {
     ctx.lineTo(d.x, d.y);
     ctx.lineTo(ex, ey);
     ctx.stroke();
+    if (ctx.shadowBlur) { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
   }
 
   ctx.restore();
@@ -3051,15 +3107,27 @@ function drawBee(b) {
   // Aura glow behind bee — powerup overrides cosmetic aura
   {
     let auraColor = null;
+    // BEE-ELZEBUB red pulsing aura (bomb-bee timer active)
+    if (b._bombBee > 0) {
+      const pulse = 0.5 + 0.5 * Math.sin(tick * 0.18);
+      const aR = 14 + pulse * 4;
+      const aA = 0.2 + pulse * 0.12;
+      const gg = ctx.createRadialGradient(b.x, b.y, 2, b.x, b.y, aR);
+      gg.addColorStop(0, `rgba(255,50,20,${aA})`);
+      gg.addColorStop(0.4, `rgba(200,20,10,${aA * 0.5})`);
+      gg.addColorStop(1, 'rgba(150,10,0,0)');
+      ctx.fillStyle = gg;
+      ctx.fillRect(b.x - aR, b.y - aR, aR * 2, aR * 2);
+    }
     // Powerup aura override
-    if (activePowerup) {
+    if (!b._bombBee && activePowerup) {
       for (let pi = activePowerups.length - 1; pi >= 0; pi--) {
         auraColor = _puAuras[activePowerups[pi].id] || null;
         if (auraColor) break;
       }
     }
     // Fall back to cosmetic aura
-    if (!auraColor && selectedAura !== 'none') {
+    if (!auraColor && !b._bombBee && selectedAura !== 'none') {
       const auraObj = BEE_AURAS.find(a => a.id === selectedAura);
       if (auraObj && auraObj.color) auraColor = auraObj.color;
     }
@@ -3160,8 +3228,37 @@ function drawBee(b) {
       }
     }
   }
+  // BEE-ELZEBUB demon features — horns + stinger (drawn in bee-local space)
+  if (b._bombBee > 0) {
+    ctx.fillStyle = '#e02020';
+    // Devil horns
+    ctx.beginPath();
+    ctx.moveTo(-4.5, -8.5); ctx.lineTo(-6.5, -13); ctx.lineTo(-2.5, -9.5);
+    ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(4.5, -8.5); ctx.lineTo(6.5, -13); ctx.lineTo(2.5, -9.5);
+    ctx.closePath(); ctx.fill();
+    // Devil stinger tail
+    ctx.beginPath();
+    ctx.moveTo(-1, 8); ctx.lineTo(0, 12); ctx.lineTo(1, 8);
+    ctx.closePath(); ctx.fill();
+  }
   ctx.restore();
   ctx.globalAlpha = 1;
+
+  // BEE-ELZEBUB ember particles (screen-space, not rotated)
+  if (b._bombBee > 0 && tick % 4 === 0) {
+    const _emCols = ['#ff8040','#ff4020','#ffb060','#fff'];
+    particles.push({
+      x: b.x + (Math.random()-0.5)*10,
+      y: b.y + (Math.random()-0.5)*10,
+      vx: (Math.random()-0.5)*0.6,
+      vy: -0.4 - Math.random()*0.5,
+      life: 0.5,
+      r: 0.8 + Math.random()*0.6,
+      col: _emCols[Math.floor(Math.random()*4)]
+    });
+  }
 
   // BEE-R burp bubbles
   if (_hasPU('beeR') && tick % 20 < 1) {
@@ -3437,7 +3534,10 @@ function drawCracks(cx, cy, level, cellSeed) {
 
 function drawHex(h) {
   if (h.dead) return;
-  const pts = hexPts(h.x, h.y, HEX_R);
+  // Queen telegraph effects
+  if (h._telegraphFlicker != null) ctx.globalAlpha = h._telegraphFlicker;
+  const _vibX = h._telegraphVibX || 0, _vibY = h._telegraphVibY || 0;
+  const pts = hexPts(h.x + _vibX, h.y + _vibY, HEX_R);
   hexPath(pts);
 
   // Fill color — radial gradient for 3D depth (uses cached colors)
@@ -3808,6 +3908,7 @@ function drawHex(h) {
   }
 
   // Brood egg-sac dots removed — just the bee sprite now
+  if (h._telegraphFlicker != null) ctx.globalAlpha = 1; // reset after telegraph
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3950,6 +4051,7 @@ function checkHex(b) {
         triggerDiscovery('QUEEN');
         const gate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
         if (gate && !gate.dead) {
+          if (!gate.damaged) gate.damaged = true; // activate queen attacks
           let qdmg = 1 + powers.beefyBees + powers.royalFury;
           if (_hasPU('beeGer')) qdmg *= 2;
           if (_hasPU('beeHemoth')) qdmg = 5;
@@ -4000,6 +4102,7 @@ function checkHex(b) {
               spawnParts(n.x, n.y, 6, ['#ff8040','#ff4020','#fff']);
               const honeyVal = CELL_TYPES[n.type]?.honey || 0;
               for (let d = 0; d < honeyVal; d++) spawnDroplet(n.x, n.y);
+              if (n.type === 'CHARGED') spawnPowerupDrop(n.x, n.y);
               if (n.type === 'WAX' || n.type === 'BOMB') {
                 window._waxChainQueue.push({ src: n, delay: 4, processed: false });
               }
@@ -4062,6 +4165,7 @@ function checkHex(b) {
             triggerDiscovery(_eBest.type);
             const _ehv = CELL_TYPES[_eBest.type]?.honey || 0;
             for (let _ed = 0; _ed < _ehv; _ed++) spawnDroplet(_eBest.x, _eBest.y);
+            if (_eBest.type === 'CHARGED') spawnPowerupDrop(_eBest.x, _eBest.y);
           }
           _eCur = _eBest;
         }
@@ -5366,7 +5470,7 @@ function drawUpgradeBanner() {
   const bannerY = Math.round(H * 0.33);  // centered in play area
   const bannerX = 4;
   const bannerW = W - 8;
-  const btnH = 90;                   // tall buttons: icon + name + description
+  const btnH = 56;                   // snug fit: icon + text + pips
   const gap = 4;
   const bannerH = 14 + btnH + gap + 4; // title + button + padding
   const cr = 6;
@@ -5399,7 +5503,7 @@ function drawUpgradeBanner() {
   const btnGap = 5;
   const btnW = (bannerW - btnGap * 3) / 2;
   const btnY = bannerY + 16;
-  const iconR = 20;                  // large hex icon radius
+  const iconR = 18;                  // hex icon radius
   const textLeft = iconR * 2 + 8;    // text starts after icon
 
   for (let i = 0; i < upgradeBannerChoices.length; i++) {
@@ -5425,12 +5529,9 @@ function drawUpgradeBanner() {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Large hex icon — shifted up to fit pip chain below
+    // Large hex icon — vertically centred in button
     const hexX = btnX + iconR + 6;
-    const pipGap = 8;
-    const pipR = 4;
-    const unitH = pu.max > 1 ? iconR * 2 + pipGap + pipR * 2 : iconR * 2;
-    const hexY = btnY + (btnH - unitH) / 2 + iconR;
+    const hexY = btnY + btnH / 2;                 // hex icon centred in button
     const hp = hexPts(hexX, hexY, iconR);
     ctx.beginPath(); ctx.moveTo(hp[0][0], hp[0][1]);
     for (let j = 1; j < 6; j++) ctx.lineTo(hp[j][0], hp[j][1]);
@@ -5444,32 +5545,8 @@ function drawUpgradeBanner() {
     // Procedural symbol icon
     drawUpgradeIcon(ctx, hexX, hexY, iconR, pu.id);
 
-    // Hex chain progress pips (for stackable upgrades)
-    if (pu.max > 1) {
-      const pipSpc = 10;
-      const pipY = hexY + iconR + pipGap;
-      const totalPipW = (pu.max - 1) * pipSpc;
-      const pipStartX = hexX - totalPipW / 2;
-      const curStacks = powers[pu.id] || 0;
-      for (let p = 0; p < pu.max; p++) {
-        const px = pipStartX + p * pipSpc;
-        const pp = hexPts(px, pipY, pipR);
-        ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
-        for (let j = 1; j < 6; j++) ctx.lineTo(pp[j][0], pp[j][1]);
-        ctx.closePath();
-        if (p < curStacks) {
-          ctx.fillStyle = pu.color;
-          ctx.fill();
-        }
-        ctx.strokeStyle = p < curStacks ? (pu.outline || '#7a3d00') : 'rgba(255,255,255,0.2)';
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-      }
-    }
-
-    // Text block vertically centred with icon
-    // Name (10px) + gap (4) + desc line(s) (~7px each)
-    // Estimate total text height, then centre on btnH/2
+    // Text block — name + description + pips all in text column
+    // Name (9px) + gap (3) + desc line(s) (~10px each) + optional pip row (8px)
     let desc = pu.desc || '';
     ctx.font = '7px "Press Start 2P",monospace';
     const availW = btnW - textLeft - 6;
@@ -5497,7 +5574,8 @@ function drawUpgradeBanner() {
     const nameH = 9;                // name font height
     const descLineH = 10;           // desc line spacing
     const gapBetween = 3;           // gap between name and desc
-    const totalTextH = nameH + gapBetween + descLines * descLineH;
+    const pipRowH = pu.max > 1 ? 10 : 0;  // extra height for pip row
+    const totalTextH = nameH + gapBetween + descLines * descLineH + pipRowH;
     const textTopY = btnY + (btnH - totalTextH) / 2;
 
     // Upgrade name — bold, sized to fit
@@ -5511,6 +5589,29 @@ function drawUpgradeBanner() {
     ctx.fillStyle = '#b09050';
     for (let ln = 0; ln < descLines; ln++) {
       ctx.fillText(lines[ln], btnX + textLeft, textTopY + nameH + gapBetween + ln * descLineH);
+    }
+
+    // Hex chain progress pips (stackable upgrades) — below description in text column
+    if (pu.max > 1) {
+      const pipR = 3;
+      const pipSpc = 9;
+      const pipY = textTopY + nameH + gapBetween + descLines * descLineH + 5;
+      const pipStartX = btnX + textLeft;
+      const curStacks = powers[pu.id] || 0;
+      for (let p = 0; p < pu.max; p++) {
+        const px = pipStartX + p * pipSpc;
+        const pp = hexPts(px, pipY, pipR);
+        ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
+        for (let j = 1; j < 6; j++) ctx.lineTo(pp[j][0], pp[j][1]);
+        ctx.closePath();
+        if (p < curStacks) {
+          ctx.fillStyle = pu.color;
+          ctx.fill();
+        }
+        ctx.strokeStyle = p < curStacks ? (pu.outline || '#7a3d00') : 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
     }
   }
   ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
@@ -6245,6 +6346,8 @@ function spawnQueenCluster(gateY, gateIndex) {
 // ── Boss Gate: shatter all guard cells when Queen dies ──
 function triggerBossGateShatter(gate) {
   gate.dead = true;
+  gate.splitTimer = 0; gate._splitOrigins = null;
+  _resetQueenDebuffs(); // clear all queen debuffs on defeat
   sessionQueenGates++;
   // Shatter guard cells with staggered particle bursts
   for (const h of gate.guardCells) {
@@ -6351,6 +6454,387 @@ function getBossGateHP() {
 }
 const BOSS_GATE_PORTAL_EXCLUSION = 15; // rows of no-portal zone each side
 
+// ── Queen Attack System (tunable config) ──
+const QUEEN_ATK = {
+  firstAttackDelay: 180,    // 3s grace after first hit
+  cooldownMin:      240,    // 4s min between attacks
+  cooldownMax:      480,    // 8s max between attacks
+  telegraphFrames:  60,     // 1s telegraph before attack fires
+  weights: { stinger:3, splotch:2, babyHends:2, teleport:2, split:1 },
+  stingerDur:   300,        // 5s debuff
+  splotchDur:   240,        // 4s screen honey
+  babyHendsDur: 300,        // 5s shrink
+  splitDur:     480,        // 8s split form
+  shrinkFactor: 0.55,       // paddle shrinks to 55%
+};
+let queenDebuffs = { stinger:0, babyHends:0, splotches:[] };
+let _queenStingerProj = null;  // {x,y,tx,ty,t,maxT} — active projectile
+
+function _resetQueenDebuffs() {
+  queenDebuffs = { stinger:0, babyHends:0, splotches:[] };
+  _queenStingerProj = null;
+}
+
+function _queenWeightedAttack() {
+  const w = QUEEN_ATK.weights;
+  const entries = Object.entries(w);
+  const total = entries.reduce((s,[,v])=>s+v,0);
+  let r = Math.random()*total;
+  for (const [k,v] of entries) { r-=v; if(r<0) return k; }
+  return entries[0][0];
+}
+
+function _queenCenterXY(gate) {
+  const qc = gate.queenCells;
+  if (!qc || qc.length===0) return null;
+  return { x:qc[0].x, y:qc[0].y };
+}
+
+function _executeQueenAttack(gate, atkId) {
+  const center = _queenCenterXY(gate);
+  if (!center) return;
+
+  switch(atkId) {
+    case 'stinger': {
+      queenDebuffs.stinger = QUEEN_ATK.stingerDur;
+      // Launch projectile from queen to paddle
+      const paddleScreenY = scrollY + PADDLE_Y;
+      _queenStingerProj = {
+        x:center.x, y:center.y,
+        tx: paddle.x + getPW()/2, ty: paddleScreenY,
+        t:0, maxT:18
+      };
+      triggerShake(3, 8);
+      sfx.bomb();
+      broodMsgs.push({x:center.x,y:center.y-20,life:60,txt:'STINGER!'});
+      break;
+    }
+    case 'splotch': {
+      // Spawn 3-5 amber blobs at random screen positions
+      const count = 3 + Math.floor(Math.random()*3);
+      for (let i=0;i<count;i++) {
+        queenDebuffs.splotches.push({
+          x: 30 + Math.random()*(W-60),
+          y: 60 + Math.random()*(H*0.5),
+          r: 25 + Math.random()*20,
+          alpha: 0.55 + Math.random()*0.15,
+          dripY: 0
+        });
+      }
+      broodMsgs.push({x:center.x,y:center.y-20,life:60,txt:'HONEY SPLOTCH!'});
+      break;
+    }
+    case 'babyHends': {
+      queenDebuffs.babyHends = QUEEN_ATK.babyHendsDur;
+      triggerShake(2, 6);
+      broodMsgs.push({x:center.x,y:center.y-20,life:60,txt:'SHRINK!'});
+      break;
+    }
+    case 'teleport': {
+      _queenTeleport(gate);
+      break;
+    }
+    case 'split': {
+      _queenSplit(gate);
+      break;
+    }
+  }
+}
+
+function _queenTeleport(gate) {
+  const rowH = HEX_R * Math.sqrt(3);
+  const colW = HEX_R * 1.5;
+  const oldCenter = _queenCenterXY(gate);
+  if (!oldCenter) return;
+
+  // Try random offsets up to 8 times to find a valid position
+  for (let attempt=0; attempt<8; attempt++) {
+    const dcol = Math.floor(Math.random()*7)-3; // -3 to +3 columns
+    const drow = Math.floor(Math.random()*3)-1; // -1 to +1 rows
+    if (dcol===0 && drow===0) continue;
+
+    const centerCol = Math.round((oldCenter.x - HEX_R) / colW) + dcol;
+    const centerRow = Math.round((oldCenter.y - ((centerCol&1)?rowH*0.5:0)) / rowH) + drow;
+    const yOff = (centerCol&1) ? rowH*0.5 : 0;
+    const newX = HEX_R + centerCol * colW;
+    const newY = yOff + centerRow * rowH;
+
+    // Bounds check
+    if (newX < HEX_R*2 || newX > W - HEX_R*2) continue;
+    // Must stay within reasonable camera distance
+    if (Math.abs(newY - scrollY - H*0.35) > H*0.6) continue;
+
+    // Move all queen cells by the offset
+    const dx = newX - oldCenter.x, dy = newY - oldCenter.y;
+    // Spawn particles at old positions
+    for (const qc of gate.queenCells) {
+      spawnParts(qc.x, qc.y, 6, ['#d03088','#f060a0','#ffd700']);
+      qc.x += dx; qc.y += dy;
+      qc.flash = 12;
+    }
+    _hexGridRebuild();
+    triggerShake(3, 8);
+    broodMsgs.push({x:newX,y:newY-20,life:60,txt:'TELEPORT!'});
+    return;
+  }
+}
+
+function _queenSplit(gate) {
+  if (gate.splitTimer > 0) return; // already split
+  const center = _queenCenterXY(gate);
+  if (!center) return;
+  // Store original positions and spread outward
+  gate._splitOrigins = gate.queenCells.map(qc=>({x:qc.x,y:qc.y}));
+  gate.splitTimer = QUEEN_ATK.splitDur;
+  gate._splitPhase = 'spreading'; // 'spreading' | 'spread' | 'reforming'
+  gate._splitLerp = 0;
+  broodMsgs.push({x:center.x,y:center.y-20,life:60,txt:'SPLIT!'});
+}
+
+function updateQueenAttacks() {
+  // Debuff tick-down
+  if (queenDebuffs.stinger > 0) queenDebuffs.stinger--;
+  if (queenDebuffs.babyHends > 0) queenDebuffs.babyHends--;
+  // Splotch drip + fade
+  for (const sp of queenDebuffs.splotches) {
+    sp.dripY += 0.3;
+    sp.alpha -= 1 / QUEEN_ATK.splotchDur;
+  }
+  queenDebuffs.splotches = queenDebuffs.splotches.filter(sp => sp.alpha > 0);
+
+  // Stinger projectile animation
+  if (_queenStingerProj) {
+    _queenStingerProj.t++;
+    if (_queenStingerProj.t >= _queenStingerProj.maxT) _queenStingerProj = null;
+  }
+
+  // Attack state machine for each living gate
+  for (const gate of bossGates) {
+    if (gate.dead || !gate.damaged) continue;
+
+    // Check queen is on screen
+    const center = _queenCenterXY(gate);
+    if (!center) continue;
+    const screenY = center.y - scrollY;
+    if (screenY < -50 || screenY > H + 50) continue;
+
+    // Split timer management
+    if (gate.splitTimer > 0) {
+      gate.splitTimer--;
+      const spreadDist = HEX_R * Math.sqrt(3) * 2; // 2 hex widths
+      const lerpSpeed = 1/30; // 30 frames to spread/reform
+
+      if (gate._splitPhase === 'spreading') {
+        gate._splitLerp = Math.min(1, gate._splitLerp + lerpSpeed);
+        if (gate._splitLerp >= 1) gate._splitPhase = 'spread';
+      }
+      if (gate.splitTimer <= 30 && gate._splitPhase === 'spread') {
+        gate._splitPhase = 'reforming';
+        gate._splitLerp = 1;
+      }
+      if (gate._splitPhase === 'reforming') {
+        gate._splitLerp = Math.max(0, gate._splitLerp - lerpSpeed);
+      }
+
+      // Lerp outer cells (indices 1-6) outward from center
+      if (gate._splitOrigins) {
+        const cx = gate._splitOrigins[0].x, cy = gate._splitOrigins[0].y;
+        for (let i=1; i<gate.queenCells.length && i<gate._splitOrigins.length; i++) {
+          const orig = gate._splitOrigins[i];
+          const dx = orig.x - cx, dy = orig.y - cy;
+          const len = Math.hypot(dx,dy) || 1;
+          const targetX = orig.x + (dx/len)*spreadDist;
+          const targetY = orig.y + (dy/len)*spreadDist;
+          gate.queenCells[i].x = orig.x + (targetX-orig.x)*gate._splitLerp;
+          gate.queenCells[i].y = orig.y + (targetY-orig.y)*gate._splitLerp;
+        }
+        _hexGridRebuild();
+      }
+
+      if (gate.splitTimer <= 0) {
+        // Reform: snap back to original positions
+        if (gate._splitOrigins) {
+          for (let i=0;i<gate.queenCells.length && i<gate._splitOrigins.length;i++) {
+            gate.queenCells[i].x = gate._splitOrigins[i].x;
+            gate.queenCells[i].y = gate._splitOrigins[i].y;
+          }
+          _hexGridRebuild();
+        }
+        gate._splitOrigins = null;
+        gate._splitPhase = null;
+        gate._splitLerp = 0;
+      }
+    }
+
+    // Attack state machine
+    if (gate.atkState === 'cooldown') {
+      gate.atkCooldown--;
+      if (gate.atkCooldown <= 0) gate.atkState = 'idle';
+    }
+    if (gate.atkState === 'idle') {
+      // Don't attack while split is active
+      if (gate.splitTimer > 0) continue;
+      gate.atkCurrent = _queenWeightedAttack();
+      // Don't re-split if just reformed
+      if (gate.atkCurrent === 'split' && gate._splitOrigins) {
+        gate.atkCurrent = 'stinger'; // fallback
+      }
+      gate.atkTelegraph = QUEEN_ATK.telegraphFrames;
+      gate.atkState = 'telegraph';
+    }
+    if (gate.atkState === 'telegraph') {
+      gate.atkTelegraph--;
+      // Telegraph visuals applied in render
+      if (gate.atkTelegraph <= 0) {
+        _executeQueenAttack(gate, gate.atkCurrent);
+        gate.atkState = 'cooldown';
+        gate.atkCooldown = QUEEN_ATK.cooldownMin +
+          Math.floor(Math.random()*(QUEEN_ATK.cooldownMax - QUEEN_ATK.cooldownMin));
+      }
+    }
+  }
+}
+
+function renderQueenAttacks_world() {
+  // Telegraph visuals (world-space, called inside ctx.translate(-scrollY))
+  for (const gate of bossGates) {
+    if (gate.dead || gate.atkState !== 'telegraph') continue;
+    const center = _queenCenterXY(gate);
+    if (!center) continue;
+    const prog = 1 - gate.atkTelegraph / QUEEN_ATK.telegraphFrames;
+
+    switch(gate.atkCurrent) {
+      case 'stinger': {
+        // Pulsing magenta glow on queen center
+        const pulse = 0.4 + 0.6 * Math.sin(prog * Math.PI * 6);
+        ctx.globalAlpha = pulse * prog;
+        const g = ctx.createRadialGradient(center.x,center.y,0,center.x,center.y,HEX_R*2);
+        g.addColorStop(0,'rgba(208,48,136,0.6)');
+        g.addColorStop(1,'rgba(208,48,136,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(center.x,center.y,HEX_R*2,0,Math.PI*2); ctx.fill();
+        // Growing stinger line toward paddle
+        const paddleScreenWorldY = scrollY + PADDLE_Y;
+        ctx.strokeStyle = `rgba(255,60,180,${prog*0.7})`;
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4,4]);
+        ctx.beginPath();
+        ctx.moveTo(center.x, center.y);
+        ctx.lineTo(center.x + (paddle.x+getPW()/2-center.x)*prog,
+                   center.y + (paddleScreenWorldY-center.y)*prog);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 'splotch': {
+        // Amber drip particles from queen cells
+        ctx.globalAlpha = prog * 0.5;
+        for (const qc of gate.queenCells) {
+          if (qc.dead) continue;
+          ctx.fillStyle = '#d4a020';
+          const dy = prog * 30;
+          ctx.beginPath(); ctx.arc(qc.x, qc.y + dy, 3, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 'babyHends': {
+        // Shrinking rings from queen toward paddle
+        const ringR = HEX_R*4*(1-prog);
+        ctx.strokeStyle = `rgba(208,48,136,${prog*0.5})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(center.x,center.y,ringR,0,Math.PI*2); ctx.stroke();
+        break;
+      }
+      case 'teleport': {
+        // Rapid flicker of queen cells
+        for (const qc of gate.queenCells) {
+          qc._telegraphFlicker = Math.sin(prog * Math.PI * 12) > 0 ? 0.2 : 1.0;
+        }
+        break;
+      }
+      case 'split': {
+        // Vibrate queen cells
+        for (const qc of gate.queenCells) {
+          qc._telegraphVibX = (Math.random()-0.5)*4*prog;
+          qc._telegraphVibY = (Math.random()-0.5)*4*prog;
+        }
+        break;
+      }
+    }
+  }
+
+  // Stinger projectile (world-space)
+  if (_queenStingerProj) {
+    const p = _queenStingerProj;
+    const t = p.t / p.maxT;
+    const px = p.x + (p.tx-p.x)*t;
+    const py = p.y + (p.ty-p.y)*t;
+    ctx.strokeStyle = `rgba(255,60,180,${1-t})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(p.x + (p.tx-p.x)*Math.max(0,t-0.3), p.y + (p.ty-p.y)*Math.max(0,t-0.3));
+    ctx.lineTo(px, py);
+    ctx.stroke();
+    // Bright tip
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Clear telegraph flicker/vibrate (reset after render)
+  for (const gate of bossGates) {
+    for (const qc of gate.queenCells) {
+      qc._telegraphFlicker = undefined;
+      qc._telegraphVibX = undefined;
+      qc._telegraphVibY = undefined;
+    }
+  }
+}
+
+function renderQueenAttacks_screen() {
+  // Honey splotch overlay (screen-space)
+  for (const sp of queenDebuffs.splotches) {
+    const g = ctx.createRadialGradient(sp.x, sp.y+sp.dripY, 0, sp.x, sp.y+sp.dripY, sp.r);
+    g.addColorStop(0, `rgba(180,120,20,${sp.alpha*0.7})`);
+    g.addColorStop(0.5, `rgba(200,150,30,${sp.alpha*0.45})`);
+    g.addColorStop(1, `rgba(220,170,40,0)`);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(sp.x, sp.y+sp.dripY, sp.r, 0, Math.PI*2); ctx.fill();
+    // Drip streak
+    ctx.fillStyle = `rgba(180,120,20,${sp.alpha*0.3})`;
+    ctx.fillRect(sp.x-3, sp.y, 6, sp.dripY);
+  }
+
+  // Debuff indicators near boss HP bar
+  const activeDebuffs = [];
+  if (queenDebuffs.stinger > 0) activeDebuffs.push({name:'STUNG',col:'#ff40b0',frac:queenDebuffs.stinger/QUEEN_ATK.stingerDur});
+  if (queenDebuffs.babyHends > 0) activeDebuffs.push({name:'SHRINK',col:'#ff40b0',frac:queenDebuffs.babyHends/QUEEN_ATK.babyHendsDur});
+  if (queenDebuffs.splotches.length > 0) activeDebuffs.push({name:'HONEY',col:'#d4a020',frac:1});
+  if (activeDebuffs.length > 0) {
+    const dbY = 42;
+    for (let i=0;i<activeDebuffs.length;i++) {
+      const db = activeDebuffs[i];
+      const dbX = (W - activeDebuffs.length*60)/2 + i*60;
+      // Background
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(dbX, dbY, 50, 12);
+      // Fill bar
+      ctx.fillStyle = db.col;
+      ctx.fillRect(dbX, dbY, 50*db.frac, 12);
+      // Border
+      ctx.strokeStyle = db.col; ctx.lineWidth = 1;
+      ctx.strokeRect(dbX, dbY, 50, 12);
+      // Label
+      ctx.fillStyle = '#fff';
+      ctx.font = '4px "Press Start 2P",monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(db.name, dbX+25, dbY+9);
+    }
+    ctx.textAlign = 'left';
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // GAME STATE
 // ═══════════════════════════════════════════════════════
@@ -6409,7 +6893,7 @@ function startLevel(lvl) {
   SaveManager.discover('THICK');
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
-  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _nextBlueprintDepth=3;
+  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _nextBlueprintDepth=3; _resetQueenDebuffs();
   timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null;
   particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; activePowerups=[]; honeySurgeFills=0; touchX=null; touchX2=null; touchIdLeft=null; touchIdRight=null;
   paddle=mkPaddle();
@@ -6561,6 +7045,7 @@ function update() {
             // Honey from chain-killed cells
             const honeyVal = CELL_TYPES[n.type]?.honey || 0;
             for (let d = 0; d < honeyVal; d++) spawnDroplet(n.x, n.y);
+            if (n.type === 'CHARGED') spawnPowerupDrop(n.x, n.y);
             // Chain continues: WAX and BOMB propagate
             if (n.type === 'WAX' || n.type === 'BOMB') {
               window._waxChainQueue.push({ src: n, delay: WAX_CHAIN_DELAY, processed: false });
@@ -6587,7 +7072,13 @@ function update() {
         const gateHP = getBossGateHP();
         const gate = {
           guardCells, queenCells: [], hp: gateHP,
-          maxHp: gateHP, gateY: chunkTop, dead: false
+          maxHp: gateHP, gateY: chunkTop, dead: false,
+          // Queen attack state
+          damaged: false, atkState: 'cooldown',
+          atkCooldown: QUEEN_ATK.firstAttackDelay,
+          atkTelegraph: 0, atkCurrent: null,
+          splitTimer: 0, _splitOrigins: null,
+          _splitPhase: null, _splitLerp: 0
         };
         bossGates.push(gate);
         // Remove existing hexes that overlap guard cell positions
@@ -6745,7 +7236,12 @@ function update() {
       const gateHP = getBossGateHP();
       const gate = {
         guardCells, queenCells: [], hp: gateHP,
-        maxHp: gateHP, gateY: chunkTop, dead: false
+        maxHp: gateHP, gateY: chunkTop, dead: false,
+        damaged: false, atkState: 'cooldown',
+        atkCooldown: QUEEN_ATK.firstAttackDelay,
+        atkTelegraph: 0, atkCurrent: null,
+        splitTimer: 0, _splitOrigins: null,
+        _splitPhase: null, _splitLerp: 0
       };
       bossGates.push(gate);
       // Remove existing hexes that overlap guard cell positions
@@ -7080,6 +7576,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
                 spawnParts(n.x,n.y,6,['#ff8040','#ff4020','#fff']);
                 const honeyVal = CELL_TYPES[n.type]?.honey || 0;
                 for (let d = 0; d < honeyVal; d++) spawnDroplet(n.x, n.y);
+                if (n.type === 'CHARGED') spawnPowerupDrop(n.x, n.y);
                 if (n.type === 'WAX' || n.type === 'BOMB') {
                   window._waxChainQueue.push({ src: n, delay: 4, processed: false });
                 }
@@ -7143,6 +7640,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
   for (const m of broodMsgs){m.y-=0.35;m.life--;}
   updateDroplets();
   updateFallingDrops();
+  updateQueenAttacks(); // Queen boss attack state machine
 
   // ── Powerup drops: gravity, paddle catch, off-screen removal ──
   const pw2 = getPW();
@@ -7452,6 +7950,7 @@ function render() {
   }
 
   drawParts();
+  renderQueenAttacks_world(); // queen telegraphs + projectiles (world-space)
 
   // Draw paddle UNDER bees (in world space temporarily)
   ctx.save();
@@ -7593,14 +8092,18 @@ function render() {
       ctx.globalAlpha = 1;
     } else if (_dpId === 'magnetHends') {
       ctx.save(); ctx.translate(d.x, d.y);
-      ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-      ctx.strokeStyle = '#c03030';
-      ctx.beginPath(); ctx.arc(0, -1, 6, 0, Math.PI); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-6, -1); ctx.lineTo(-6, 6); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(6, -1); ctx.lineTo(6, 6); ctx.stroke();
-      ctx.strokeStyle = '#c0c0c0';
-      ctx.beginPath(); ctx.moveTo(-6, 4); ctx.lineTo(-6, 8); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(6, 4); ctx.lineTo(6, 8); ctx.stroke();
+      ctx.lineCap = 'butt';
+      // Red U-shape body
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#d03030';
+      ctx.beginPath(); ctx.arc(0, -1, 6, Math.PI, 0); ctx.stroke();
+      ctx.strokeStyle = '#d03030';
+      ctx.beginPath(); ctx.moveTo(-6, -1); ctx.lineTo(-6, 5); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, -1); ctx.lineTo(6, 5); ctx.stroke();
+      // Silver tips
+      ctx.strokeStyle = '#c8c8c8';
+      ctx.beginPath(); ctx.moveTo(-6, 5); ctx.lineTo(-6, 8); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(6, 5); ctx.lineTo(6, 8); ctx.stroke();
       ctx.restore();
     } else if (_dpPNG) {
       ctx.save(); ctx.translate(d.x, d.y);
@@ -7654,6 +8157,9 @@ function render() {
     ctx.font='7px "Press Start 2P",monospace';
     ctx.fillStyle = m.txt && m.txt.includes('TELEPORT') ? '#e080ff'
                   : m.txt && m.txt.includes('HONEY') ? '#ffe050'
+                  : m.txt && (m.txt.includes('STINGER') || m.txt.includes('SHRINK') || m.txt.includes('SPLIT')) ? '#ff60b0'
+                  : m.txt && m.txt.includes('SPLOTCH') ? '#d4a020'
+                  : m.txt && m.txt.includes('QUEEN') ? '#ffd700'
                   : '#f5d040';
     ctx.fillText(m.txt||'BROOD RELEASED',m.x,Math.round(m.y));
   }
@@ -7663,6 +8169,8 @@ function render() {
 
   // Close screen shake before HUD so UI stays stable
   if (sx !== 0 || sy !== 0) ctx.restore();
+
+  renderQueenAttacks_screen(); // honey splotches + debuff indicators (screen-space)
 
   // ── Attract-mode dark wash for title readability ──
   if (demoMode) {
@@ -8058,33 +8566,33 @@ function buildGuide() {
   // Interleaved: left column = breakable cells, right column = special cells
   // CSS grid fills left→right per row, so array order is [left1, right1, left2, right2, ...]
   const CELLS_LEFT = [
-    { name:'NORMAL',      type:'NORMAL',  col:'#f5c030', out:'#7a3d00', lw:3, hits:'1 HIT',   honey:'1', note:'STANDARD CELL',
+    { name:'NORMAL',      type:'NORMAL',  col:'#f5c030', out:'#7a3d00', lw:3, hits:'HP: 1',   honey:'1', note:'STANDARD CELL',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,230,140,0.45)" stroke-width="1"/>` },
-    { name:'REINFORCED',  type:'THICK',   col:'#7a4800', out:'#7a3d00', lw:3, hits:'2 HITS',  honey:'1', note:'STANDARD CELL',
+    { name:'REINFORCED',  type:'THICK',   col:'#7a4800', out:'#7a3d00', lw:3, hits:'HP: 2',   honey:'1', note:'STANDARD CELL',
       svg:`<line x1="0" y1="0" x2="-5" y2="-6" stroke="#2a1000" stroke-width="1.2"/><line x1="0" y1="0" x2="5" y2="-5" stroke="#2a1000" stroke-width="1.2"/>` },
-    { name:'HEAVY',       type:'HEAVY',   col:'#8a6830', out:'#a08040', lw:3, hits:'3 HITS',  honey:'1', note:'STANDARD CELL',
+    { name:'HEAVY',       type:'HEAVY',   col:'#8a6830', out:'#a08040', lw:3, hits:'HP: 3',   honey:'1', note:'STANDARD CELL',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(138,104,48,0.5)" stroke-width="1.5"/>` },
-    { name:'ROYAL',       type:'ROYAL',   col:'#d4af37', out:'#d4af37', lw:3, hits:'5 HITS',  honey:'1', note:'STANDARD CELL',
+    { name:'ROYAL',       type:'ROYAL',   col:'#d4af37', out:'#d4af37', lw:3, hits:'HP: 5',   honey:'1', note:'STANDARD CELL',
       svg:`<polygon points="-4,2 -2,-3 0,2 2,-3 4,2" fill="rgba(255,220,80,0.7)" stroke="none"/>` },
-    { name:'ANCIENT',     type:'ANCIENT', col:'#4a6050', out:'#4a7060', lw:3, hits:'10 HITS', honey:'1', note:'STANDARD CELL',
+    { name:'ANCIENT',     type:'ANCIENT', col:'#4a6050', out:'#4a7060', lw:3, hits:'HP: 10',  honey:'1', note:'STANDARD CELL',
       svg:`<line x1="-5" y1="0" x2="5" y2="0" stroke="rgba(80,120,90,0.5)" stroke-width="1"/><line x1="0" y1="-5" x2="0" y2="5" stroke="rgba(80,120,90,0.5)" stroke-width="1"/>` },
-    { name:'TITAN',       type:'TITAN',   col:'#3a3a50', out:'#6060a0', lw:3, hits:'20 HITS', honey:'1', note:'STANDARD CELL',
+    { name:'TITAN',       type:'TITAN',   col:'#3a3a50', out:'#6060a0', lw:3, hits:'HP: 20',  honey:'1', note:'STANDARD CELL',
       svg:`<circle cx="0" cy="0" r="4" fill="rgba(100,100,160,0.4)"/><circle cx="0" cy="0" r="6" fill="none" stroke="rgba(80,80,140,0.5)" stroke-width="2"/>` },
-    { name:'HONEY',       type:'HONEY',   col:'#ffe050', out:'#e8b000', lw:3, hits:'1 HIT',   honey:'6', note:'HIGH HONEY REWARD',
+    { name:'HONEY',       type:'HONEY',   col:'#ffe050', out:'#e8b000', lw:3, hits:'HP: 1',   honey:'6', note:'HIGH HONEY REWARD',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,240,80,0.6)" stroke-width="1.5"/><circle cx="-3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="0" cy="-4" r="2" fill="#ff9800" opacity="0.9"/>` },
     { name:'UNBREAKABLE', type:'UNBREAKABLE', col:'#505050', out:'#707070', lw:3, hits:'IMMUNE',  honey:'0', note:'PERMANENT OBSTACLE',
       svg:`` },
   ];
   const CELLS_RIGHT = [
-    { name:'WAX',         type:'WAX',         col:'#e2d9b2', out:'#b0a070', lw:3, hits:'1 HIT',   honey:'0', note:'WEAKENS NEIGHBORS',
+    { name:'WAX',         type:'WAX',         col:'#e2d9b2', out:'#b0a070', lw:3, hits:'HP: 1',   honey:'0', note:'WEAKENS LINKED CELLS',
       svg:`<line x1="-7" y1="0" x2="7" y2="0" stroke="rgba(180,170,120,0.5)" stroke-width="1"/><line x1="0" y1="-7" x2="0" y2="7" stroke="rgba(180,170,120,0.5)" stroke-width="1"/>` },
-    { name:'BROOD',       type:'BROOD',       col:'#3a2408', out:'#a86800', lw:3, hits:'1 HIT',   honey:'0', note:'RELEASES BEES',
+    { name:'BROOD',       type:'BROOD',       col:'#3a2408', out:'#a86800', lw:3, hits:'HP: 1',   honey:'0', note:'RELEASES BEES',
       svg:`<ellipse cx="0" cy="1" rx="4" ry="3" fill="rgba(245,180,30,0.6)" stroke="rgba(60,30,0,0.5)" stroke-width="0.5"/><line x1="-1" y1="-1" x2="-1" y2="3" stroke="rgba(60,30,0,0.4)" stroke-width="0.5"/><line x1="1.5" y1="-0.5" x2="1.5" y2="2.5" stroke="rgba(60,30,0,0.4)" stroke-width="0.5"/><ellipse cx="-2" cy="-2" rx="2.5" ry="1.2" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.5" transform="rotate(-20)"/><ellipse cx="2" cy="-2" rx="2.5" ry="1.2" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.5" transform="rotate(20)"/>` },
-    { name:'BOMB',        type:'BOMB',        col:'#ff4020', out:'#ff4020', lw:3, hits:'1 HIT',   honey:'0', note:'EXPLODES NEARBY CELLS',
+    { name:'BOMB',        type:'BOMB',        col:'#ff4020', out:'#ff4020', lw:3, hits:'HP: 1',   honey:'0', note:'EXPLODES NEARBY CELLS',
       svg:`<circle cx="0" cy="0" r="5" fill="rgba(255,64,32,0.3)"/><circle cx="0" cy="-5" r="2" fill="rgba(255,200,80,0.8)"/>` },
-    { name:'CHARGED',     type:'CHARGED',     col:'#50d0ff', out:'#50d0ff', lw:3, hits:'1 HIT',   honey:'0', note:'DROPS RANDOM POWER-UP',
+    { name:'CHARGED',     type:'CHARGED',     col:'#50d0ff', out:'#50d0ff', lw:3, hits:'HP: 1',   honey:'0', note:'DROPS RANDOM POWER-UP',
       svg:`<line x1="-2" y1="-4" x2="1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="1" y1="0" x2="-1" y2="0" stroke="rgba(150,230,255,0.7)" stroke-width="1"/><line x1="-1" y1="0" x2="2" y2="4" stroke="rgba(150,230,255,0.7)" stroke-width="1"/>` },
-    { name:'PORTAL',      type:'PORTAL',      col:'#9020d0', out:'#cc60ff', lw:3, hits:'IMMUNE',  honey:'0', note:'TELEPORTS THE BEE',
+    { name:'PORTAL',      type:'PORTAL',      col:'#9020d0', out:'#cc60ff', lw:3, hits:'IMMUNE',  honey:'0', note:'TELEPORTS BEES 1 WAY',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(220,140,255,0.8)" stroke-width="1.5"/><text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="6" fill="#f0c0ff">1</text>` },
     { name:'BOOST',       type:'BOOST',       col:'#20e040', out:'#30ff50', lw:3, hits:'IMMUNE',  honey:'0', note:'REDIRECTS THE BEE',
       svg:`` },
@@ -8112,13 +8620,13 @@ function buildGuide() {
         </div>`;
     }
     const nameCol = c.col === '#e2d9b2' ? '#c0b080' : c.col;
-    const honeyStr = c.honey !== '0' ? ` \u00b7 ${c.honey} HONEY` : '';
+    const honeyStr = c.honey !== '0' ? ` \u00b7 HONEY: ${c.honey}` : '';
     const iconUrl = _guideCellIcon(c.type);
     return `<div class="gc-hex"><img src="${iconUrl || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'}" data-cell-type="${c.type}" width="36" height="36" style="display:block;"/></div>
       <div class="gc-info">
         <div class="gc-name" style="color:${nameCol}">${c.name}</div>
         <div class="gc-note">${c.note}</div>
-        <div class="gc-stats">${c.hits}${honeyStr}</div>
+        <div class="gc-stats"><span class="gc-hp">${c.hits}</span>${honeyStr}</div>
       </div>`;
   }
 
@@ -8200,42 +8708,21 @@ function buildGuide() {
       gc.globalAlpha = 1;
       return;
     }
-    // MAGNET HENDS — magnet icon with pulsing blue glow
+    // MAGNET HENDS — standard red & silver horseshoe magnet
     if (pId === 'magnetHends') {
-      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.025);
-      // Blue glow
-      const aR = 16 + pulse * 4;
-      const gA = 0.2 + pulse * 0.15;
-      const g = gc.createRadialGradient(20, 20, 2, 20, 20, aR);
-      g.addColorStop(0, `rgba(96,192,255,${gA})`);
-      g.addColorStop(1, 'rgba(96,192,255,0)');
-      gc.fillStyle = g; gc.fillRect(0, 0, 40, 40);
-      // Horseshoe magnet shape
       gc.save();
       gc.translate(20, 20);
-      gc.lineWidth = 3;
-      gc.lineCap = 'round';
-      // Magnet body (U-shape)
-      gc.strokeStyle = '#c03030';
-      gc.beginPath();
-      gc.arc(0, -2, 8, 0, Math.PI); // curved top
-      gc.stroke();
-      // Left prong
-      gc.strokeStyle = '#c03030';
-      gc.beginPath(); gc.moveTo(-8, -2); gc.lineTo(-8, 8); gc.stroke();
-      // Right prong
-      gc.beginPath(); gc.moveTo(8, -2); gc.lineTo(8, 8); gc.stroke();
+      gc.lineCap = 'butt';
+      // Red U-shape body
+      gc.lineWidth = 4;
+      gc.strokeStyle = '#d03030';
+      gc.beginPath(); gc.arc(0, -2, 8, Math.PI, 0); gc.stroke();
+      gc.beginPath(); gc.moveTo(-8, -2); gc.lineTo(-8, 7); gc.stroke();
+      gc.beginPath(); gc.moveTo(8, -2); gc.lineTo(8, 7); gc.stroke();
       // Silver tips
-      gc.strokeStyle = '#c0c0c0';
-      gc.beginPath(); gc.moveTo(-8, 6); gc.lineTo(-8, 10); gc.stroke();
-      gc.beginPath(); gc.moveTo(8, 6); gc.lineTo(8, 10); gc.stroke();
-      // Field lines (pulsing)
-      gc.globalAlpha = 0.3 + pulse * 0.3;
-      gc.strokeStyle = '#60c0ff';
-      gc.lineWidth = 1;
-      gc.beginPath(); gc.arc(0, 10, 4, Math.PI, 0); gc.stroke();
-      gc.beginPath(); gc.arc(0, 12, 6, Math.PI, 0); gc.stroke();
-      gc.globalAlpha = 1;
+      gc.strokeStyle = '#c8c8c8';
+      gc.beginPath(); gc.moveTo(-8, 7); gc.lineTo(-8, 12); gc.stroke();
+      gc.beginPath(); gc.moveTo(8, 7); gc.lineTo(8, 12); gc.stroke();
       gc.restore();
       return;
     }
@@ -8607,6 +9094,12 @@ function hidePause() { pausePanel.classList.remove('show'); }
   };
   container.appendChild(rb);
 
+  const gb = document.createElement('button');
+  gb.className = 'ob';
+  gb.textContent = 'GUIDE';
+  gb.onclick = () => { showPause(true); };
+  container.appendChild(gb);
+
   const shopBtn = document.createElement('button');
   shopBtn.className = 'ob';
   shopBtn.textContent = 'SHOP';
@@ -8618,12 +9111,6 @@ function hidePause() { pausePanel.classList.remove('show'); }
   stBtn.textContent = 'STATS';
   stBtn.onclick = () => { hidePause(); showStats('pause'); };
   container.appendChild(stBtn);
-
-  const gb = document.createElement('button');
-  gb.className = 'ob';
-  gb.textContent = 'GUIDE';
-  gb.onclick = () => { showPause(true); };
-  container.appendChild(gb);
 
   const sb = document.createElement('button');
   sb.className = 'ob';
@@ -8707,9 +9194,9 @@ function showMenu() {
       }
     });
   }
+  mkBtn('GUIDE',    false, ()=>{showPause(true);});
   mkBtn('SHOP',     false, ()=>{hideOv(); showShop('menu');});
   mkBtn('STATS',    false, ()=>{hideOv(); showStats('menu');});
-  mkBtn('GUIDE',    false, ()=>{showPause(true);});
   mkBtn('SETTINGS', false, ()=>{hideOv(); showSettings('menu');});
   showOv();
   // Start attract-mode demo: real gameplay behind the title screen
@@ -8729,16 +9216,20 @@ const sliderSfx   = document.getElementById('sliderSfx');
 sliderMusic.value = Math.round(musicVolume * 100);
 sliderSfx.value   = Math.round(sfxVolume * 100);
 
-sliderMusic.addEventListener('input', () => {
+function _onMusicSlider() {
   musicVolume = sliderMusic.value / 100;
   if (music.gain) music.gain.gain.value = musicVolume;
   else if (music.el) music.el.volume = musicVolume;
   localStorage.setItem('hendsbee_music', musicVolume);
-});
-sliderSfx.addEventListener('input', () => {
+}
+sliderMusic.addEventListener('input', _onMusicSlider);
+sliderMusic.addEventListener('change', _onMusicSlider);
+function _onSfxSlider() {
   sfxVolume = sliderSfx.value / 100;
   localStorage.setItem('hendsbee_sfx', sfxVolume);
-});
+}
+sliderSfx.addEventListener('input', _onSfxSlider);
+sliderSfx.addEventListener('change', _onSfxSlider);
 
 const toggleShakeBtn = document.getElementById('toggleShake');
 toggleShakeBtn.textContent = screenShakeEnabled ? 'ON' : 'OFF';
@@ -8768,12 +9259,14 @@ const gwEl = document.getElementById('gw');
 sliderCRT.value = Math.round(crtIntensity * 100);
 gwEl.style.setProperty('--crt', crtIntensity);
 document.getElementById('c').style.borderRadius = crtIntensity > 0 ? (8 * crtIntensity) + 'px' : '';
-sliderCRT.addEventListener('input', () => {
+function _onCrtSlider() {
   crtIntensity = sliderCRT.value / 100;
   gwEl.style.setProperty('--crt', crtIntensity);
   document.getElementById('c').style.borderRadius = crtIntensity > 0 ? (8 * crtIntensity) + 'px' : '';
   localStorage.setItem('hendsbee_crt', crtIntensity);
-});
+}
+sliderCRT.addEventListener('input', _onCrtSlider);
+sliderCRT.addEventListener('change', _onCrtSlider);
 
 function showSettings(returnTo) {
   _settingsReturnTo = returnTo || 'menu';
@@ -9679,6 +10172,7 @@ function buildShopDots() {
       generateSkinTones(); saveCosmetics(); buildShopDots();
     }
   })));
+  document.getElementById('shopTilesSkin').classList.add('swatch-grid');
 
   // Hend skin tiles — global
   _fillTiles('shopTilesHendSkin', HEND_SKINS.map(h => ({
@@ -9734,6 +10228,7 @@ function buildShopDots() {
       onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
     };
   }));
+  document.getElementById('shopTilesBeeSkin').classList.add('swatch-grid');
 
   // Trail effect tiles (right column) — with depth unlock gating
   _fillTiles('shopTilesTracer', BEE_TRACERS.map(t => {
