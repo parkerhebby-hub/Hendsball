@@ -3459,17 +3459,8 @@ function drawHex(h) {
   if (!h.flash && (h.type === 'NORMAL' || h.type === 'HONEY' || h.type === 'THICK'
       || h.type === 'HEAVY' || h.type === 'ROYAL' || h.type === 'REINFORCED'
       || h.type === 'ANCIENT')) {
-    // Skip drips if a living cell sits directly below (prevents overlap)
-    const rowH = HEX_R * Math.sqrt(3);
-    let hasBelow = false;
-    const _dripNear = _hexGridQuery(h.x, h.y + rowH * 0.6, HEX_R * 1.5);
-    for (let _di = 0; _di < _dripNear.length; _di++) {
-      const n = _dripNear[_di];
-      if (!n.dead && n !== h && Math.abs(n.x - h.x) < HEX_R * 1.2 && n.y > h.y && n.y - h.y < rowH * 1.2) {
-        hasBelow = true; break;
-      }
-    }
-    if (!hasBelow && ((h.ci * 7 + 13) % 10 < 4)) {
+    // Skip drips if a living cell sits directly below (cached every 15 frames)
+    if (!h._hasBelow && ((h.ci * 7 + 13) % 10 < 4)) {
     // ~40% of exposed cells get a drip — seeded variant determines drip stage
     // Stages progress: tiny blob → emerging drip → full teardrop
     const isHoney = h.type === 'HONEY';
@@ -4076,7 +4067,15 @@ function checkHex(b) {
         }
         if (_ePts.length > 1) {
           if (!window._lightningBolts) window._lightningBolts = [];
-          window._lightningBolts.push({ points: _ePts, timer: 24 });
+          // Pre-compute jittered midpoints (avoids per-frame Math.random)
+          const _eMid = [];
+          for (let _em = 1; _em < _ePts.length; _em++) {
+            _eMid.push({
+              x: (_ePts[_em-1].x + _ePts[_em].x) / 2 + (Math.random() - 0.5) * 6,
+              y: (_ePts[_em-1].y + _ePts[_em].y) / 2 + (Math.random() - 0.5) * 6
+            });
+          }
+          window._lightningBolts.push({ points: _ePts, _mid: _eMid, timer: 24 });
         }
       }
 
@@ -4758,25 +4757,28 @@ function drawPuAnnounce() {
   ctx.restore();
 }
 
+// Pre-cached vignette gradients (created once, reused every frame)
+let _vignetteL, _vignetteR, _vignetteT;
+function _ensureVignetteGrads() {
+  if (_vignetteL) return;
+  _vignetteL = ctx.createLinearGradient(0, 0, W * 0.18, 0);
+  _vignetteL.addColorStop(0, 'rgba(4,2,0,0.75)');
+  _vignetteL.addColorStop(0.5, 'rgba(4,2,0,0.30)');
+  _vignetteL.addColorStop(1, 'rgba(4,2,0,0)');
+  _vignetteR = ctx.createLinearGradient(W, 0, W * 0.82, 0);
+  _vignetteR.addColorStop(0, 'rgba(4,2,0,0.75)');
+  _vignetteR.addColorStop(0.5, 'rgba(4,2,0,0.30)');
+  _vignetteR.addColorStop(1, 'rgba(4,2,0,0)');
+  _vignetteT = ctx.createLinearGradient(0, 0, 0, H * 0.12);
+  _vignetteT.addColorStop(0, 'rgba(4,2,0,0.50)');
+  _vignetteT.addColorStop(1, 'rgba(4,2,0,0)');
+}
 function drawBGVignette() {
+  _ensureVignetteGrads();
   const cb = demoMode ? H : H * PLAY_BOTTOM;
-  // Left cave edge
-  const lG = ctx.createLinearGradient(0, 0, W * 0.18, 0);
-  lG.addColorStop(0, 'rgba(4,2,0,0.75)');
-  lG.addColorStop(0.5, 'rgba(4,2,0,0.30)');
-  lG.addColorStop(1, 'rgba(4,2,0,0)');
-  ctx.fillStyle = lG; ctx.fillRect(0, 0, W * 0.18, cb);
-  // Right cave edge
-  const rG = ctx.createLinearGradient(W, 0, W * 0.82, 0);
-  rG.addColorStop(0, 'rgba(4,2,0,0.75)');
-  rG.addColorStop(0.5, 'rgba(4,2,0,0.30)');
-  rG.addColorStop(1, 'rgba(4,2,0,0)');
-  ctx.fillStyle = rG; ctx.fillRect(W * 0.82, 0, W * 0.18, cb);
-  // Top darkening
-  const tG = ctx.createLinearGradient(0, 0, 0, H * 0.12);
-  tG.addColorStop(0, 'rgba(4,2,0,0.50)');
-  tG.addColorStop(1, 'rgba(4,2,0,0)');
-  ctx.fillStyle = tG; ctx.fillRect(0, 0, W, H * 0.12);
+  ctx.fillStyle = _vignetteL; ctx.fillRect(0, 0, W * 0.18, cb);
+  ctx.fillStyle = _vignetteR; ctx.fillRect(W * 0.82, 0, W * 0.18, cb);
+  ctx.fillStyle = _vignetteT; ctx.fillRect(0, 0, W, H * 0.12);
 }
 
 function drawBG() {
@@ -7019,6 +7021,23 @@ function render() {
   ctx.save();
   ctx.translate(0, -scrollY);        // enter world space
 
+  // Pre-compute drip visibility every 15 frames (avoids per-hex spatial query in drawHex)
+  if (tick % 15 === 0) {
+    const _dRowH = HEX_R * Math.sqrt(3);
+    for (let _dh = 0; _dh < hexes.length; _dh++) {
+      const h = hexes[_dh];
+      if (h.dead) continue;
+      h._hasBelow = false;
+      const _dn = _hexGridQuery(h.x, h.y + _dRowH * 0.6, HEX_R * 1.5);
+      for (let _di = 0; _di < _dn.length; _di++) {
+        const n = _dn[_di];
+        if (!n.dead && n !== h && Math.abs(n.x - h.x) < HEX_R * 1.2 && n.y > h.y && n.y - h.y < _dRowH * 1.2) {
+          h._hasBelow = true; break;
+        }
+      }
+    }
+  }
+
   { // Visibility-culled hex rendering
     const _vTop = scrollY - HEX_R, _vBot = scrollY + H + HEX_R;
     for (let _hi = 0; _hi < hexes.length; _hi++) {
@@ -7055,21 +7074,29 @@ function render() {
       bolt.timer--;
       if (bolt.timer <= 0) { window._lightningBolts.splice(_li, 1); continue; }
       const lAlpha = bolt.timer / 24;
-      ctx.save();
-      ctx.strokeStyle = `rgba(64,208,255,${lAlpha.toFixed(2)})`;
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#40d0ff';
-      ctx.shadowBlur = 8 * lAlpha;
+      // Build path from pre-jittered midpoints (stored at creation)
+      const pts = bolt.points;
+      const mid = bolt._mid;
+      // Outer glow pass (thicker, translucent — replaces expensive shadowBlur)
+      ctx.strokeStyle = `rgba(64,208,255,${(lAlpha * 0.3).toFixed(2)})`;
+      ctx.lineWidth = 6;
       ctx.beginPath();
-      ctx.moveTo(bolt.points[0].x, bolt.points[0].y);
-      for (let p = 1; p < bolt.points.length; p++) {
-        const mx = (bolt.points[p-1].x + bolt.points[p].x) / 2 + (Math.random() - 0.5) * 6;
-        const my = (bolt.points[p-1].y + bolt.points[p].y) / 2 + (Math.random() - 0.5) * 6;
-        ctx.lineTo(mx, my);
-        ctx.lineTo(bolt.points[p].x, bolt.points[p].y);
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let p = 1; p < pts.length; p++) {
+        ctx.lineTo(mid[p-1].x, mid[p-1].y);
+        ctx.lineTo(pts[p].x, pts[p].y);
       }
       ctx.stroke();
-      ctx.restore();
+      // Inner bright pass
+      ctx.strokeStyle = `rgba(160,230,255,${lAlpha.toFixed(2)})`;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let p = 1; p < pts.length; p++) {
+        ctx.lineTo(mid[p-1].x, mid[p-1].y);
+        ctx.lineTo(pts[p].x, pts[p].y);
+      }
+      ctx.stroke();
     }
   }
 
