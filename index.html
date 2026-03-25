@@ -1985,7 +1985,7 @@ const ALL_POWERUPS = [
     id: 'waxBreaker',
     name: 'CHUBBY HENDS',
     short: 'CHUB',
-    desc: 'HENDS GROW WIDER.',
+    desc: 'HENDS GROW BIGGER.',
     tag:  'PADDLE',
     color: '#7a4800', outline: '#4a2800',
     max:  6,
@@ -2043,9 +2043,9 @@ const ALL_POWERUPS = [
   },
   {
     id: 'electricBees',
-    name: 'ELECTRIC BEES',
-    short: 'ELEC',
-    desc: 'HITS CHAIN LIGHTNING TO NEARBY CELLS.',
+    name: 'LIGHTNING BEES',
+    short: 'LGHT',
+    desc: 'HITS CHAIN TO ADJACENT CELLS.',
     tag:  'DAMAGE',
     color: '#40d0ff', outline: '#2080b0',
     max:  6,
@@ -2064,7 +2064,7 @@ const TEMP_POWERUPS = [
   { id:'beeR',       name:'BEE-R',       color:'#40c060', duration:600, desc:'BEES MOVE SLOWER AND IN A WAVY TRAJECTORY' },
   { id:'beeGer',     name:'BEE-GER',     color:'#ff6030', duration:600, desc:'BEES GET TWICE AS BIG AND DO DOUBLE DAMAGE' },
   { id:'beeHemoth',  name:'BEE-HEMOTH',  color:'#ff2020', duration:600, desc:'BEES BECOME MASSIVE AND DEAL TRIPLE DAMAGE' },
-  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:0,   desc:'BEES BECOME DEMONS AND BOMB THE NEXT 3 CELLS' },
+  { id:'beeElzebub', name:'BEE-ELZEBUB', color:'#800040', duration:600, desc:'BEES BECOME DEMONS AND EXPLODE ON IMPACT FOR 10 SECONDS' },
   { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
   { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
   { id:'magnetHends', name:'MAGNET HENDS', color:'#60c0ff', duration:600, desc:'BEES GET PULLED TOWARD THE HENDS AS THEY FALL' },
@@ -2174,12 +2174,13 @@ function activatePowerup(type, px, py) {
         && h.type !== 'PORTAL' && h.type !== 'BOOST' && h.type !== 'UNBREAKABLE');
       beeSusAnim = {
         x: W / 2, screenY: H + 60, targetScreenY: H * 0.3,
-        frame: 0, maxFrames: 80, cellsToKill: targets, killTriggered: false
+        frame: 0, maxFrames: 160, cellsToKill: targets, killTriggered: false
       };
       break;
     }
-    case 'beeElzebub': { // All bees become bomb-bees — explode on next cell impact
-      for (const b of bees) b._bombBee = 3;
+    case 'beeElzebub': { // All bees become bomb-bees for 10 seconds
+      const _bombTicks = 600 + (powers.powerExtend || 0) * 120;
+      for (const b of bees) b._bombBee = _bombTicks;
       break;
     }
   }
@@ -3107,7 +3108,7 @@ function drawBee(b) {
   // Use PNG bee frames if loaded
   const usePNG = beeFrames.length === 4 && beeFrames[0];
   if (usePNG) {
-    const flap = (_hasPU('beeHemoth') || _hasPU('beeR')) ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
+    const flap = (_hasPU('beeHemoth') || _hasPU('beeR')) ? 4 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
     const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / flap) % beeFrameSeq.length];
     const img = beeFrames[frameIdx];
     // Draw centered, scaled to match the pixel sprite bounding box
@@ -3979,9 +3980,8 @@ function checkHex(b) {
         b.x += nx*ov; b.y += ny*ov;
       }
 
-      // Bomb-bee explosion — detonates on impact, then bee returns to normal
-      if (b._bombBee) {
-        b._bombBee--;
+      // Bomb-bee explosion — detonates on impact (timed, not per-hit)
+      if (b._bombBee > 0) {
         sfx.bomb(); haptic(HAPTIC.bomb);
         spawnParts(h.x, h.y, 28, PAL.hexBomb);
         triggerShake(6, 12);
@@ -4819,11 +4819,14 @@ const JAR_BX  = JAR_CX - JAR_BW / 2;
 const JAR_NX  = JAR_CX - JAR_NW / 2;
 const JAR_RX  = JAR_CX - JAR_RW / 2;
 // Upgrade slot constants — 6 tessellated flat-top hexes
-const SLOT_R   = Math.min(18, (_HUD_SPACE - 24) / 2.8); // scale down for 10 slots
-const SLOT_SPC = SLOT_R * 1.52;              // horizontal center-to-center (compact for 10 slots)
+const SLOT_R   = Math.min(14, (_HUD_SPACE - 24) / 3.2); // smaller for 2 rows
+const SLOT_SPC = SLOT_R * 1.55;              // horizontal center-to-center
 const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols
-const SLOT_Y   = HUD_Y + 6 + SLOT_R + 12;   // anchored relative to HUD top
-const SLOT0_X  = 24;
+const SLOT_ROW_H = SLOT_R * Math.sqrt(3) + 2; // vertical spacing between rows
+const SLOT_COLS = 10;                         // slots per row
+const SLOT_ROWS = 2;                          // 2 rows (row 2 for future upgrades)
+const SLOT_Y   = HUD_Y + 4 + SLOT_R + 6;    // anchored relative to HUD top
+const SLOT0_X  = 20;
 
 function drawHexOutline(cx, cy, r) {
   const pts = hexPts(cx, cy, r);
@@ -5147,9 +5150,12 @@ function drawHUD() {
     SWARM:'#80e060',  HONEY:'#f0a020',  POWERUP:'#40c0ff',
   };
 
-  for (let i = 0; i < ALL_POWERUPS.length; i++) {
-    const cx   = SLOT0_X + i * SLOT_SPC;
-    const cy   = SLOT_Y + ((i & 1) ? SLOT_YOFF : 0);  // odd cols shift down
+  const totalSlots = SLOT_COLS * SLOT_ROWS;
+  for (let i = 0; i < totalSlots; i++) {
+    const col_i = i % SLOT_COLS;
+    const row_i = Math.floor(i / SLOT_COLS);
+    const cx   = SLOT0_X + col_i * SLOT_SPC;
+    const cy   = SLOT_Y + row_i * SLOT_ROW_H + ((col_i & 1) ? SLOT_YOFF : 0);
     const slot = upgradeSlots[i];
     const pts  = hexPts(cx, cy, SLOT_R);
 
@@ -5158,7 +5164,8 @@ function drawHUD() {
       ctx.beginPath(); ctx.moveTo(pts[0][0],pts[0][1]);
       for (let p=1;p<6;p++) ctx.lineTo(pts[p][0],pts[p][1]);
       ctx.closePath();
-      ctx.strokeStyle='#c8a020'; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.strokeStyle = i < ALL_POWERUPS.length ? '#c8a020' : '#604010';
+      ctx.lineWidth = 1; ctx.stroke();
       continue;
     }
 
@@ -5180,14 +5187,14 @@ function drawHUD() {
     ctx.strokeStyle = col+'30'; ctx.lineWidth=1; ctx.stroke();
 
     // Abbreviation label
-    ctx.font = F7; ctx.textAlign='center'; ctx.fillStyle=col;
-    ctx.fillText(pu.short, cx, cy + 4);
+    ctx.font = F5; ctx.textAlign='center'; ctx.fillStyle=col;
+    ctx.fillText(pu.short, cx, cy + 3);
 
     // Stack badge
     if (slot.stacks > 1) {
-      const bx = cx + SLOT_R*0.72, by = cy - SLOT_R*0.60;
+      const bx = cx + SLOT_R*0.65, by = cy - SLOT_R*0.55;
       ctx.fillStyle = col;
-      ctx.fillRect(bx-8, by-8, 16, 11);
+      ctx.fillRect(bx-7, by-7, 14, 10);
       ctx.fillStyle = '#000';
       ctx.font = F5;
       ctx.fillText('X'+slot.stacks, bx, by);
@@ -5197,6 +5204,159 @@ function drawHUD() {
   ctx.textAlign='left';
 }
 
+// ── Upgrade icon symbols (procedural) ────────────────────
+function drawUpgradeIcon(ctx, cx, cy, r, id) {
+  const s = r * 0.5; // scale factor
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.strokeStyle = '#fff';
+  ctx.fillStyle = '#fff';
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  switch (id) {
+    case 'beefyBees': // Fist
+      ctx.beginPath();
+      ctx.arc(0, -s*0.1, s*0.55, Math.PI, 0); // knuckles
+      ctx.lineTo(s*0.55, s*0.5);
+      ctx.lineTo(-s*0.55, s*0.5);
+      ctx.closePath();
+      ctx.fill();
+      // thumb
+      ctx.beginPath();
+      ctx.moveTo(-s*0.55, s*0.1);
+      ctx.lineTo(-s*0.8, -s*0.15);
+      ctx.lineTo(-s*0.6, -s*0.35);
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      break;
+    case 'queenBlessing': // Crown
+      ctx.beginPath();
+      ctx.moveTo(-s*0.7, s*0.4);
+      ctx.lineTo(-s*0.7, -s*0.1);
+      ctx.lineTo(-s*0.35, s*0.15);
+      ctx.lineTo(0, -s*0.5);
+      ctx.lineTo(s*0.35, s*0.15);
+      ctx.lineTo(s*0.7, -s*0.1);
+      ctx.lineTo(s*0.7, s*0.4);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'swarmInstinct': // Crosshair
+      ctx.beginPath();
+      ctx.arc(0, 0, s*0.4, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      for (const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]) {
+        ctx.moveTo(dx*s*0.55, dy*s*0.55);
+        ctx.lineTo(dx*s*0.85, dy*s*0.85);
+      }
+      ctx.stroke();
+      break;
+    case 'waxBreaker': // Arrows outward ← →
+      ctx.beginPath();
+      ctx.moveTo(-s*0.2, 0); ctx.lineTo(s*0.2, 0); // center line
+      ctx.stroke();
+      // Left arrow
+      ctx.beginPath();
+      ctx.moveTo(-s*0.8, 0); ctx.lineTo(-s*0.35, 0);
+      ctx.moveTo(-s*0.65, -s*0.3); ctx.lineTo(-s*0.8, 0); ctx.lineTo(-s*0.65, s*0.3);
+      ctx.stroke();
+      // Right arrow
+      ctx.beginPath();
+      ctx.moveTo(s*0.35, 0); ctx.lineTo(s*0.8, 0);
+      ctx.moveTo(s*0.65, -s*0.3); ctx.lineTo(s*0.8, 0); ctx.lineTo(s*0.65, s*0.3);
+      ctx.stroke();
+      break;
+    case 'royalFury': // Crown with crosshairs
+      // Crown shape
+      ctx.beginPath();
+      ctx.moveTo(-s*0.6, s*0.35);
+      ctx.lineTo(-s*0.6, -s*0.05);
+      ctx.lineTo(-s*0.3, s*0.15);
+      ctx.lineTo(0, -s*0.35);
+      ctx.lineTo(s*0.3, s*0.15);
+      ctx.lineTo(s*0.6, -s*0.05);
+      ctx.lineTo(s*0.6, s*0.35);
+      ctx.closePath();
+      ctx.fill();
+      // Crosshair overlay
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(0, s*0.05, s*0.25, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.25); ctx.lineTo(0, s*0.35);
+      ctx.moveTo(-s*0.3, s*0.05); ctx.lineTo(s*0.3, s*0.05);
+      ctx.stroke();
+      break;
+    case 'broodFrenzy': // 3 dots in triangle
+      for (const [dx,dy] of [[0,-s*0.4],[-s*0.35,s*0.25],[s*0.35,s*0.25]]) {
+        ctx.beginPath();
+        ctx.arc(dx, dy, s*0.22, 0, Math.PI*2);
+        ctx.fill();
+      }
+      break;
+    case 'twoHends': // "2×" text
+      ctx.font = (s*1.4)+'px "Press Start 2P",monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('2\u00D7', 0, 1);
+      break;
+    case 'powerExtend': // Clock
+      ctx.beginPath();
+      ctx.arc(0, 0, s*0.55, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(0, -s*0.4); // 12 o'clock
+      ctx.moveTo(0, 0); ctx.lineTo(s*0.3, s*0.1); // 3ish
+      ctx.stroke();
+      // center dot
+      ctx.beginPath();
+      ctx.arc(0, 0, s*0.08, 0, Math.PI*2);
+      ctx.fill();
+      break;
+    case 'fireBees': // Flame
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.7);
+      ctx.quadraticCurveTo(s*0.5, -s*0.3, s*0.4, s*0.2);
+      ctx.quadraticCurveTo(s*0.2, s*0.55, 0, s*0.55);
+      ctx.quadraticCurveTo(-s*0.2, s*0.55, -s*0.4, s*0.2);
+      ctx.quadraticCurveTo(-s*0.5, -s*0.3, 0, -s*0.7);
+      ctx.closePath();
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+      // inner flame
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.25);
+      ctx.quadraticCurveTo(s*0.2, s*0.05, s*0.15, s*0.3);
+      ctx.quadraticCurveTo(0, s*0.45, -s*0.15, s*0.3);
+      ctx.quadraticCurveTo(-s*0.2, s*0.05, 0, -s*0.25);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fill();
+      break;
+    case 'electricBees': // Lightning bolt
+      ctx.beginPath();
+      ctx.moveTo(s*0.1, -s*0.7);
+      ctx.lineTo(-s*0.25, -s*0.05);
+      ctx.lineTo(s*0.05, -s*0.05);
+      ctx.lineTo(-s*0.1, s*0.7);
+      ctx.lineTo(s*0.35, s*0.0);
+      ctx.lineTo(s*0.0, s*0.0);
+      ctx.lineTo(s*0.1, -s*0.7);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    default:
+      // Fallback: first letter
+      ctx.font = (s*1.6)+'px "Press Start 2P",monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('?', 0, 1);
+  }
+  ctx.restore();
+}
+
 // ── Non-pausing upgrade banner ───────────────────────────
 function drawUpgradeBanner() {
   if (!upgradeBannerActive || upgradeBannerChoices.length === 0) return;
@@ -5204,7 +5364,7 @@ function drawUpgradeBanner() {
   const bannerY = Math.round(H * 0.33);  // centered in play area
   const bannerX = 4;
   const bannerW = W - 8;
-  const btnH = 72;                   // tall buttons: icon + name + description
+  const btnH = 90;                   // tall buttons: icon + name + description
   const gap = 4;
   const bannerH = 14 + btnH + gap + 4; // title + button + padding
   const cr = 6;
@@ -5238,7 +5398,7 @@ function drawUpgradeBanner() {
   const btnW = (bannerW - btnGap * 3) / 2;
   const btnY = bannerY + 16;
   const iconR = 20;                  // large hex icon radius
-  const textLeft = iconR * 2 + 12;   // text starts after icon
+  const textLeft = iconR * 2 + 8;    // text starts after icon
 
   for (let i = 0; i < upgradeBannerChoices.length; i++) {
     const pu = upgradeBannerChoices[i];
@@ -5263,8 +5423,9 @@ function drawUpgradeBanner() {
     ctx.lineWidth = 1.2;
     ctx.stroke();
 
-    // Large hex icon — vertically centered on left
-    const hexX = btnX + iconR + 6, hexY = btnY + btnH / 2;
+    // Large hex icon — shifted up to fit pip chain below
+    const hexX = btnX + iconR + 6;
+    const hexY = pu.max > 1 ? btnY + btnH / 2 - 7 : btnY + btnH / 2;
     const hp = hexPts(hexX, hexY, iconR);
     ctx.beginPath(); ctx.moveTo(hp[0][0], hp[0][1]);
     for (let j = 1; j < 6; j++) ctx.lineTo(hp[j][0], hp[j][1]);
@@ -5275,32 +5436,59 @@ function drawUpgradeBanner() {
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Hex icon letter — large
-    ctx.font = '13px "Press Start 2P",monospace';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillStyle = '#000';
-    ctx.fillText(pu.short?.[0] || '', hexX, hexY + 1);
+    // Procedural symbol icon
+    drawUpgradeIcon(ctx, hexX, hexY, iconR, pu.id);
+
+    // Hex chain progress pips (for stackable upgrades)
+    if (pu.max > 1) {
+      const pipR = 4, pipSpc = 10;
+      const pipY = hexY + iconR + 10;
+      const totalPipW = (pu.max - 1) * pipSpc;
+      const pipStartX = hexX - totalPipW / 2;
+      const curStacks = powers[pu.id] || 0;
+      for (let p = 0; p < pu.max; p++) {
+        const px = pipStartX + p * pipSpc;
+        const pp = hexPts(px, pipY, pipR);
+        ctx.beginPath(); ctx.moveTo(pp[0][0], pp[0][1]);
+        for (let j = 1; j < 6; j++) ctx.lineTo(pp[j][0], pp[j][1]);
+        ctx.closePath();
+        if (p < curStacks) {
+          ctx.fillStyle = pu.color;
+          ctx.fill();
+        }
+        ctx.strokeStyle = p < curStacks ? (pu.outline || '#7a3d00') : 'rgba(255,255,255,0.2)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+    }
 
     // Text block vertically centred with icon
     // Name (10px) + gap (4) + desc line(s) (~7px each)
     // Estimate total text height, then centre on btnH/2
     let desc = pu.desc || '';
-    // Append stack info
-    const _stackExtra = { fireBees: '+1S BURN', electricBees: '+1 CHAIN', beefyBees: '+1 DMG', royalFury: '+1 DMG', powerExtend: '+2S' };
-    if (pu.max > 1) desc += ' STACKS ' + pu.max + 'X' + (_stackExtra[pu.id] ? ' (' + _stackExtra[pu.id] + ')' : '') + '.';
-    else desc += ' DOES NOT STACK.';
-    const availW = btnW - textLeft - 4;
-    const maxChars = Math.floor(availW / 6.2); // approx chars per line at 7px font
+    ctx.font = '7px "Press Start 2P",monospace';
+    const availW = btnW - textLeft - 6;
     const lines = [];
     let remaining = desc;
     while (remaining.length > 0) {
-      if (remaining.length <= maxChars) { lines.push(remaining); break; }
-      let split = remaining.lastIndexOf(' ', maxChars);
-      if (split <= 0) split = maxChars;
+      remaining = remaining.trimStart();
+      if (!remaining) break;
+      if (ctx.measureText(remaining).width <= availW) { lines.push(remaining); break; }
+      // Find last space that fits
+      let split = remaining.length;
+      for (let c = remaining.length - 1; c > 0; c--) {
+        if (remaining[c] === ' ' && ctx.measureText(remaining.substring(0, c)).width <= availW) {
+          split = c; break;
+        }
+      }
+      if (split === remaining.length) { // no space fits — force break
+        split = 1;
+        while (split < remaining.length && ctx.measureText(remaining.substring(0, split + 1)).width <= availW) split++;
+      }
       lines.push(remaining.substring(0, split));
-      remaining = remaining.substring(split).trimStart();
+      remaining = remaining.substring(split);
     }
-    const descLines = Math.min(lines.length, 4);
+    const descLines = Math.min(lines.length, 5);
     const nameH = 9;                // name font height
     const descLineH = 10;           // desc line spacing
     const gapBetween = 3;           // gap between name and desc
@@ -5600,7 +5788,7 @@ function _makeStampFromCells(cells) {
   let cx = 0, cy = 0;
   for (const c of cells) { cx += c.x; cy += c.y; }
   cx /= cells.length; cy /= cells.length;
-  const offsets = cells.map(c => ({ dx: c.x - cx, dy: c.y - cy, type: c.type }));
+  const offsets = cells.map(c => ({ dx: c.x - cx, dy: c.y - cy, type: c.type, boostDir: c.boostDir }));
 
   // Compute clear radius from max offset distance + 1 cell gap minimum
   const maxR = offsets.reduce((m, o) => Math.max(m, Math.hypot(o.dx, o.dy)), 0);
@@ -5645,7 +5833,7 @@ function _makeStampFromCells(cells) {
       const key = `${Math.round(s.x)},${Math.round(s.y)}`;
       if (!usedKeys.has(key)) {
         usedKeys.add(key);
-        snapped.push({ x: s.x, y: s.y, type: o.type, key });
+        snapped.push({ x: s.x, y: s.y, type: o.type, key, boostDir: o.boostDir });
       }
     }
 
@@ -5657,12 +5845,14 @@ function _makeStampFromCells(cells) {
     // 2) Inject blueprint cells
     for (const cell of snapped) {
       if (!CELL_TYPES[cell.type]) continue; // skip unknown types
-      hexMap.set(cell.key, {
+      const _bpCell = {
         x: cell.x, y: cell.y, dead: false, flash: 0,
         type: cell.type, hp: CELL_TYPES[cell.type].hp,
         ci: Math.floor(rng() * 5),
         _blueprint: true,
-      });
+      };
+      if (cell.boostDir != null) _bpCell.boostDir = cell.boostDir;
+      hexMap.set(cell.key, _bpCell);
     }
 
     // 3) Enforce 1-cell gap: remove any non-blueprint cell within 1 hex of any blueprint cell
@@ -6343,6 +6533,9 @@ function update() {
           maxHp: gateHP, gateY: chunkTop, dead: false
         };
         bossGates.push(gate);
+        // Remove existing hexes that overlap guard cell positions
+        const _guardPos = new Set(guardCells.map(g => `${Math.round(g.x)},${Math.round(g.y)}`));
+        hexes = hexes.filter(h => !_guardPos.has(`${Math.round(h.x)},${Math.round(h.y)}`));
         hexes.push(...guardCells);
         const queenCells = spawnQueenCluster(chunkTop, gateIndex);
         gate.queenCells = queenCells;
@@ -6367,6 +6560,28 @@ function update() {
       }
     }
     hexes.length = _hw;
+    // Kill zone: progressively crack cells in bottom 3 rows above paddle
+    const _kzRowH = HEX_R * Math.sqrt(3);
+    const _kzTop = scrollY + PADDLE_Y - _kzRowH * 3;
+    const _kzH = _kzRowH * 3;
+    for (let i = 0; i < hexes.length; i++) {
+      const h = hexes[i];
+      if (h.dead || h.y <= _kzTop) continue;
+      const depth = (h.y - _kzTop) / _kzH; // 0..1 how far into zone
+      const maxHp = CELL_TYPES[h.type] ? CELL_TYPES[h.type].hp : 1;
+      const targetHp = Math.max(0, Math.round(maxHp * (1 - depth)));
+      if (h.hp > targetHp) {
+        h.hp = targetHp;
+        h.flash = 6;
+      }
+      if (h.hp <= 0) {
+        h.dead = true;
+        if (h.bossGateId != null) {
+          const gate = bossGates[h.bossGateId];
+          if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
+        }
+      }
+    }
     _hexGridRebuild();
     _portalCacheRebuild();
     return;
@@ -6476,6 +6691,9 @@ function update() {
         maxHp: gateHP, gateY: chunkTop, dead: false
       };
       bossGates.push(gate);
+      // Remove existing hexes that overlap guard cell positions
+      const _guardPos = new Set(guardCells.map(g => `${Math.round(g.x)},${Math.round(g.y)}`));
+      hexes = hexes.filter(h => !_guardPos.has(`${Math.round(h.x)},${Math.round(h.y)}`));
       hexes.push(...guardCells);
       // Queen cluster spawns 1.5 chunks below the barrier
       const queenCells = spawnQueenCluster(chunkTop, gateIndex);
@@ -6503,6 +6721,30 @@ function update() {
       }
     }
     hexes.length = _hw;
+  }
+  // Kill zone: progressively crack cells in bottom 3 rows above paddle
+  {
+    const _kzRowH = HEX_R * Math.sqrt(3);
+    const _kzTop = scrollY + PADDLE_Y - _kzRowH * 3;
+    const _kzH = _kzRowH * 3;
+    for (let i = 0; i < hexes.length; i++) {
+      const h = hexes[i];
+      if (h.dead || h.y <= _kzTop) continue;
+      const depth = (h.y - _kzTop) / _kzH; // 0..1 how far into zone
+      const maxHp = CELL_TYPES[h.type] ? CELL_TYPES[h.type].hp : 1;
+      const targetHp = Math.max(0, Math.round(maxHp * (1 - depth)));
+      if (h.hp > targetHp) {
+        h.hp = targetHp;
+        h.flash = 6;
+      }
+      if (h.hp <= 0) {
+        h.dead = true;
+        if (h.bossGateId != null) {
+          const gate = bossGates[h.bossGateId];
+          if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
+        }
+      }
+    }
   }
 
   // Rebuild spatial hash grid + portal cache after culling
@@ -6602,6 +6844,8 @@ function update() {
   for (const b of bees) {
     // BEE-BEE size restore timer
     if (b._shrinkTimer > 0) { b._shrinkTimer--; if (b._shrinkTimer <= 0) b.sizeScale = 1.0; }
+    // BEE-ELZEBUB bomb timer
+    if (b._bombBee > 0) b._bombBee--;
     pushTrail(b);
     const spdMul = (_hasPU('beeR')) ? 0.5 : 1;
     b.x+=b.vx*dt*60*spdMul; b.y+=b.vy*dt*60*spdMul;
@@ -6922,7 +7166,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
       _hexGridRebuild();
     }
     // Phase 3 (40-100%): drift upward and fade
-    if (prog >= 0.4) a.screenY -= 2;
+    if (prog >= 0.4) a.screenY -= 1;
     if (a.frame >= a.maxFrames) beeSusAnim = null;
   }
 
@@ -7044,23 +7288,73 @@ function render() {
       const h = hexes[_hi];
       if (!h.dead && h.y >= _vTop && h.y <= _vBot) {
         drawHex(h);
-        // FIRE BEES: flickering flame overlay on burning cells
+        // FIRE BEES: prominent flame + embers + glow on burning cells
         if (h._burn) {
           ctx.save();
-          const fA = 0.5 + 0.3 * Math.sin(tick * 0.15 + h.x);
-          ctx.globalAlpha = fA;
-          ctx.fillStyle = '#ff6020';
-          for (let fi = 0; fi < 3; fi++) {
-            const fx = h.x + Math.sin(tick * 0.2 + fi * 2.1) * (HEX_R * 0.3);
-            const fy = h.y - HEX_R * 0.2 - fi * 3 + Math.sin(tick * 0.12 + fi) * 2;
-            const fs = 2 + Math.sin(tick * 0.18 + fi * 1.5) * 1;
+          const _bt = h._burn.timer;
+          const _bFade = Math.min(1, _bt / 30); // fade out in last 0.5s
+
+          // 1. Orange glow under cell
+          const _gR = HEX_R * 1.4;
+          const _gAlpha = (0.15 + 0.08 * Math.sin(tick * 0.12 + h.x)) * _bFade;
+          ctx.globalAlpha = _gAlpha;
+          ctx.fillStyle = '#ff4010';
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, _gR, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 2. Multiple flame tongues rising from cell
+          const _fCount = 5;
+          for (let fi = 0; fi < _fCount; fi++) {
+            const _fSeed = fi * 1.7 + h.x * 0.1;
+            const _fPhase = tick * 0.13 + _fSeed;
+            const _fX = h.x + Math.sin(_fSeed * 3.1) * (HEX_R * 0.5);
+            const _fH = (5 + fi * 1.5 + Math.sin(_fPhase) * 3) * _bFade; // flame height
+            const _fW = 2.5 + Math.sin(_fPhase * 0.7) * 1;
+            const _fY = h.y - HEX_R * 0.1 + Math.sin(_fPhase * 0.8) * 2;
+
+            // Outer flame (orange-red)
+            ctx.globalAlpha = (0.7 + 0.2 * Math.sin(_fPhase)) * _bFade;
+            ctx.fillStyle = fi % 2 === 0 ? '#ff5010' : '#ff8020';
             ctx.beginPath();
-            ctx.moveTo(fx - fs, fy + fs);
-            ctx.lineTo(fx, fy - fs * 1.5);
-            ctx.lineTo(fx + fs, fy + fs);
+            ctx.moveTo(_fX - _fW, _fY);
+            ctx.quadraticCurveTo(_fX - _fW * 0.5, _fY - _fH * 0.6, _fX, _fY - _fH);
+            ctx.quadraticCurveTo(_fX + _fW * 0.5, _fY - _fH * 0.6, _fX + _fW, _fY);
             ctx.closePath();
             ctx.fill();
+
+            // Inner flame core (yellow-white)
+            if (fi < 3) {
+              ctx.globalAlpha = (0.5 + 0.3 * Math.sin(_fPhase * 1.3)) * _bFade;
+              ctx.fillStyle = '#ffcc40';
+              const _iH = _fH * 0.55;
+              const _iW = _fW * 0.5;
+              ctx.beginPath();
+              ctx.moveTo(_fX - _iW, _fY);
+              ctx.quadraticCurveTo(_fX, _fY - _iH * 0.8, _fX, _fY - _iH);
+              ctx.quadraticCurveTo(_fX, _fY - _iH * 0.8, _fX + _iW, _fY);
+              ctx.closePath();
+              ctx.fill();
+            }
           }
+
+          // 3. Rising embers / sparks
+          for (let ei = 0; ei < 4; ei++) {
+            const _eSeed = ei * 2.3 + h.y * 0.05;
+            const _eLife = ((tick * 0.08 + _eSeed) % 1); // 0..1 repeating
+            const _eX = h.x + Math.sin(_eSeed * 5.7) * (HEX_R * 0.6) + Math.sin(tick * 0.05 + ei) * 3;
+            const _eY = h.y - _eLife * (HEX_R * 2.5);
+            const _eSize = (1.5 - _eLife * 1.2) * _bFade;
+            const _eAlpha = (1 - _eLife) * 0.8 * _bFade;
+            if (_eSize > 0.2) {
+              ctx.globalAlpha = _eAlpha;
+              ctx.fillStyle = _eLife < 0.4 ? '#ffcc40' : '#ff6020';
+              ctx.beginPath();
+              ctx.arc(_eX, _eY, _eSize, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+
           ctx.restore();
         }
       }
@@ -7592,6 +7886,50 @@ function _renderGuideIcons() {
   });
 }
 
+function _upgradeIconSVG(id, col) {
+  const s = 5; // scale for 28px hex
+  const c = col || '#fff';
+  switch (id) {
+    case 'beefyBees': // Fist
+      return `<path d="M0,${-s*0.1} A${s*0.55},${s*0.55} 0 0,1 ${s*0.55},${-s*0.1} L${s*0.55},${s*0.5} L${-s*0.55},${s*0.5} Z" fill="${c}"/>
+        <line x1="${-s*0.55}" y1="${s*0.1}" x2="${-s*0.8}" y2="${-s*0.15}" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>`;
+    case 'queenBlessing': // Crown
+      return `<polygon points="${-s*0.7},${s*0.4} ${-s*0.7},${-s*0.1} ${-s*0.35},${s*0.15} 0,${-s*0.5} ${s*0.35},${s*0.15} ${s*0.7},${-s*0.1} ${s*0.7},${s*0.4}" fill="${c}"/>`;
+    case 'swarmInstinct': // Crosshair
+      return `<circle cx="0" cy="0" r="${s*0.4}" fill="none" stroke="${c}" stroke-width="1.2"/>
+        <line x1="0" y1="${-s*0.85}" x2="0" y2="${-s*0.55}" stroke="${c}" stroke-width="1.2"/>
+        <line x1="0" y1="${s*0.55}" x2="0" y2="${s*0.85}" stroke="${c}" stroke-width="1.2"/>
+        <line x1="${-s*0.85}" y1="0" x2="${-s*0.55}" y2="0" stroke="${c}" stroke-width="1.2"/>
+        <line x1="${s*0.55}" y1="0" x2="${s*0.85}" y2="0" stroke="${c}" stroke-width="1.2"/>`;
+    case 'waxBreaker': // Arrows outward
+      return `<line x1="${-s*0.8}" y1="0" x2="${s*0.8}" y2="0" stroke="${c}" stroke-width="1.2"/>
+        <polyline points="${-s*0.65},${-s*0.3} ${-s*0.8},0 ${-s*0.65},${s*0.3}" fill="none" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>
+        <polyline points="${s*0.65},${-s*0.3} ${s*0.8},0 ${s*0.65},${s*0.3}" fill="none" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>`;
+    case 'royalFury': // Crown with crosshairs
+      return `<polygon points="${-s*0.6},${s*0.35} ${-s*0.6},${-s*0.05} ${-s*0.3},${s*0.15} 0,${-s*0.35} ${s*0.3},${s*0.15} ${s*0.6},${-s*0.05} ${s*0.6},${s*0.35}" fill="${c}"/>
+        <circle cx="0" cy="${s*0.05}" r="${s*0.25}" fill="none" stroke="#000" stroke-width="1"/>
+        <line x1="0" y1="${-s*0.25}" x2="0" y2="${s*0.35}" stroke="#000" stroke-width="1"/>
+        <line x1="${-s*0.3}" y1="${s*0.05}" x2="${s*0.3}" y2="${s*0.05}" stroke="#000" stroke-width="1"/>`;
+    case 'broodFrenzy': // 3 dots
+      return `<circle cx="0" cy="${-s*0.4}" r="${s*0.22}" fill="${c}"/>
+        <circle cx="${-s*0.35}" cy="${s*0.25}" r="${s*0.22}" fill="${c}"/>
+        <circle cx="${s*0.35}" cy="${s*0.25}" r="${s*0.22}" fill="${c}"/>`;
+    case 'twoHends': // 2×
+      return `<text x="0" y="3" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="7" fill="${c}">2\u00D7</text>`;
+    case 'powerExtend': // Clock
+      return `<circle cx="0" cy="0" r="${s*0.55}" fill="none" stroke="${c}" stroke-width="1.2"/>
+        <line x1="0" y1="0" x2="0" y2="${-s*0.4}" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="0" y1="0" x2="${s*0.3}" y2="${s*0.1}" stroke="${c}" stroke-width="1.2" stroke-linecap="round"/>
+        <circle cx="0" cy="0" r="${s*0.08}" fill="${c}"/>`;
+    case 'fireBees': // Flame
+      return `<path d="M0,${-s*0.7} Q${s*0.5},${-s*0.3} ${s*0.4},${s*0.2} Q${s*0.2},${s*0.55} 0,${s*0.55} Q${-s*0.2},${s*0.55} ${-s*0.4},${s*0.2} Q${-s*0.5},${-s*0.3} 0,${-s*0.7}Z" fill="${c}"/>`;
+    case 'electricBees': // Lightning bolt
+      return `<polygon points="${s*0.1},${-s*0.7} ${-s*0.25},${-s*0.05} ${s*0.05},${-s*0.05} ${-s*0.1},${s*0.7} ${s*0.35},0 0,0" fill="${c}"/>`;
+    default:
+      return `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="${c}">?</text>`;
+  }
+}
+
 function buildGuide() {
   const TAG_C = { PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040', SWARM:'#80e060', HONEY:'#f0a020', POWERUP:'#40c0ff' };
 
@@ -7786,7 +8124,7 @@ function buildGuide() {
     if (pId === 'beeGer') sc = 1.5;
     if (pId === 'beeHemoth') sc = 2.4;
     if (pId === 'booBee') gc.globalAlpha = 0.3;
-    const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 14 : BEE_FLAP_SPEED;
+    const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 4 : BEE_FLAP_SPEED;
     const fIdx = beeFrameSeq[Math.floor(ft / flapSpeed) % beeFrameSeq.length];
     const bob = 0; // frames are now vertically aligned at load time
     const extraBob = (pId === 'booBee') ? Math.sin(ft * 0.02) * 2 : 0;
@@ -8061,8 +8399,7 @@ function buildGuide() {
     upgradesEl.innerHTML = ALL_POWERUPS.map(pu => {
       const slot = upgradeSlots.find(s => s.id === pu.id);
       const col = TAG_C[pu.tag] || '#f0c040';
-      const icon = hexSVG('#120900', col, 1.5, 28,
-        `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="${col}">${pu.tag[0]}</text>`);
+      const icon = hexSVG('#120900', col, 1.5, 28, _upgradeIconSVG(pu.id, col));
       const count = slot ? `${slot.stacks}/${pu.max}` : `0/${pu.max}`;
       const desc = pu.desc.replace(/\n/g, ' ');
       return `<div class="gu-row">
@@ -9014,12 +9351,15 @@ function _builderPlaceAt(clientX, clientY) {
     builderHexes[existing].hp = CELL_TYPES[builderSelectedType].hp;
     builderHexes[existing].flash = 0;
     builderHexes[existing].ci = Math.floor(Math.random() * 5);
+    if (builderSelectedType === 'BOOST') builderHexes[existing].boostDir = 0;
   } else {
-    builderHexes.push({
+    const _newCell = {
       x: bestX, y: bestY, type: builderSelectedType,
       hp: CELL_TYPES[builderSelectedType].hp,
       dead: false, flash: 0, ci: Math.floor(Math.random() * 5),
-    });
+    };
+    if (builderSelectedType === 'BOOST') _newCell.boostDir = 0;
+    builderHexes.push(_newCell);
   }
 }
 
@@ -9093,7 +9433,6 @@ function showStats(returnTo) {
     ['QUEEN GATES DEFEATED', meta.totalQueenGates || 0],
     ['TOTAL DEPTH CLIMBED',  meta.totalDepthTravelled || 0],
     ['BEST DEPTH',           meta.bestDepth || 0],
-    ['RUNS COMPLETED',       meta.runsCompleted || 0],
   ];
   for (const [label, value] of stats) {
     const row = document.createElement('div');
