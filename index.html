@@ -131,6 +131,19 @@
   .swatch-grid .shop-tile-info { display:none !important; }
   .swatch-grid .shop-tile-cost { display:none !important; }
   .swatch-grid .shop-tile-swatch { width:100%; aspect-ratio:1; height:auto; }
+  .shop-tile { position:relative; }
+  .shop-lock-icon {
+    position:absolute; top:2px; right:2px;
+    font-size:0.45rem; opacity:0.7; pointer-events:none;
+  }
+  #shopToast {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-family:'Press Start 2P',monospace; font-size:0.50rem; color:#f0a020;
+    background:rgba(10,5,0,0.92); border:1px solid #604020; border-radius:6px;
+    padding:10px 18px; pointer-events:none; opacity:0;
+    transition:opacity 0.2s; text-align:center; z-index:10;
+  }
+  #shopToast.show { opacity:1; }
   .shop-dot {
     width:16px; height:16px; border-radius:50%;
     border:2px solid #604020; cursor:pointer;
@@ -517,8 +530,8 @@
         <!-- LEFT COLUMN: HEND -->
         <div style="flex:1;min-width:0;">
           <div class="gsec-title" style="text-align:center;">HENDS</div>
-          <div id="shopHandToggle" style="display:flex;gap:6px;margin-bottom:6px;justify-content:center;"></div>
           <div style="position:relative;margin-bottom:6px;">
+            <div id="shopHandToggle" style="display:flex;gap:6px;justify-content:center;position:absolute;top:4px;left:0;right:0;z-index:2;"></div>
             <canvas id="shopHendPreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
             <label id="shopStartingHendLabel" style="display:flex;align-items:center;gap:3px;cursor:pointer;justify-content:center;position:absolute;bottom:4px;left:0;right:0;">
               <input type="checkbox" id="shopStartingHendCB" style="accent-color:#f0a020;width:14px;height:14px;cursor:pointer;">
@@ -535,7 +548,6 @@
         <!-- RIGHT COLUMN: BEE -->
         <div style="flex:1;min-width:0;">
           <div class="gsec-title" style="text-align:center;">BEE</div>
-          <div id="shopBeeToggle" style="display:flex;gap:4px;margin-bottom:6px;justify-content:center;"></div>
           <div style="position:relative;margin-bottom:6px;">
             <canvas id="shopBeePreview" width="120" height="120" style="width:100%;border:1px solid #3a1e00;border-radius:4px;image-rendering:pixelated;box-sizing:border-box;"></canvas>
           </div>
@@ -549,6 +561,7 @@
       </div>
 
     </div>
+    <div id="shopToast"></div>
   </div>
 
   <div id="summary" class="panel">
@@ -1392,10 +1405,14 @@ const HEND_ACCESSORIES = [
   { id:'goldRing',       name:'GOLD RING',       cost:0, color:'#d4af37', desc:'' },
   { id:'silverRing',     name:'SILVER RING',     cost:0, color:'#b0c0d0', desc:'' },
   { id:'blackRing',      name:'BLACK RING',      cost:0, color:'#2a2a2a', desc:'' },
+  { id:'blueRing',       name:'BLUE RING',       cost:0, color:'#4080d0', desc:'' },
+  { id:'grayRing',       name:'GRAY RING',       cost:0, color:'#808080', desc:'' },
   { id:'brownBracelet',  name:'BROWN BRACELET',   cost:0, color:'#6a4020', desc:'' },
   { id:'orangeBracelet', name:'ORANGE BRACELET',  cost:0, color:'#d4802e', desc:'' },
   { id:'grayBracelet',   name:'GRAY BRACELET',    cost:0, color:'#808080', desc:'' },
   { id:'oliveBracelet',  name:'OLIVE BRACELET',   cost:0, color:'#6b7033', desc:'' },
+  { id:'blueBracelet',   name:'BLUE BRACELET',    cost:0, color:'#4080d0', desc:'' },
+  { id:'pinkBracelet',   name:'PINK BRACELET',     cost:0, color:'#e880a0', desc:'' },
 ];
 
 const BEE_SKINS = [
@@ -2745,6 +2762,8 @@ function drawAccessory(ox, oy, dw, dh, side) {
     orangeBracelet: ['#d4802e','#e89840'],
     grayBracelet:   ['#606060','#888888'],
     oliveBracelet:  ['#5a6028','#747a40'],
+    blueBracelet:   ['#3060b0','#5090e0'],
+    pinkBracelet:   ['#d06080','#f0a0b8'],
   };
   if (bracId && _bracCols[bracId]) {
     const [bcOuter, bcInner] = _bracCols[bracId];
@@ -2764,7 +2783,7 @@ function drawAccessory(ox, oy, dw, dh, side) {
 
   // Draw ring if equipped
   if (ringId) {
-    const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
+    const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a', blueRing: '#4080d0', grayRing: '#808080' };
     const col = colors[ringId];
     if (col) {
       const rx = ox + dw * 0.47, ry = oy + dh * 0.30 + 1;
@@ -5290,9 +5309,8 @@ function drawHUD() {
     ctx.closePath();
     ctx.strokeStyle = col+'30'; ctx.lineWidth=1; ctx.stroke();
 
-    // Abbreviation label
-    ctx.font = F5; ctx.textAlign='center'; ctx.fillStyle=col;
-    ctx.fillText(pu.short, cx, cy + 3);
+    // Upgrade icon (procedural symbol in tag color)
+    drawUpgradeIcon(ctx, cx, cy, SLOT_R, pu.id, col);
 
     // Stack badge
     if (slot.stacks > 1) {
@@ -5309,12 +5327,12 @@ function drawHUD() {
 }
 
 // ── Upgrade icon symbols (procedural) ────────────────────
-function drawUpgradeIcon(ctx, cx, cy, r, id) {
+function drawUpgradeIcon(ctx, cx, cy, r, id, color) {
   const s = r * 0.65; // scale factor (enlarged to fill hex)
   ctx.save();
   ctx.translate(cx, cy);
-  ctx.strokeStyle = '#fff';
-  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = color || '#fff';
+  ctx.fillStyle = color || '#fff';
   ctx.lineWidth = 1.5;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
@@ -5430,7 +5448,6 @@ function drawUpgradeIcon(ctx, cx, cy, r, id) {
       ctx.quadraticCurveTo(-s*0.55, s*0.3, -s*0.5, -s*0.1);
       ctx.quadraticCurveTo(-s*0.15, -s*0.5, 0, -s*0.8);
       ctx.closePath();
-      ctx.fillStyle = '#fff';
       ctx.fill();
       // inner flame core
       ctx.beginPath();
@@ -10142,21 +10159,6 @@ function buildShopDots() {
     };
   }
 
-  // Bee toggle — LGBTQ buttons (cosmetic only, one active at a time)
-  const beeToggle = document.getElementById('shopBeeToggle');
-  if (beeToggle) {
-    beeToggle.innerHTML = '';
-    const labels = ['L', 'G', 'B', 'T', 'Q'];
-    if (!window._shopBeeToggleSel) window._shopBeeToggleSel = 'L';
-    labels.forEach(lbl => {
-      const btn = document.createElement('button');
-      btn.className = 'shop-hand-btn' + (window._shopBeeToggleSel === lbl ? ' active' : '');
-      btn.style.padding = '3px 5px';
-      btn.textContent = lbl;
-      btn.onclick = () => { window._shopBeeToggleSel = lbl; buildShopDots(); };
-      beeToggle.appendChild(btn);
-    });
-  }
 
   const curSkin = selectedSkinL;
   const curAcc = selectedAccessoryL;
@@ -10179,17 +10181,78 @@ function buildShopDots() {
     color: h.color,
     active: curHendSkin === h.id,
     name: h.name, desc: h.desc, cost: h.cost,
+    swatchRender: (sw) => {
+      sw.style.backgroundColor = '#1a1208';
+      if (h.id === 'none' && hendCanvas) {
+        // Tiny hand sprite
+        const c = document.createElement('canvas');
+        c.width = 40; c.height = 40; c.style.cssText = 'width:100%;height:100%;display:block;';
+        const cx = c.getContext('2d');
+        const aspect = hendCanvas.width / hendCanvas.height;
+        const dh = 30, dw = Math.round(dh * aspect);
+        cx.imageSmoothingEnabled = true;
+        cx.drawImage(hendCanvas, (40 - dw) / 2, (40 - dh) / 2, dw, dh);
+        sw.innerHTML = ''; sw.appendChild(c);
+      } else if (h.grid) {
+        // Classic red paddle grid
+        const c = document.createElement('canvas');
+        c.width = 40; c.height = 40; c.style.cssText = 'width:100%;height:100%;display:block;';
+        const cx = c.getContext('2d');
+        const cols = h.grid[0].length, rows = h.grid.length;
+        const cw = 30 / cols, ch = 12 / rows;
+        const ox = 5, oy = 14;
+        for (let r = 0; r < rows; r++) for (let cl = 0; cl < cols; cl++) {
+          cx.fillStyle = h.grid[r][cl]; cx.fillRect(ox + cl * cw, oy + r * ch, cw + 0.5, ch + 0.5);
+        }
+        sw.innerHTML = ''; sw.appendChild(c);
+      }
+    },
     onClick: () => {
       selectedHendSkinL = h.id; selectedHendSkinR = h.id;
       saveCosmetics(); buildShopDots();
     }
   })));
+  // Add 4 "coming soon" placeholder slots
+  const hendSkinTiles = document.getElementById('shopTilesHendSkin');
+  for (let i = 0; i < 4; i++) {
+    const tile = document.createElement('div');
+    tile.className = 'shop-tile';
+    const swatch = document.createElement('div');
+    swatch.className = 'shop-tile-swatch';
+    swatch.style.backgroundColor = '#1a1208';
+    swatch.style.position = 'relative';
+    const q = document.createElement('div');
+    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
+    q.textContent = '?';
+    swatch.appendChild(q);
+    tile.appendChild(swatch);
+    tile.onclick = () => showShopToast('COMING SOON');
+    hendSkinTiles.appendChild(tile);
+  }
+  document.getElementById('shopTilesHendSkin').classList.add('swatch-grid');
 
   // Accessory tiles — rings go to ring slot, bracelet goes to bracelet slot
   const accIsLeft = (_shopEditHand === 'L');
   const curRing = accIsLeft ? selectedAccessoryL : selectedAccessoryR;
   const curBrac = accIsLeft ? selectedBraceletL : selectedBraceletR;
-  const accTiles = [{ color: '#333', active: curRing === null && curBrac === null, name: 'NONE', desc: 'CLEAR ALL', cost: 0, onClick: () => {
+  const _bestD = SaveManager.loadMeta().bestDepth || 0;
+  const _accSwatchRender = (accId, accCol) => (sw) => {
+    sw.style.backgroundColor = '#1a1208';
+    sw.style.position = 'relative';
+    const ic = document.createElement('div');
+    ic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
+    if (accId.endsWith('Bracelet')) {
+      ic.innerHTML = `<div style="width:60%;height:30%;border:3px solid ${accCol};border-radius:50%;"></div>`;
+    } else if (accId !== 'none') {
+      ic.innerHTML = `<div style="width:40%;height:40%;border:3px solid ${accCol};border-radius:50%;"></div>`;
+    } else {
+      ic.innerHTML = '<div style="width:12px;height:12px;position:relative;"><div style="position:absolute;width:100%;height:2px;background:#555;top:50%;left:0;transform:rotate(45deg);"></div><div style="position:absolute;width:100%;height:2px;background:#555;top:50%;left:0;transform:rotate(-45deg);"></div></div>';
+    }
+    sw.appendChild(ic);
+  };
+  const accTiles = [{ color: '#333', active: curRing === null && curBrac === null, name: 'NONE', desc: 'CLEAR ALL', cost: 0,
+    swatchRender: _accSwatchRender('none', '#555'),
+    onClick: () => {
     if (accIsLeft) { selectedAccessoryL = null; selectedBraceletL = null; }
     else { selectedAccessoryR = null; selectedBraceletR = null; }
     saveCosmetics(); buildShopDots();
@@ -10200,6 +10263,7 @@ function buildShopDots() {
     accTiles.push({
       color: a.color, active: isActive,
       name: a.name, desc: a.desc, cost: a.cost,
+      swatchRender: _accSwatchRender(a.id, a.color),
       onClick: () => {
         if (isBracelet) {
           // Toggle bracelet
@@ -10215,34 +10279,68 @@ function buildShopDots() {
     });
   });
   _fillTiles('shopTilesAcc', accTiles);
+  document.getElementById('shopTilesAcc').classList.add('swatch-grid');
 
   // Bee colour tiles (right column) — with depth unlock gating
-  const _bestD = SaveManager.loadMeta().bestDepth || 0;
   _fillTiles('shopTilesBeeSkin', BEE_SKINS.map(s => {
     const locked = (s.unlockDepth || 0) > _bestD;
     return {
       color: s.tint ? s.tint.replace(/,[0-9.]+\)$/, ',1)') : '#f5c030',
       active: selectedBeeSkin === s.id,
       name: s.name, desc: s.desc, cost: s.cost || 0,
-      locked, lockText: locked ? 'REACH DEPTH ' + s.unlockDepth : '',
+      locked, lockText: locked ? 'REACH DEPTH: ' + s.unlockDepth + ' TO UNLOCK' : '',
       onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
     };
   }));
   document.getElementById('shopTilesBeeSkin').classList.add('swatch-grid');
+  // 3 "coming soon" bee colour placeholders
+  const beeSkinEl = document.getElementById('shopTilesBeeSkin');
+  for (let i = 0; i < 3; i++) {
+    const tile = document.createElement('div'); tile.className = 'shop-tile';
+    const sw = document.createElement('div'); sw.className = 'shop-tile-swatch';
+    sw.style.backgroundColor = '#1a1208'; sw.style.position = 'relative';
+    const q = document.createElement('div');
+    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
+    q.textContent = '?'; sw.appendChild(q); tile.appendChild(sw);
+    tile.onclick = () => showShopToast('COMING SOON');
+    beeSkinEl.appendChild(tile);
+  }
 
   // Trail effect tiles (right column) — with depth unlock gating
   _fillTiles('shopTilesTracer', BEE_TRACERS.map(t => {
     let color;
     if (t.id === 'rainbow') color = 'linear-gradient(90deg,red,orange,yellow,green,blue,violet)';
     else color = t.color ? t.color + '1)' : '#aaa';
+    const solidC = t.color ? t.color + '1)' : '#aaa';
     const locked = (t.unlockDepth || 0) > _bestD;
     return {
       color, active: selectedTracer === t.id,
       name: t.name, desc: t.desc, cost: t.cost || 0,
-      locked, lockText: locked ? 'REACH DEPTH ' + t.unlockDepth : '',
+      locked, lockText: locked ? 'REACH DEPTH: ' + t.unlockDepth + ' TO UNLOCK' : '',
+      swatchRender: (sw) => {
+        const bg = 'rgba(10,5,0,0.9)';
+        if (t.id === 'rainbow') {
+          sw.style.background = 'repeating-linear-gradient(135deg,red 0px,orange 3px,yellow 6px,green 9px,blue 12px,violet 15px,red 18px)';
+        } else {
+          sw.style.background = `repeating-linear-gradient(135deg,${solidC} 0px,${solidC} 3px,${bg} 3px,${bg} 7px)`;
+        }
+      },
       onClick: () => { selectedTracer = t.id; saveCosmetics(); buildShopDots(); }
     };
   }));
+  document.getElementById('shopTilesTracer').classList.add('swatch-grid');
+  // 2 "coming soon" trail effect placeholders
+  const tracerEl = document.getElementById('shopTilesTracer');
+  for (let i = 0; i < 2; i++) {
+    const tile = document.createElement('div'); tile.className = 'shop-tile';
+    const sw = document.createElement('div'); sw.className = 'shop-tile-swatch';
+    sw.style.backgroundColor = '#1a1208'; sw.style.position = 'relative';
+    const q = document.createElement('div');
+    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
+    q.textContent = '?'; sw.appendChild(q); tile.appendChild(sw);
+    tile.onclick = () => showShopToast('COMING SOON');
+    tracerEl.appendChild(tile);
+  }
 
   // Auras — with depth unlock gating
   _fillTiles('shopTilesAuras', BEE_AURAS.map(a => {
@@ -10251,10 +10349,34 @@ function buildShopDots() {
     return {
       color, active: selectedAura === a.id,
       name: a.name, desc: '', cost: a.cost || 0,
-      locked, lockText: locked ? 'REACH DEPTH ' + a.unlockDepth : '',
+      locked, lockText: locked ? 'REACH DEPTH: ' + a.unlockDepth + ' TO UNLOCK' : '',
+      swatchRender: a.color ? (sw) => {
+        const c = a.color + '0.8)';
+        sw.style.background = `radial-gradient(circle, ${c} 30%, rgba(0,0,0,0.9) 80%)`;
+      } : (sw) => {
+        sw.style.backgroundColor = '#1a1208';
+        sw.style.position = 'relative';
+        const ic = document.createElement('div');
+        ic.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;';
+        ic.innerHTML = '<div style="width:12px;height:12px;position:relative;"><div style="position:absolute;width:100%;height:2px;background:#555;top:50%;left:0;transform:rotate(45deg);"></div><div style="position:absolute;width:100%;height:2px;background:#555;top:50%;left:0;transform:rotate(-45deg);"></div></div>';
+        sw.appendChild(ic);
+      },
       onClick: () => { selectedAura = a.id; localStorage.setItem('hendsbee_aura', a.id); buildShopDots(); }
     };
   }));
+  document.getElementById('shopTilesAuras').classList.add('swatch-grid');
+  // 3 "coming soon" aura placeholders
+  const auraEl = document.getElementById('shopTilesAuras');
+  for (let i = 0; i < 3; i++) {
+    const tile = document.createElement('div'); tile.className = 'shop-tile';
+    const sw = document.createElement('div'); sw.className = 'shop-tile-swatch';
+    sw.style.backgroundColor = '#1a1208'; sw.style.position = 'relative';
+    const q = document.createElement('div');
+    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
+    q.textContent = '?'; sw.appendChild(q); tile.appendChild(sw);
+    tile.onclick = () => showShopToast('COMING SOON');
+    auraEl.appendChild(tile);
+  }
 }
 
 function _fillDots(containerId, dots) {
@@ -10270,6 +10392,15 @@ function _fillDots(containerId, dots) {
   });
 }
 
+let _shopToastTimer = 0;
+function showShopToast(msg) {
+  const el = document.getElementById('shopToast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_shopToastTimer);
+  _shopToastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
 function _fillTiles(containerId, tiles) {
   const el = document.getElementById(containerId);
   el.innerHTML = '';
@@ -10277,7 +10408,9 @@ function _fillTiles(containerId, tiles) {
     const tile = document.createElement('div');
     const isLocked = !!t.locked;
     tile.className = 'shop-tile' + (t.active ? ' active' : '') + (isLocked ? ' locked' : '');
-    tile.onclick = isLocked ? null : t.onClick;
+    tile.onclick = isLocked
+      ? () => showShopToast(t.lockText || 'LOCKED')
+      : () => { t.onClick(); showShopToast(t.name); };
     // Color swatch
     const swatch = document.createElement('div');
     swatch.className = 'shop-tile-swatch';
@@ -10285,6 +10418,14 @@ function _fillTiles(containerId, tiles) {
     swatch.style.cssText = isGrad ? `background:${t.color};` : `background-color:${t.color};`;
     if (isLocked) swatch.style.cssText += 'opacity:0.25;filter:grayscale(1);';
     tile.appendChild(swatch);
+    if (t.swatchRender) t.swatchRender(swatch);
+    // Lock icon overlay
+    if (isLocked) {
+      const lock = document.createElement('div');
+      lock.className = 'shop-lock-icon';
+      lock.innerHTML = '<svg width="10" height="12" viewBox="0 0 10 12"><rect x="1" y="5" width="8" height="7" rx="1" fill="#f0a020"/><path d="M3 5V3a2 2 0 0 1 4 0v2" fill="none" stroke="#f0a020" stroke-width="1.5"/></svg>';
+      tile.appendChild(lock);
+    }
     // Info block
     const info = document.createElement('div');
     info.className = 'shop-tile-info';
@@ -10314,10 +10455,10 @@ function _fillTiles(containerId, tiles) {
     const cost = document.createElement('div');
     cost.className = 'shop-tile-cost';
     if (isLocked) {
-      cost.textContent = '\uD83D\uDD12'; // 🔒
+      cost.innerHTML = '<svg width="10" height="12" viewBox="0 0 10 12"><rect x="1" y="5" width="8" height="7" rx="1" fill="#f0a020"/><path d="M3 5V3a2 2 0 0 1 4 0v2" fill="none" stroke="#f0a020" stroke-width="1.5"/></svg>';
       cost.style.opacity = '0.4';
     } else if (t.cost > 0) {
-      cost.textContent = t.cost + '\uD83C\uDF6F';
+      cost.innerHTML = t.cost + '<svg width="10" height="12" viewBox="0 0 10 12" style="vertical-align:middle;margin-left:2px;"><ellipse cx="5" cy="7" rx="4" ry="5" fill="#f0a020"/><ellipse cx="5" cy="4" rx="2.5" ry="2" fill="#d08010"/></svg>';
     } else {
       cost.style.display = 'none'; // hide 0-cost icon
     }
@@ -10592,6 +10733,7 @@ function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
   const _spBracCols = {
     brownBracelet:['#6a4020','#8a5a30'], orangeBracelet:['#d4802e','#e89840'],
     grayBracelet:['#606060','#888888'], oliveBracelet:['#5a6028','#747a40'],
+    blueBracelet:['#3060b0','#5090e0'], pinkBracelet:['#d06080','#f0a0b8'],
   };
   if (accId && _spBracCols[accId]) {
     const [bcO, bcI] = _spBracCols[accId];
@@ -10609,7 +10751,7 @@ function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
     cx2.stroke();
     return;
   }
-  const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a' };
+  const colors = { goldRing: '#d4af37', silverRing: '#b0c0d0', blackRing: '#2a2a2a', blueRing: '#4080d0', grayRing: '#808080' };
   const col = colors[accId];
   if (!col) return;
   const rx = ox + dw * 0.47, ry = oy + dh * 0.30 + 1;
