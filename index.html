@@ -549,6 +549,12 @@
     <div id="sumContent"></div>
   </div>
 
+  <div id="statsPanel" class="panel" style="background:rgba(4,1,0,0.97);">
+    <div class="neon-glow-title" style="font-size:0.7rem;margin-bottom:8px;">STATS</div>
+    <div id="statsBody" style="width:300px;max-width:90%;background:rgba(10,5,0,0.6);border:1px solid #3a1e00;border-radius:4px;padding:14px;"></div>
+    <button class="ob" id="statsBackBtn" style="margin-top:12px;">BACK</button>
+  </div>
+
   <div id="pu" class="panel">
     <div id="puTitle">HONEY JAR FULL</div>
     <div id="puSub">CHOOSE AN UPGRADE</div>
@@ -811,6 +817,9 @@ const SaveManager = {
       bestDepth: 0,
       bestLevel: 0,
       totalLifetimeHoney: 0,
+      totalCellsDestroyed: 0,
+      totalQueenGates: 0,
+      totalDepthTravelled: 0,
       runsCompleted: 0,
       savedAt: 0,
       discovered: []  // cell type keys + powerup IDs the player has encountered
@@ -837,6 +846,8 @@ const SaveManager = {
     const allIds = Object.keys(CELL_TYPES)
       .concat(TEMP_POWERUPS.map(p => p.id));
     meta.discovered = allIds;
+    // Set bestDepth high enough to unlock all shop items
+    meta.bestDepth = Math.max(meta.bestDepth || 0, 9999);
     localStorage.setItem(SAVE_KEYS.META, JSON.stringify(meta));
   },
 
@@ -852,6 +863,11 @@ const SaveManager = {
       if (typeof lifetimeHoney !== 'undefined') {
         meta.totalLifetimeHoney = lifetimeHoney; // synced from live counter
       }
+      // Accumulate milestone counters
+      meta.totalCellsDestroyed = (meta.totalCellsDestroyed || 0) + sessionCellsDestroyed;
+      meta.totalQueenGates = (meta.totalQueenGates || 0) + sessionQueenGates;
+      meta.totalDepthTravelled = (meta.totalDepthTravelled || 0) + (hiveDepthMax || 0);
+      sessionCellsDestroyed = 0; sessionQueenGates = 0; // reset to prevent double-count
       meta.savedAt = Date.now();
       meta._v = SAVE_VERSION.META;
       localStorage.setItem(SAVE_KEYS.META, JSON.stringify(meta));
@@ -928,6 +944,7 @@ const SaveManager = {
         powers: { ...powers },
         // Powerups
         activePowerup: activePowerup ? { ...activePowerup } : null,
+        activePowerups: activePowerups.map(p => ({ ...p })),
         hasHendOfGod,
         honeySurgeFills,
         upgradeSlots: upgradeSlots.map(s => ({ ...s })),
@@ -1039,6 +1056,7 @@ const SaveManager = {
 
       // Powerups
       activePowerup        = data.activePowerup        ?? null;
+      activePowerups       = data.activePowerups       ?? (activePowerup ? [activePowerup] : []);
       hasHendOfGod         = data.hasHendOfGod         ?? false;
       honeySurgeFills      = data.honeySurgeFills      ?? 0;
       upgradeSlots         = data.upgradeSlots         ?? [];
@@ -1216,11 +1234,19 @@ const music = {
     } else {
       this.el.volume = musicVolume;
     }
-    // Suppress iOS Dynamic Island / media player controls
+    // Suppress iOS Dynamic Island / media player controls — aggressively
+    this._suppressMediaSession();
+    // Re-suppress every time playback starts (OS re-asserts on play)
+    this.el.addEventListener('play', () => this._suppressMediaSession());
+    this.el.addEventListener('loadeddata', () => this._suppressMediaSession());
+  },
+
+  _suppressMediaSession() {
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = null;
-      for (const a of ['play','pause','seekbackward','seekforward','previoustrack','nexttrack'])
-        navigator.mediaSession.setActionHandler(a, null);
+      navigator.mediaSession.metadata = new MediaMetadata({ title: '', artist: '', album: '' });
+      navigator.mediaSession.playbackState = 'none';
+      for (const a of ['play','pause','seekbackward','seekforward','previoustrack','nexttrack','seekto','stop'])
+        try { navigator.mediaSession.setActionHandler(a, () => {}); } catch(e) {}
     }
   },
 
@@ -1336,6 +1362,10 @@ function loadImg(paths) {
 // Load HEND.png, crop to content, remove white BG, flip so thumb is on right
 let hendCanvas = null;   // pre-processed canvas (flipped, cropped, transparent BG)
 
+// ── Milestone session counters (accumulated to meta on save) ──
+let sessionCellsDestroyed = 0;
+let sessionQueenGates = 0;
+
 // ── Cosmetics system ─────────────────────────────────────
 let lifetimeHoney = 0; // loaded from SaveManager meta
 ;(function() { const m = SaveManager.loadMeta(); lifetimeHoney = m.totalLifetimeHoney || 0; })();
@@ -1354,36 +1384,39 @@ const HEND_ACCESSORIES = [
   { id:'goldRing',       name:'GOLD RING',       cost:0, color:'#d4af37', desc:'' },
   { id:'silverRing',     name:'SILVER RING',     cost:0, color:'#b0c0d0', desc:'' },
   { id:'blackRing',      name:'BLACK RING',      cost:0, color:'#2a2a2a', desc:'' },
-  { id:'brownBracelet',  name:'BRACELET',        cost:0, color:'#6a4020', desc:'' },
+  { id:'brownBracelet',  name:'BROWN BRACELET',   cost:0, color:'#6a4020', desc:'' },
+  { id:'orangeBracelet', name:'ORANGE BRACELET',  cost:0, color:'#d4802e', desc:'' },
+  { id:'grayBracelet',   name:'GRAY BRACELET',    cost:0, color:'#808080', desc:'' },
+  { id:'oliveBracelet',  name:'OLIVE BRACELET',   cost:0, color:'#6b7033', desc:'' },
 ];
 
 const BEE_SKINS = [
-  { id:'classic', name:'DEFAULT',  cost:0, tint:null,                     desc:'' },
-  { id:'royal',   name:'ROYAL',    cost:0, tint:'rgba(180,140,255,0.85)', desc:'' },
-  { id:'neon',    name:'NEON',     cost:0, tint:'rgba(60,255,80,0.85)',   desc:'' },
-  { id:'shadow',  name:'SHADOW',   cost:0, tint:'rgba(60,40,80,0.85)',    desc:'' },
-  { id:'crystal', name:'CRYSTAL',  cost:0, tint:'rgba(140,220,255,0.85)', desc:'' },
-  { id:'inferno', name:'INFERNO',  cost:0, tint:'rgba(255,100,30,0.85)',  desc:'' },
+  { id:'classic', name:'DEFAULT',  cost:0, unlockDepth:0,   tint:null,                     desc:'' },
+  { id:'neon',    name:'NEON',     cost:0, unlockDepth:200, tint:'rgba(60,255,80,0.85)',   desc:'' },
+  { id:'shadow',  name:'SHADOW',   cost:0, unlockDepth:350, tint:'rgba(60,40,80,0.85)',    desc:'' },
+  { id:'crystal', name:'CRYSTAL',  cost:0, unlockDepth:500, tint:'rgba(140,220,255,0.85)', desc:'' },
+  { id:'royal',   name:'ROYAL',    cost:0, unlockDepth:700, tint:'rgba(180,140,255,0.85)', desc:'' },
+  { id:'inferno', name:'INFERNO',  cost:0, unlockDepth:900, tint:'rgba(255,100,30,0.85)',  desc:'' },
 ];
 
 const BEE_TRACERS = [
-  { id:'classic',   name:'DEFAULT',   cost:0, color:'rgba(180,180,180,', desc:'' },
-  { id:'honeyDrip', name:'HONEY DRIP',cost:0, color:'rgba(245,192,48,',  desc:'' },
-  { id:'stardust',  name:'STARDUST',  cost:0, color:'rgba(255,240,180,', desc:'' },
-  { id:'neon',      name:'NEON',      cost:0, color:'rgba(80,255,120,',  desc:'' },
-  { id:'rainbow',   name:'RAINBOW',   cost:0, color:null,               desc:'' },
-  { id:'smoky',     name:'SHADOW',    cost:0, color:'rgba(40,20,60,',    desc:'' },
-  { id:'poopLogs',  name:'POOP LOGS', cost:0, color:'rgba(90,55,20,',    desc:'' },
+  { id:'classic',   name:'DEFAULT',    cost:0, unlockDepth:0,    color:'rgba(180,180,180,', desc:'' },
+  { id:'honeyDrip', name:'HONEY DRIP', cost:0, unlockDepth:200,  color:'rgba(245,192,48,',  desc:'' },
+  { id:'smoky',     name:'SHADOW',     cost:0, unlockDepth:300,  color:'rgba(40,20,60,',    desc:'' },
+  { id:'neon',      name:'NEON',       cost:0, unlockDepth:400,  color:'rgba(80,255,120,',  desc:'' },
+  { id:'stardust',  name:'STARDUST',   cost:0, unlockDepth:550,  color:'rgba(255,240,180,', desc:'' },
+  { id:'poopLogs',  name:'POOP LOGS',  cost:0, unlockDepth:750,  color:'rgba(90,55,20,',    desc:'' },
+  { id:'rainbow',   name:'RAINBOW',    cost:0, unlockDepth:1000, color:null,               desc:'' },
 ];
 
 // ── Bee Auras (cosmetic glow behind bee) ──
 const BEE_AURAS = [
-  { id:'none',      name:'NONE',       cost:0, color:null },
-  { id:'golden',    name:'GOLDEN',     cost:0, color:'rgba(255,200,60,' },
-  { id:'ghostly',   name:'GHOSTLY',    cost:0, color:'rgba(180,220,255,' },
-  { id:'infernal',  name:'INFERNAL',   cost:0, color:'rgba(255,80,30,' },
-  { id:'toxic',     name:'TOXIC',      cost:0, color:'rgba(80,255,60,' },
-  { id:'royal',     name:'ROYAL',      cost:0, color:'rgba(180,100,255,' },
+  { id:'none',      name:'NONE',       cost:0, unlockDepth:0,   color:null },
+  { id:'golden',    name:'GOLDEN',     cost:0, unlockDepth:200, color:'rgba(255,200,60,' },
+  { id:'toxic',     name:'TOXIC',      cost:0, unlockDepth:350, color:'rgba(80,255,60,' },
+  { id:'ghostly',   name:'GHOSTLY',    cost:0, unlockDepth:500, color:'rgba(180,220,255,' },
+  { id:'infernal',  name:'INFERNAL',   cost:0, unlockDepth:700, color:'rgba(255,80,30,' },
+  { id:'royal',     name:'ROYAL',      cost:0, unlockDepth:900, color:'rgba(180,100,255,' },
 ];
 let selectedAura = localStorage.getItem('hendsbee_aura') || 'none';
 
@@ -1429,18 +1462,18 @@ let selectedAccessory = null;
       // Accessory — per-hand (rings + bracelets separate)
       if (c.accL !== undefined) {
         // Migrate: if old accL was a bracelet, put it in bracelet slot
-        if (c.accL === 'brownBracelet') selectedBraceletL = c.accL;
+        if (c.accL && c.accL.endsWith('Bracelet')) selectedBraceletL = c.accL;
         else selectedAccessoryL = c.accL;
       }
       if (c.accR !== undefined) {
-        if (c.accR === 'brownBracelet') selectedBraceletR = c.accR;
+        if (c.accR && c.accR.endsWith('Bracelet')) selectedBraceletR = c.accR;
         else selectedAccessoryR = c.accR;
       } else if (c.accL !== undefined) {
-        if (c.accL === 'brownBracelet') selectedBraceletR = c.accL;
+        if (c.accL && c.accL.endsWith('Bracelet')) selectedBraceletR = c.accL;
         else selectedAccessoryR = c.accL;
       }
       if (c.accessory && c.accL === undefined) {
-        if (c.accessory === 'brownBracelet') { selectedBraceletL = c.accessory; selectedBraceletR = c.accessory; }
+        if (c.accessory && c.accessory.endsWith('Bracelet')) { selectedBraceletL = c.accessory; selectedBraceletR = c.accessory; }
         else { selectedAccessoryL = c.accessory; selectedAccessoryR = c.accessory; }
       }
       // New format: bracelet slots
@@ -1456,6 +1489,16 @@ let selectedAccessory = null;
   selectedSkin = selectedSkinL;
   selectedAccessory = selectedAccessoryL;
   favouriteHend = localStorage.getItem('hendsbee_favourite') || 'right';
+  // Validate bee cosmetics against unlock depth
+  try {
+    const _bd = (SaveManager.loadMeta().bestDepth || 0);
+    const _bsObj = BEE_SKINS.find(s => s.id === selectedBeeSkin);
+    if (_bsObj && (_bsObj.unlockDepth || 0) > _bd) selectedBeeSkin = 'classic';
+    const _btObj = BEE_TRACERS.find(t => t.id === selectedTracer);
+    if (_btObj && (_btObj.unlockDepth || 0) > _bd) selectedTracer = 'classic';
+    const _baObj = BEE_AURAS.find(a => a.id === selectedAura);
+    if (_baObj && (_baObj.unlockDepth || 0) > _bd) { selectedAura = 'none'; localStorage.setItem('hendsbee_aura', 'none'); }
+  } catch(e) {}
 })();
 
 function saveCosmetics() {
@@ -1894,6 +1937,8 @@ const powers = {
   broodFrenzy:   0,  // +1 extra bee from BROOD cells
   twoHends:      0,  // widens paddle to two mirrored hands
   powerExtend:   0,  // +2s powerup duration per stack
+  fireBees:      0,  // residual burn damage on hit cells
+  electricBees:  0,  // chain lightning to adjacent cells
 };
 
 function getChubScale() {
@@ -1978,13 +2023,33 @@ const ALL_POWERUPS = [
   },
   {
     id: 'powerExtend',
-    name: 'LONG BUZZ',
+    name: 'BETTER BUZZ',
     short: 'BUZZ',
     desc: 'POWER-UPS LAST +2S LONGER.',
     tag:  'POWERUP',
     color: '#40c0ff', outline: '#2080a0',
     max:  6,
     apply() { powers.powerExtend++; }
+  },
+  {
+    id: 'fireBees',
+    name: 'FIRE BEES',
+    short: 'FIRE',
+    desc: 'CELLS BURN FOR RESIDUAL DAMAGE.',
+    tag:  'DAMAGE',
+    color: '#ff4010', outline: '#a02008',
+    max:  6,
+    apply() { powers.fireBees++; }
+  },
+  {
+    id: 'electricBees',
+    name: 'ELECTRIC BEES',
+    short: 'ELEC',
+    desc: 'HITS CHAIN LIGHTNING TO NEARBY CELLS.',
+    tag:  'DAMAGE',
+    color: '#40d0ff', outline: '#2080b0',
+    max:  6,
+    apply() { powers.electricBees++; }
   },
 ];
 
@@ -2004,7 +2069,9 @@ const TEMP_POWERUPS = [
   { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
   { id:'magnetHends', name:'MAGNET HENDS', color:'#60c0ff', duration:600, desc:'BEES GET PULLED TOWARD THE HENDS AS THEY FALL' },
 ];
-let activePowerup = null;   // { id, name, color, ticksLeft } or null
+let activePowerup = null;   // compat shim — points to most recent entry in activePowerups
+let activePowerups = [];    // [{ id, name, color, ticksLeft }, ...] — stacking powerups
+function _hasPU(id) { return activePowerups.some(p => p.id === id); }
 let puAnnounce = null;      // { text, color, timer, maxTimer } — pickup text announcement
 let discoveryBanner = null; // { text, color, timer, maxTimer } — first-discovery flip banner
 
@@ -2045,13 +2112,17 @@ function spawnPowerupDrop(wx, wy) {
   powerupDrops.push({ x: wx, y: wy, vy: -0.5, type, flash: 0 });
 }
 
-function deactivatePowerup() {
+function deactivatePowerup(expiredId) {
   // Reset bee speeds to base when BEE-R expires (prevents missile effect)
-  if (activePowerup?.id === 'beeR') {
-    for (const b of bees) b.speed = CONFIG.BASE_SPD;
+  if (expiredId === 'beeR' || (!expiredId && _hasPU('beeR'))) {
+    if (!_hasPU('beeR')) for (const b of bees) b.speed = CONFIG.BASE_SPD;
   }
-  activePowerup = null;
-  honeySurgeFills = 0;
+  if (!expiredId) { activePowerups = []; activePowerup = null; honeySurgeFills = 0; }
+  else {
+    activePowerups = activePowerups.filter(p => p.id !== expiredId);
+    activePowerup = activePowerups.length > 0 ? activePowerups[activePowerups.length - 1] : null;
+    if (!_hasPU('honeySurge')) honeySurgeFills = 0;
+  }
 }
 
 function activatePowerup(type, px, py) {
@@ -2060,12 +2131,15 @@ function activatePowerup(type, px, py) {
   // Large centered text announcement
   puAnnounce = { text: type.name, color: type.color, timer: 120, maxTimer: 120 };
   if (type.duration > 0) {
-    // Global timed — refresh timer if same type, otherwise replace
-    if (activePowerup && activePowerup.id === type.id) {
-      activePowerup.ticksLeft = type.duration + (powers.powerExtend || 0) * 120; // refresh timer
+    const dur = type.duration + (powers.powerExtend || 0) * 120;
+    // Stack: refresh timer if same type, otherwise add to stack
+    const existing = activePowerups.find(p => p.id === type.id);
+    if (existing) {
+      existing.ticksLeft = dur; // refresh timer
     } else {
-      activePowerup = { id: type.id, name: type.name, color: type.color, ticksLeft: type.duration + (powers.powerExtend || 0) * 120 };
+      activePowerups.push({ id: type.id, name: type.name, color: type.color, ticksLeft: dur });
     }
+    activePowerup = activePowerups[activePowerups.length - 1]; // compat shim
   } else if (type.duration === -1) {
     // Stored (HEND OF GOD)
     hasHendOfGod = true;
@@ -2079,6 +2153,7 @@ function activatePowerup(type, px, py) {
       for (const b of bees) {
         const ovx = b.vx, ovy = b.vy;
         b.sizeScale *= 0.7;
+        b._shrinkTimer = 600; // restore size after 10s (600 frames at 60fps)
         // Rotate original slightly left
         b.vx = ovx * cosA + ovy * sinA;
         b.vy = -ovx * sinA + ovy * cosA;
@@ -2087,6 +2162,7 @@ function activatePowerup(type, px, py) {
         const cvy = ovx * sinA + ovy * cosA;
         const nb = mkBee(b.x, b.y, cvx, cvy, b.speed);
         nb.sizeScale = b.sizeScale;
+        nb._shrinkTimer = 600;
         clones.push(nb);
       }
       bees.push(...clones);
@@ -2206,7 +2282,7 @@ function spawnDroplet(wx, wy) {
   if (demoMode) return; // no honey animations in attract mode
   // Convert world Y → screen Y once at spawn; x is unchanged (no horizontal scroll)
   const sy = wy - scrollY;
-  const count = (activePowerup?.id === 'honeySurge') ? 2 : 1;
+  const count = (_hasPU('honeySurge')) ? 2 : 1;
   for (let i = 0; i < count; i++) {
     droplets.push({ x:wx + (i ? (Math.random()-0.5)*6 : 0), y:sy, tx:JAR_CX, ty:JAR_BY + JAR_BH * 0.5, prog:0,
                     spd:0.022 + Math.random()*0.018 });
@@ -2275,7 +2351,7 @@ function checkMeterFull() {
   if (upgradeBannerActive || pickerPending || paused || pickerTransition) return;
   if (totalHoney >= getMeterCap()) {
     // HONEY SURGE: track jar fills, end early at 2
-    if (activePowerup?.id === 'honeySurge') {
+    if (_hasPU('honeySurge')) {
       honeySurgeFills++;
       if (honeySurgeFills >= 2) deactivatePowerup();
     }
@@ -2650,15 +2726,22 @@ function drawAccessory(ox, oy, dw, dh, side) {
   const bracId = side === -1 ? selectedBraceletL : selectedBraceletR;
 
   // Draw bracelet if equipped
-  if (bracId === 'brownBracelet') {
+  const _bracCols = {
+    brownBracelet:  ['#6a4020','#8a5a30'],
+    orangeBracelet: ['#d4802e','#e89840'],
+    grayBracelet:   ['#606060','#888888'],
+    oliveBracelet:  ['#5a6028','#747a40'],
+  };
+  if (bracId && _bracCols[bracId]) {
+    const [bcOuter, bcInner] = _bracCols[bracId];
     const bx = ox + dw * 0.33, by = oy + dh * 0.88;
     const bw = dw * 0.25, bh = dh * 0.065;
-    ctx.strokeStyle = '#6a4020';
+    ctx.strokeStyle = bcOuter;
     ctx.lineWidth = Math.max(3.5, dw * 0.055);
     ctx.beginPath();
     ctx.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
     ctx.stroke();
-    ctx.strokeStyle = '#8a5a30';
+    ctx.strokeStyle = bcInner;
     ctx.lineWidth = Math.max(1, dw * 0.018);
     ctx.beginPath();
     ctx.ellipse(bx, by - 0.5, bw * 0.85, bh * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95);
@@ -2843,7 +2926,11 @@ function drawTrail(b) {
       booBee:     { color:'rgba(200,220,255,', width: 1.5 },
       beeR:       { color:'rgba(80,220,80,',   width: 2.0 },
     };
-    _puTrailOverride = puTrails[activePowerup?.id] || null;
+    _puTrailOverride = null;
+    for (let pi = activePowerups.length - 1; pi >= 0; pi--) {
+      _puTrailOverride = puTrails[activePowerups[pi].id] || null;
+      if (_puTrailOverride) break;
+    }
   }
   if (!_puTrailOverride) {
     if (selectedTracer !== 'classic') {
@@ -2887,8 +2974,16 @@ function drawTrail(b) {
         const hue = ((now * 120 + i * 30) % 360);
         ctx.strokeStyle = `hsla(${hue},90%,60%,${alpha.toFixed(3)})`;
       } else if (tracerObj.id === 'stardust') {
-        const sparkle = Math.sin(now * 2 + i * 1.7) * 0.2 + 0.8;
-        ctx.strokeStyle = `${tracerObj.color}${(alpha * sparkle).toFixed(3)})`;
+        const sparkle = Math.sin(now * 4 + i * 2.3) * 0.3 + 0.9;
+        ctx.strokeStyle = `rgba(255,250,220,${(alpha * sparkle).toFixed(3)})`;
+        // Flickering sparks — small bright dots near each dash
+        if (Math.sin(now * 6 + i * 3.1) > 0.6) {
+          const sx = d.x + (Math.sin(now * 3 + i) * 3);
+          const sy = d.y + (Math.cos(now * 2.5 + i) * 3);
+          const sa = alpha * (0.6 + Math.random() * 0.4);
+          ctx.fillStyle = `rgba(255,255,240,${sa.toFixed(3)})`;
+          ctx.fillRect(sx - 0.5, sy - 0.5, 1, 1);
+        }
       } else if (tracerObj.id === 'poopLogs') {
         // Thicker, mottled brown — alternates between dark and light brown per dash
         ctx.lineWidth = DASH_WIDTH * 2.2;
@@ -2957,7 +3052,10 @@ function drawBee(b) {
     let auraColor = null;
     // Powerup aura override
     if (activePowerup) {
-      auraColor = _puAuras[activePowerup.id] || null;
+      for (let pi = activePowerups.length - 1; pi >= 0; pi--) {
+        auraColor = _puAuras[activePowerups[pi].id] || null;
+        if (auraColor) break;
+      }
     }
     // Fall back to cosmetic aura
     if (!auraColor && selectedAura !== 'none') {
@@ -2979,20 +3077,26 @@ function drawBee(b) {
   const angle = Math.atan2(b.vy, b.vx) + Math.PI/2;
   // Powerup-based size scaling — smooth transitions
   let targetScale = b.sizeScale || 1;
-  if (activePowerup?.id === 'beeGer') targetScale *= 1.5;
-  if (activePowerup?.id === 'beeHemoth') targetScale *= 3;
-  // Smooth lerp toward target scale
+  if (_hasPU('beeGer')) targetScale *= 1.5;
+  if (_hasPU('beeHemoth')) targetScale *= 3;
+  // Smooth lerp toward target scale — faster convergence so all bees match quickly
   if (!b._displayScale) b._displayScale = targetScale;
-  b._displayScale += (targetScale - b._displayScale) * 0.12; // ~8 frames to reach target
+  b._displayScale += (targetScale - b._displayScale) * 0.25; // ~4 frames to reach target
   const scale = b._displayScale;
 
   // BOO-BEE transparency
-  if (activePowerup?.id === 'booBee') ctx.globalAlpha = 0.5;
+  if (_hasPU('booBee')) ctx.globalAlpha = 0.5;
 
   // Flicker effect for expiring timed powerups (last ~2.5 seconds)
-  if (activePowerup && activePowerup.ticksLeft > 0 && activePowerup.ticksLeft < 150) {
-    const flickRate = activePowerup.ticksLeft < 60 ? 4 : 8; // faster flicker in last second
-    if (Math.floor(tick / flickRate) % 2 === 0) ctx.globalAlpha *= 0.3;
+  { let _minTL = Infinity;
+    for (let _pi = 0; _pi < activePowerups.length; _pi++) {
+      const _pt = activePowerups[_pi].ticksLeft;
+      if (_pt > 0 && _pt < 150 && _pt < _minTL) _minTL = _pt;
+    }
+    if (_minTL < 150) {
+      const flickRate = _minTL < 60 ? 4 : 8;
+      if (Math.floor(tick / flickRate) % 2 === 0) ctx.globalAlpha *= 0.3;
+    }
   }
 
   ctx.save();
@@ -3003,7 +3107,7 @@ function drawBee(b) {
   // Use PNG bee frames if loaded
   const usePNG = beeFrames.length === 4 && beeFrames[0];
   if (usePNG) {
-    const flap = (activePowerup?.id === 'beeHemoth' || activePowerup?.id === 'beeR') ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
+    const flap = (_hasPU('beeHemoth') || _hasPU('beeR')) ? 14 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
     const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / flap) % beeFrameSeq.length];
     const img = beeFrames[frameIdx];
     // Draw centered, scaled to match the pixel sprite bounding box
@@ -3011,7 +3115,7 @@ function drawBee(b) {
 
     // Determine if we need tinting
     const needsBombBeeTint = !!b._bombBee;
-    const needsBeeRTint = !needsBombBeeTint && activePowerup?.id === 'beeR';
+    const needsBeeRTint = !needsBombBeeTint && _hasPU('beeR');
     const needsSkinTint = !needsBeeRTint && !needsBombBeeTint && selectedBeeSkin !== 'classic';
     const bskin = needsSkinTint ? BEE_SKINS.find(s => s.id === selectedBeeSkin) : null;
     const hasTint = needsBombBeeTint || needsBeeRTint || (bskin && bskin.tint && lifetimeHoney >= bskin.cost);
@@ -3059,7 +3163,7 @@ function drawBee(b) {
   ctx.globalAlpha = 1;
 
   // BEE-R burp bubbles
-  if (activePowerup?.id === 'beeR' && tick % 20 < 1) {
+  if (_hasPU('beeR') && tick % 20 < 1) {
     for (let i = 0; i < 2; i++) {
       particles.push({
         x: b.x + (Math.random()-0.5)*8,
@@ -3493,7 +3597,7 @@ function drawHex(h) {
     const useBeeSprite = beeFrames.length === 4 && beeFrames[0];
     if (useBeeSprite) {
       const bImg = beeFrames[0];
-      const beeW = HEX_R * 1.1, beeH = HEX_R * 1.1;
+      const beeW = HEX_R * 1.5, beeH = HEX_R * 1.5;
       ctx.save();
       ctx.globalAlpha = 0.85;
       ctx.drawImage(bImg, h.x - beeW / 2, h.y - beeH / 2, beeW, beeH);
@@ -3855,8 +3959,8 @@ function checkHex(b) {
         const gate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
         if (gate && !gate.dead) {
           let qdmg = 1 + powers.beefyBees + powers.royalFury;
-          if (activePowerup?.id === 'beeGer') qdmg *= 2;
-          if (activePowerup?.id === 'beeHemoth') qdmg = 5;
+          if (_hasPU('beeGer')) qdmg *= 2;
+          if (_hasPU('beeHemoth')) qdmg = 5;
           gate.hp -= qdmg;
           h.flash = 8; haptic(HAPTIC.queen);
           if (gate.hp <= 0) {
@@ -3873,7 +3977,7 @@ function checkHex(b) {
       }
 
       // Phase-through check (BOO-BEE or BEE-HEMOTH)
-      const phasing = activePowerup?.id === 'booBee' || activePowerup?.id === 'beeHemoth';
+      const phasing = _hasPU('booBee') || _hasPU('beeHemoth');
       if (!phasing) {
         // reflect velocity
         const dot = b.vx*nx + b.vy*ny;
@@ -3913,7 +4017,7 @@ function checkHex(b) {
         }
         // Check if hit cell died from bomb damage
         if (h.hp <= 0) {
-          h.dead = true;
+          h.dead = true; sessionCellsDestroyed++;
           if (h.type === 'WAX' || h.type === 'BOMB') {
             window._waxChainQueue.push({ src: h, delay: 0, processed: false });
           }
@@ -3925,8 +4029,8 @@ function checkHex(b) {
       // damage
       let dmg = 1 + powers.beefyBees;
       // waxBreaker (CHUBBY HENDS) now affects paddle size, not damage
-      if (activePowerup?.id === 'beeGer') dmg *= 2;
-      if (activePowerup?.id === 'beeHemoth') dmg = 5;
+      if (_hasPU('beeGer')) dmg *= 2;
+      if (_hasPU('beeHemoth')) dmg = 5;
       h.hp -= dmg; h.flash = 10;
       triggerDiscovery(h.type); // track cell discovery for guide
 
@@ -3938,8 +4042,47 @@ function checkHex(b) {
         spawnDebris(h.x, h.y, chunkCount, debrisCols);
       }
 
+      // FIRE BEES: apply burn to surviving cells
+      if (powers.fireBees > 0 && h.hp > 0 && h.type !== 'PORTAL' && h.type !== 'UNBREAKABLE' && h.type !== 'ROYAL_GUARD' && h.type !== 'BOOST') {
+        h._burn = { timer: (1 + powers.fireBees) * 60, tickAccum: 0 };
+      }
+      // ELECTRIC BEES: chain lightning from hit cell
+      if (powers.electricBees > 0) {
+        const _eMaxJ = 1 + powers.electricBees;
+        const _ePts = [{ x: h.x, y: h.y }];
+        const _eVis = new Set(); _eVis.add(h);
+        let _eCur = h;
+        for (let _ej = 0; _ej < _eMaxJ; _ej++) {
+          const _eNear = _hexGridQuery(_eCur.x, _eCur.y, HEX_R * 2.5);
+          let _eBest = null, _eBestD = Infinity;
+          for (let _ei = 0; _ei < _eNear.length; _ei++) {
+            const n = _eNear[_ei];
+            if (n.dead || _eVis.has(n) || n === _eCur) continue;
+            if (n.type === 'PORTAL' || n.type === 'UNBREAKABLE' || n.type === 'ROYAL_GUARD' || n.type === 'BOOST') continue;
+            const d = Math.hypot(n.x - _eCur.x, n.y - _eCur.y);
+            if (d < HEX_R * 2.5 && d < _eBestD) { _eBest = n; _eBestD = d; }
+          }
+          if (!_eBest) break;
+          _eVis.add(_eBest);
+          _eBest.hp -= 1; _eBest.flash = 8;
+          spawnParts(_eBest.x, _eBest.y, 2, ['#40d0ff','#80e0ff','#fff']);
+          _ePts.push({ x: _eBest.x, y: _eBest.y });
+          if (_eBest.hp <= 0) { _eBest.dead = true; sessionCellsDestroyed++;
+            triggerDiscovery(_eBest.type);
+            const _ehv = CELL_TYPES[_eBest.type]?.honey || 0;
+            for (let _ed = 0; _ed < _ehv; _ed++) spawnDroplet(_eBest.x, _eBest.y);
+          }
+          _eCur = _eBest;
+        }
+        if (_ePts.length > 1) {
+          if (!window._lightningBolts) window._lightningBolts = [];
+          window._lightningBolts.push({ points: _ePts, timer: 24 });
+        }
+      }
+
       if (h.hp <= 0) {
         h.dead = true;
+        sessionCellsDestroyed++;
 
         // WAX CELL: splash damage + chain reaction (WAX→WAX and WAX→BOMB domino)
         if (h.type === 'WAX') {
@@ -4674,11 +4817,11 @@ const JAR_BX  = JAR_CX - JAR_BW / 2;
 const JAR_NX  = JAR_CX - JAR_NW / 2;
 const JAR_RX  = JAR_CX - JAR_RW / 2;
 // Upgrade slot constants — 6 tessellated flat-top hexes
-const SLOT_R   = Math.min(22, (_HUD_SPACE - 24) / 2.8); // scale down on short HUDs
-const SLOT_SPC = SLOT_R * 1.62;              // horizontal center-to-center
+const SLOT_R   = Math.min(18, (_HUD_SPACE - 24) / 2.8); // scale down for 10 slots
+const SLOT_SPC = SLOT_R * 1.52;              // horizontal center-to-center (compact for 10 slots)
 const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols
 const SLOT_Y   = HUD_Y + 6 + SLOT_R + 12;   // anchored relative to HUD top
-const SLOT0_X  = 30;
+const SLOT0_X  = 24;
 
 function drawHexOutline(cx, cy, r) {
   const pts = hexPts(cx, cy, r);
@@ -5139,7 +5282,11 @@ function drawUpgradeBanner() {
     // Text block vertically centred with icon
     // Name (10px) + gap (4) + desc line(s) (~7px each)
     // Estimate total text height, then centre on btnH/2
-    const desc = pu.desc || '';
+    let desc = pu.desc || '';
+    // Append stack info
+    const _stackExtra = { fireBees: '+1S BURN', electricBees: '+1 CHAIN', beefyBees: '+1 DMG', royalFury: '+1 DMG', powerExtend: '+2S' };
+    if (pu.max > 1) desc += ' STACKS ' + pu.max + 'X' + (_stackExtra[pu.id] ? ' (' + _stackExtra[pu.id] + ')' : '') + '.';
+    else desc += ' DOES NOT STACK.';
     const availW = btnW - textLeft - 4;
     const maxChars = Math.floor(availW / 6.2); // approx chars per line at 7px font
     const lines = [];
@@ -5611,7 +5758,7 @@ function _dedupBlueprintOverlap(newCells, existingCells) {
   const bpCells = [];
   for (let i = 0; i < existingCells.length; i++) {
     const h = existingCells[i];
-    if (!h.dead && h._blueprint) bpCells.push(h);
+    if (!h.dead && (h._blueprint || h.type === 'ROYAL_GUARD' || h.type === 'QUEEN' || h.type === 'UNBREAKABLE' || h.type === 'PORTAL' || h.type === 'BOOST')) bpCells.push(h);
   }
   if (bpCells.length === 0) return newCells;
   let w = 0;
@@ -5849,6 +5996,7 @@ function spawnQueenCluster(gateY, gateIndex) {
 // ── Boss Gate: shatter all guard cells when Queen dies ──
 function triggerBossGateShatter(gate) {
   gate.dead = true;
+  sessionQueenGates++;
   // Shatter guard cells with staggered particle bursts
   for (const h of gate.guardCells) {
     h.dead = true;
@@ -5979,7 +6127,7 @@ function resetRun() {
   upgradeBannerActive = false; upgradeBannerChoices = []; upgradeBannerGeom = null; _upgradeSlomoState = 'none';
   upgradeSlots = []; levelHoneyEarned = 0; upgradeCount = 0;
   levelHoneyEarned = 0;
-  activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
+  activePowerup = null; activePowerups = []; hasHendOfGod = false; honeySurgeFills = 0;
   powerupDrops = [];
   bossGates = [];
   deathAnim = null;
@@ -6014,7 +6162,7 @@ function startLevel(lvl) {
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
   scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _nextBlueprintDepth=3;
   timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null;
-  particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; honeySurgeFills=0; touchX=null; touchX2=null; touchIdLeft=null; touchIdRight=null;
+  particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; activePowerups=[]; honeySurgeFills=0; touchX=null; touchX2=null; touchIdLeft=null; touchIdRight=null;
   paddle=mkPaddle();
   paddle2=mkPaddle2();
   hexes=buildGrid(lvl);   // sets HIVE_CONFIG.CAMERA_MIN
@@ -6450,10 +6598,12 @@ function update() {
   const newBees=[];
 
   for (const b of bees) {
+    // BEE-BEE size restore timer
+    if (b._shrinkTimer > 0) { b._shrinkTimer--; if (b._shrinkTimer <= 0) b.sizeScale = 1.0; }
     pushTrail(b);
-    const spdMul = (activePowerup?.id === 'beeR') ? 0.5 : 1;
+    const spdMul = (_hasPU('beeR')) ? 0.5 : 1;
     b.x+=b.vx*dt*60*spdMul; b.y+=b.vy*dt*60*spdMul;
-    if (activePowerup?.id === 'beeR') b.x += Math.sin(tick * 0.15 + b.y * 0.05) * 1.2;
+    if (_hasPU('beeR')) b.x += Math.sin(tick * 0.15 + b.y * 0.05) * 1.2;
 
     // Swarm Instinct: homing toward nearest cell
     if (powers.swarmInstinct > 0) {
@@ -6476,7 +6626,7 @@ function update() {
     }
 
     // Magnet Hends: heat-seek toward nearest hend when bee is falling
-    if (activePowerup?.id === 'magnetHends' && b.vy > 0) {
+    if (_hasPU('magnetHends') && b.vy > 0) {
       const pw = getPW();
       let tx = paddle.x + pw / 2, ty = paddleWorldY;
       if (powers.twoHends > 0) {
@@ -6665,7 +6815,27 @@ if (b._boostCooldown > 0) b._boostCooldown--;
     }
   }
 
-  for (const h of hexes) if(h.flash>0) h.flash--;
+  for (const h of hexes) {
+    if (h.flash > 0) h.flash--;
+    // FIRE BEES: burn tick — 1 damage per second
+    if (h._burn && !h.dead) {
+      h._burn.timer--;
+      h._burn.tickAccum++;
+      if (h._burn.tickAccum >= 60) {
+        h._burn.tickAccum = 0;
+        h.hp -= 1; h.flash = 6;
+        spawnParts(h.x, h.y, 3, ['#ff6020','#ff9040','#ffcc60']);
+        if (h.hp <= 0) {
+          h.dead = true; sessionCellsDestroyed++;
+          triggerDiscovery(h.type);
+          const _fhv = CELL_TYPES[h.type]?.honey || 0;
+          for (let _fd = 0; _fd < _fhv; _fd++) spawnDroplet(h.x, h.y);
+          spawnParts(h.x, h.y, 6, ['#ff4010','#ff8040','#ffcc60']);
+        }
+      }
+      if (h._burn.timer <= 0) h._burn = null;
+    }
+  }
   broodMsgs=broodMsgs.filter(m=>m.life>0);
   for (const m of broodMsgs){m.y-=0.35;m.life--;}
   updateDroplets();
@@ -6693,11 +6863,15 @@ if (b._boostCooldown > 0) b._boostCooldown--;
     powerupDrops.length = w;
   }
 
-  // ── Tick down active powerup (global, e.g. honeySurge) ──
-  if (activePowerup && activePowerup.ticksLeft > 0) {
-    activePowerup.ticksLeft--;
-    if (activePowerup.ticksLeft <= 0) deactivatePowerup();
+  // ── Tick down all stacked powerups ──
+  for (let pi = activePowerups.length - 1; pi >= 0; pi--) {
+    const pu = activePowerups[pi];
+    if (pu.ticksLeft > 0) {
+      pu.ticksLeft--;
+      if (pu.ticksLeft <= 0) deactivatePowerup(pu.id);
+    }
   }
+  activePowerup = activePowerups.length > 0 ? activePowerups[activePowerups.length - 1] : null;
 
   // ── HEND OF GOD animation tick ──
   if (hendOfGodAnim) {
@@ -6849,9 +7023,56 @@ function render() {
     const _vTop = scrollY - HEX_R, _vBot = scrollY + H + HEX_R;
     for (let _hi = 0; _hi < hexes.length; _hi++) {
       const h = hexes[_hi];
-      if (!h.dead && h.y >= _vTop && h.y <= _vBot) drawHex(h);
+      if (!h.dead && h.y >= _vTop && h.y <= _vBot) {
+        drawHex(h);
+        // FIRE BEES: flickering flame overlay on burning cells
+        if (h._burn) {
+          ctx.save();
+          const fA = 0.5 + 0.3 * Math.sin(tick * 0.15 + h.x);
+          ctx.globalAlpha = fA;
+          ctx.fillStyle = '#ff6020';
+          for (let fi = 0; fi < 3; fi++) {
+            const fx = h.x + Math.sin(tick * 0.2 + fi * 2.1) * (HEX_R * 0.3);
+            const fy = h.y - HEX_R * 0.2 - fi * 3 + Math.sin(tick * 0.12 + fi) * 2;
+            const fs = 2 + Math.sin(tick * 0.18 + fi * 1.5) * 1;
+            ctx.beginPath();
+            ctx.moveTo(fx - fs, fy + fs);
+            ctx.lineTo(fx, fy - fs * 1.5);
+            ctx.lineTo(fx + fs, fy + fs);
+            ctx.closePath();
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
     }
   }
+
+  // ELECTRIC BEES: render lightning bolts
+  if (window._lightningBolts && window._lightningBolts.length > 0) {
+    for (let _li = window._lightningBolts.length - 1; _li >= 0; _li--) {
+      const bolt = window._lightningBolts[_li];
+      bolt.timer--;
+      if (bolt.timer <= 0) { window._lightningBolts.splice(_li, 1); continue; }
+      const lAlpha = bolt.timer / 24;
+      ctx.save();
+      ctx.strokeStyle = `rgba(64,208,255,${lAlpha.toFixed(2)})`;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = '#40d0ff';
+      ctx.shadowBlur = 8 * lAlpha;
+      ctx.beginPath();
+      ctx.moveTo(bolt.points[0].x, bolt.points[0].y);
+      for (let p = 1; p < bolt.points.length; p++) {
+        const mx = (bolt.points[p-1].x + bolt.points[p].x) / 2 + (Math.random() - 0.5) * 6;
+        const my = (bolt.points[p-1].y + bolt.points[p].y) / 2 + (Math.random() - 0.5) * 6;
+        ctx.lineTo(mx, my);
+        ctx.lineTo(bolt.points[p].x, bolt.points[p].y);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   drawParts();
 
   // Draw paddle UNDER bees (in world space temporarily)
@@ -7888,6 +8109,12 @@ function hidePause() { pausePanel.classList.remove('show'); }
   shopBtn.onclick = () => { hidePause(); showShop('pause'); };
   container.appendChild(shopBtn);
 
+  const stBtn = document.createElement('button');
+  stBtn.className = 'ob';
+  stBtn.textContent = 'STATS';
+  stBtn.onclick = () => { hidePause(); showStats('pause'); };
+  container.appendChild(stBtn);
+
   const gb = document.createElement('button');
   gb.className = 'ob';
   gb.textContent = 'GUIDE';
@@ -7950,7 +8177,7 @@ function showMenu() {
   clearBtns();
   const hasSave = SaveManager.hasSavedRun();
   const s = hasSave ? SaveManager.getSummary() : null;
-  const hasValidSave = hasSave && s && s.depth > 3 && s.hasRun;
+  const hasValidSave = hasSave && s && s.depth >= 25 && s.hasRun;
 
   // Always show PLAY button (new game / fresh start)
   mkBtn('PLAY', true, () => {
@@ -7977,6 +8204,7 @@ function showMenu() {
     });
   }
   mkBtn('SHOP',     false, ()=>{hideOv(); showShop('menu');});
+  mkBtn('STATS',    false, ()=>{hideOv(); showStats('menu');});
   mkBtn('GUIDE',    false, ()=>{showPause(true);});
   mkBtn('SETTINGS', false, ()=>{hideOv(); showSettings('menu');});
   showOv();
@@ -8213,7 +8441,7 @@ function enterPowerupTestMode() {
   scrollY = 0; scrollYTarget = 0; scrollYMin = 0;
   generatedTop = -9999; // prevent chunk streaming
   particles = []; broodMsgs = []; droplets = []; powerupDrops = [];
-  activePowerup = null; hasHendOfGod = false; honeySurgeFills = 0;
+  activePowerup = null; activePowerups = []; hasHendOfGod = false; honeySurgeFills = 0;
   puAnnounce = null; hendOfGodAnim = null;
   upgradeBannerActive = false; upgradeBannerChoices = []; upgradeBannerGeom = null;
   touchX = null; touchX2 = null; touchIdLeft = null; touchIdRight = null;
@@ -8239,7 +8467,7 @@ function enterPowerupTestMode() {
 
 function exitPowerupTestMode() {
   powerupTestMode = false;
-  activePowerup = null;
+  activePowerup = null; activePowerups = [];
   hasHendOfGod = false;
   honeySurgeFills = 0;
   powerupDrops = [];
@@ -8823,6 +9051,38 @@ const shopBody = document.getElementById('shopBody');
 let _shopAnimId = 0;
 let _shopTick = 0;
 let _shopBeeX = 60, _shopBeeY = 45;
+// ── Stats panel ──────────────────────────────────────────
+let _statsReturnTo = 'menu';
+const statsPanel = document.getElementById('statsPanel');
+
+function showStats(returnTo) {
+  _statsReturnTo = returnTo || 'menu';
+  const meta = SaveManager.loadMeta();
+  const body = document.getElementById('statsBody');
+  body.innerHTML = '';
+  const stats = [
+    ['CELLS DESTROYED',      meta.totalCellsDestroyed || 0],
+    ['HONEY COLLECTED',      meta.totalLifetimeHoney || 0],
+    ['QUEEN GATES DEFEATED', meta.totalQueenGates || 0],
+    ['TOTAL DEPTH CLIMBED',  meta.totalDepthTravelled || 0],
+    ['BEST DEPTH',           meta.bestDepth || 0],
+    ['RUNS COMPLETED',       meta.runsCompleted || 0],
+  ];
+  for (const [label, value] of stats) {
+    const row = document.createElement('div');
+    row.className = 'sum-row';
+    row.innerHTML = `<div class="sum-label">${label}</div><div class="sum-value">${value.toLocaleString()}</div>`;
+    body.appendChild(row);
+  }
+  statsPanel.classList.add('show');
+}
+function hideStats() { statsPanel.classList.remove('show'); }
+document.getElementById('statsBackBtn').onclick = () => {
+  hideStats();
+  if (_statsReturnTo === 'pause') showPause();
+  else showOv();
+};
+
 let _shopBeeDX = 0.7, _shopBeeDY = 0.7;
 let _shopBeeTrail = []; // array of {x, y}
 let _shopEditHand = 'R'; // which hand is being edited in the shop
@@ -8935,7 +9195,7 @@ function buildShopDots() {
     saveCosmetics(); buildShopDots();
   }}];
   HEND_ACCESSORIES.forEach(a => {
-    const isBracelet = a.id === 'brownBracelet';
+    const isBracelet = a.id.endsWith('Bracelet');
     const isActive = isBracelet ? (curBrac === a.id) : (curRing === a.id);
     accTiles.push({
       color: a.color, active: isActive,
@@ -8956,32 +9216,41 @@ function buildShopDots() {
   });
   _fillTiles('shopTilesAcc', accTiles);
 
-  // Bee colour tiles (right column)
-  _fillTiles('shopTilesBeeSkin', BEE_SKINS.map(s => ({
-    color: s.tint ? s.tint.replace(/,[0-9.]+\)$/, ',1)') : '#f5c030',
-    active: selectedBeeSkin === s.id,
-    name: s.name, desc: s.desc, cost: s.cost || 0,
-    onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
-  })));
+  // Bee colour tiles (right column) — with depth unlock gating
+  const _bestD = SaveManager.loadMeta().bestDepth || 0;
+  _fillTiles('shopTilesBeeSkin', BEE_SKINS.map(s => {
+    const locked = (s.unlockDepth || 0) > _bestD;
+    return {
+      color: s.tint ? s.tint.replace(/,[0-9.]+\)$/, ',1)') : '#f5c030',
+      active: selectedBeeSkin === s.id,
+      name: s.name, desc: s.desc, cost: s.cost || 0,
+      locked, lockText: locked ? 'REACH DEPTH ' + s.unlockDepth : '',
+      onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
+    };
+  }));
 
-  // Trail effect tiles (right column)
+  // Trail effect tiles (right column) — with depth unlock gating
   _fillTiles('shopTilesTracer', BEE_TRACERS.map(t => {
     let color;
     if (t.id === 'rainbow') color = 'linear-gradient(90deg,red,orange,yellow,green,blue,violet)';
     else color = t.color ? t.color + '1)' : '#aaa';
+    const locked = (t.unlockDepth || 0) > _bestD;
     return {
       color, active: selectedTracer === t.id,
       name: t.name, desc: t.desc, cost: t.cost || 0,
+      locked, lockText: locked ? 'REACH DEPTH ' + t.unlockDepth : '',
       onClick: () => { selectedTracer = t.id; saveCosmetics(); buildShopDots(); }
     };
   }));
 
-  // Auras
+  // Auras — with depth unlock gating
   _fillTiles('shopTilesAuras', BEE_AURAS.map(a => {
     const color = a.color ? a.color + '0.7)' : '#333';
+    const locked = (a.unlockDepth || 0) > _bestD;
     return {
       color, active: selectedAura === a.id,
       name: a.name, desc: '', cost: a.cost || 0,
+      locked, lockText: locked ? 'REACH DEPTH ' + a.unlockDepth : '',
       onClick: () => { selectedAura = a.id; localStorage.setItem('hendsbee_aura', a.id); buildShopDots(); }
     };
   }));
@@ -9005,13 +9274,15 @@ function _fillTiles(containerId, tiles) {
   el.innerHTML = '';
   tiles.forEach(t => {
     const tile = document.createElement('div');
-    tile.className = 'shop-tile' + (t.active ? ' active' : '');
-    tile.onclick = t.onClick;
+    const isLocked = !!t.locked;
+    tile.className = 'shop-tile' + (t.active ? ' active' : '') + (isLocked ? ' locked' : '');
+    tile.onclick = isLocked ? null : t.onClick;
     // Color swatch
     const swatch = document.createElement('div');
     swatch.className = 'shop-tile-swatch';
     const isGrad = typeof t.color === 'string' && t.color.startsWith('linear');
     swatch.style.cssText = isGrad ? `background:${t.color};` : `background-color:${t.color};`;
+    if (isLocked) swatch.style.cssText += 'opacity:0.25;filter:grayscale(1);';
     tile.appendChild(swatch);
     // Info block
     const info = document.createElement('div');
@@ -9019,8 +9290,15 @@ function _fillTiles(containerId, tiles) {
     const name = document.createElement('div');
     name.className = 'shop-tile-name';
     name.textContent = t.name;
+    if (isLocked) name.style.opacity = '0.4';
     info.appendChild(name);
-    if (t.desc) {
+    if (isLocked && t.lockText) {
+      const lockLabel = document.createElement('div');
+      lockLabel.className = 'shop-tile-desc';
+      lockLabel.style.color = '#804020';
+      lockLabel.textContent = t.lockText;
+      info.appendChild(lockLabel);
+    } else if (t.desc) {
       const desc = document.createElement('div');
       desc.className = 'shop-tile-desc';
       desc.textContent = t.desc;
@@ -9031,10 +9309,17 @@ function _fillTiles(containerId, tiles) {
       info.style.justifyContent = 'center';
     }
     tile.appendChild(info);
-    // Cost
+    // Cost / Lock indicator
     const cost = document.createElement('div');
     cost.className = 'shop-tile-cost';
-    cost.textContent = t.cost + '\uD83C\uDF6F';
+    if (isLocked) {
+      cost.textContent = '\uD83D\uDD12'; // 🔒
+      cost.style.opacity = '0.4';
+    } else if (t.cost > 0) {
+      cost.textContent = t.cost + '\uD83C\uDF6F';
+    } else {
+      cost.style.display = 'none'; // hide 0-cost icon
+    }
     tile.appendChild(cost);
     el.appendChild(tile);
   });
@@ -9303,15 +9588,20 @@ function _shopLoop() {
 // Draw accessory on an arbitrary 2d context (for shop previews)
 // Rings only — partial arc on ring finger
 function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
-  if (accId === 'brownBracelet') {
+  const _spBracCols = {
+    brownBracelet:['#6a4020','#8a5a30'], orangeBracelet:['#d4802e','#e89840'],
+    grayBracelet:['#606060','#888888'], oliveBracelet:['#5a6028','#747a40'],
+  };
+  if (accId && _spBracCols[accId]) {
+    const [bcO, bcI] = _spBracCols[accId];
     const bx = ox + dw * 0.33, by = oy + dh * 0.88;
     const bw = dw * 0.22, bh = dh * 0.055;
-    cx2.strokeStyle = '#6a4020';
+    cx2.strokeStyle = bcO;
     cx2.lineWidth = Math.max(3, dw * 0.05);
     cx2.beginPath();
     cx2.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
     cx2.stroke();
-    cx2.strokeStyle = '#8a5a30';
+    cx2.strokeStyle = bcI;
     cx2.lineWidth = Math.max(1, dw * 0.018);
     cx2.beginPath();
     cx2.ellipse(bx, by - 0.5, bw * 0.85, bh * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95);
