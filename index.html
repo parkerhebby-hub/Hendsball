@@ -142,6 +142,7 @@
     background:rgba(10,5,0,0.92); border:1px solid #604020; border-radius:6px;
     padding:10px 18px; pointer-events:none; opacity:0;
     transition:opacity 0.2s; text-align:center; z-index:10;
+    white-space:pre-line;
   }
   #shopToast.show { opacity:1; }
   .shop-dot {
@@ -1128,8 +1129,12 @@ const SaveManager = {
   },
 
   clearAll() {
-    localStorage.removeItem(SAVE_KEYS.META);
-    localStorage.removeItem(SAVE_KEYS.RUN);
+    [SAVE_KEYS.META, SAVE_KEYS.RUN,
+     'hendsbee_cosmetics','hendsbee_aura','hendsbee_favourite',
+     'hendsbee_sfx','hendsbee_music','hendsbee_shake',
+     'hendsbee_haptics','hendsbee_crt','hendsbee_splitHend'
+    ].forEach(k => localStorage.removeItem(k));
+    location.reload();
   },
 
   hasSavedRun() {
@@ -1773,18 +1778,47 @@ function loadBeeSprites() {
     const ref = canvases[0].getContext('2d').getImageData(0, 0, w, h).data;
     const nPx = w * h;
 
-    // Find 1-HI-FLIGHT's horizontal body column (center strip)
-    let refXMin = w, refXMax = 0;
+    // Find 1-HI-FLIGHT's horizontal body column and vertical extent
+    let refXMin = w, refXMax = 0, refYMin = h, refYMax = 0;
     for (let p = 0; p < nPx; p++) {
       if (ref[p * 4 + 3] > 10) {
-        const x = p % w;
+        const x = p % w, y = Math.floor(p / w);
         if (x < refXMin) refXMin = x;
         if (x > refXMax) refXMax = x;
+        if (y < refYMin) refYMin = y;
+        if (y > refYMax) refYMax = y;
       }
     }
     const bodyCX = (refXMin + refXMax) / 2;
-    const bodyHW = (refXMax - refXMin) * 0.3; // 60% of width = body column
+    const bodyHW = (refXMax - refXMin) * 0.15; // 30% of width = narrow body column (torso stripe only)
     const bodyLeft = bodyCX - bodyHW, bodyRight = bodyCX + bodyHW;
+    // Build "common mask" — pixels present in ALL frames are body (not wings)
+    // Wings move between frames so they only appear in 1-2 frames at each position
+    const allFrameData = canvases.map(cv => cv ? cv.getContext('2d').getImageData(0, 0, w, h).data : null);
+    const isBodyPixel = new Uint8Array(nPx); // 1 = body pixel (present in all frames)
+    for (let p = 0; p < nPx; p++) {
+      let allHave = true;
+      for (let f = 0; f < allFrameData.length; f++) {
+        if (!allFrameData[f] || allFrameData[f][p * 4 + 3] <= 10) { allHave = false; break; }
+      }
+      if (allHave) isBodyPixel[p] = 1;
+    }
+    // Find topmost TRUE wing pixel — pixels that exist in some frames but not all,
+    // outside the body column. This excludes antennae (which are close to center).
+    const wingDetectHW = (refXMax - refXMin) * 0.40; // 80% width zone = "not a wing"
+    const wingDetectL = bodyCX - wingDetectHW, wingDetectR = bodyCX + wingDetectHW;
+    let wingTopY = refYMax;
+    for (let p = 0; p < nPx; p++) {
+      const x = p % w, y = Math.floor(p / w);
+      if (x >= wingDetectL && x <= wingDetectR) continue; // inside wide center = not a wing
+      // Check if this pixel exists in any frame (it's a wing candidate)
+      for (let f = 0; f < allFrameData.length; f++) {
+        if (allFrameData[f] && allFrameData[f][p * 4 + 3] > 10) {
+          if (y < wingTopY) wingTopY = y;
+          break;
+        }
+      }
+    }
 
     const stabilised = canvases.map((cv, idx) => {
       if (!cv || idx === 0) return cv; // 1-HI-FLIGHT stays as-is (it IS the reference)
@@ -1794,23 +1828,34 @@ function loadBeeSprites() {
       const nx = nc.getContext('2d');
       const out = nx.createImageData(w, h);
       const od = out.data;
+      const stingerY = refYMin + (refYMax - refYMin) * 0.70; // bottom 30% = stinger
       for (let p = 0; p < nPx; p++) {
         const i4 = p * 4;
+        const x = p % w, y = Math.floor(p / w);
         const sA = src[i4+3], rA = ref[i4+3];
-        if (rA > 10 && sA > 10) {
-          // Both have pixel → always use 1-HI-FLIGHT (reference body)
+        if (y < refYMin || y > refYMax) continue;
+        const inHead = (y < wingTopY); // above all wing pixels — safe to lock entirely
+        const inStinger = (y >= stingerY);
+        if ((inHead || inStinger) && rA > 10) {
+          // Head/stinger zone — ALWAYS stamp HI-FLIGHT (no wings in these regions)
+          od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
+          od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
+        } else if (inHead || inStinger) {
+          // Head/stinger zone, ref transparent → skip
+        } else if (isBodyPixel[p]) {
+          // Body pixel (present in ALL frames) — lock to HI-FLIGHT (antennae, head, torso)
           od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
           od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
         } else if (sA > 10) {
-          // Only in source — only include if outside body column (wings)
-          const x = p % w;
-          if (x < bodyLeft || x > bodyRight) {
-            od[i4] = src[i4]; od[i4+1] = src[i4+1];
-            od[i4+2] = src[i4+2]; od[i4+3] = src[i4+3];
-          }
-          // else: source-only pixel inside body column (antenna/stinger tip) → skip
+          // Source-only pixel (not in all frames) — it's a wing pixel, keep it
+          od[i4] = src[i4]; od[i4+1] = src[i4+1];
+          od[i4+2] = src[i4+2]; od[i4+3] = src[i4+3];
+        } else if (rA > 10 && x >= bodyLeft && x <= bodyRight) {
+          // Ref-only pixel near body center — shoulder/body pixel, stamp for consistency
+          od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
+          od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
         }
-        // ref-only pixel or both transparent → stays transparent
+        // else: ref-only pixel far from body — HI-FLIGHT wing, skip to avoid static ghost wings
       }
       nx.putImageData(out, 0, 0);
       return nc;
@@ -3616,17 +3661,23 @@ function drawHex(h) {
   // Inner accent / detail
   hexPath(hexPts(h.x, h.y, HEX_R * 0.52));
   if (h.type === 'PORTAL') {
+    const isSender = (h.portalRole === 'sender');
+    const baseHue = isSender ? [180,100,255] : [100,220,255]; // purple sender, cyan receiver
+
+    // Breathing scale — sender inhales (shrinks), receiver exhales (expands)
+    const breathPhase = Math.sin(tick * 0.04);
+    const breathScale = isSender ? (1 - breathPhase * 0.08) : (1 + breathPhase * 0.08);
+
     // Pulsing outer ring
     const phase = (Math.floor(tick / 8) % 2);
     const p = phase ? 0.80 : 0.35;
-    const isSender = (h.portalRole === 'sender');
-    const baseHue = isSender ? [180,100,255] : [100,220,255]; // purple sender, cyan receiver
     ctx.strokeStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${p})`;
     ctx.lineWidth = 2; ctx.stroke();
 
-    // Swirling center vortex — 3 curved arms rotating
+    // Swirling center vortex — 3 curved arms rotating (with breathing scale)
     ctx.save();
     ctx.translate(h.x, h.y);
+    ctx.scale(breathScale, breathScale);
     const swirlDir = isSender ? 1 : -1; // CW for sender, CCW for receiver
     const swirlAngle = tick * 0.08 * swirlDir;
     for (let arm = 0; arm < 3; arm++) {
@@ -3644,26 +3695,43 @@ function drawHex(h) {
       ctx.stroke();
     }
 
-    // Directional particles — sucked in (sender) or pushed out (receiver)
-    for (let i = 0; i < 4; i++) {
+    // Pink spiraling particles — 8 particles with trailing ghosts
+    for (let i = 0; i < 8; i++) {
       const seed = h.ci * 31 + i * 17;
       const cycle = ((tick + seed) % 40) / 40; // 0→1 over 40 frames
-      const angle = (seed * 2.399) + tick * 0.02 * swirlDir; // golden angle offset + slow rotation
+      const angle = (seed * 2.399) + tick * 0.03 * swirlDir;
       let dist, alpha;
       if (isSender) {
-        // Particles move inward (far→center)
-        dist = HEX_R * 0.55 * (1 - cycle);
-        alpha = 0.15 + cycle * 0.5; // brighter as they approach center
+        dist = HEX_R * 0.55 * (1 - cycle) * (1 - cycle); // quadratic inward
+        alpha = 0.2 + cycle * 0.6;
       } else {
-        // Particles move outward (center→far)
-        dist = HEX_R * 0.55 * cycle;
-        alpha = 0.6 - cycle * 0.5; // dimmer as they move away
+        dist = HEX_R * 0.60 * cycle;
+        alpha = 0.7 - cycle * 0.55;
       }
       const px = Math.cos(angle) * dist;
       const py = Math.sin(angle) * dist;
-      const sz = 1 + (isSender ? cycle : (1 - cycle)) * 1.2;
-      ctx.fillStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${alpha})`;
+      const sz = 2 + (isSender ? cycle : (1 - cycle)) * 2;
+      ctx.fillStyle = `rgba(255,100,180,${alpha.toFixed(2)})`;
       ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI*2); ctx.fill();
+      // Particle trail — 3 fading ghosts behind the particle
+      for (let tr = 1; tr <= 3; tr++) {
+        const trCycle = ((tick + seed - tr * 4) % 40) / 40;
+        let trDist, trAlpha;
+        if (isSender) {
+          trDist = HEX_R * 0.55 * (1 - trCycle) * (1 - trCycle);
+          trAlpha = (0.2 + trCycle * 0.6) * (1 - tr * 0.3);
+        } else {
+          trDist = HEX_R * 0.60 * trCycle;
+          trAlpha = (0.7 - trCycle * 0.55) * (1 - tr * 0.3);
+        }
+        if (trAlpha < 0.03) continue;
+        const trAng = (seed * 2.399) + (tick - tr * 4) * 0.03 * swirlDir;
+        const tpx = Math.cos(trAng) * trDist;
+        const tpy = Math.sin(trAng) * trDist;
+        const tsz = sz * (1 - tr * 0.2);
+        ctx.fillStyle = `rgba(255,100,180,${trAlpha.toFixed(2)})`;
+        ctx.beginPath(); ctx.arc(tpx, tpy, tsz, 0, Math.PI*2); ctx.fill();
+      }
     }
     ctx.restore();
 
@@ -6464,6 +6532,7 @@ let _isRushing           = false; // true when camera scrolling fast with multip
 
 // ── Boss Gate system ──
 let bossGates = []; // { guardCells:[], queenCells:[], hp, maxHp, gateY, dead }
+let _pendingBossGate = false; // true when a queen spawn was deferred due to blueprint proximity
 const BOSS_GATE_INTERVAL = 20;        // chunks between boss gates (~100 hex rows)
 const BOSS_GATE_QUEEN_HP_BASE = 100;  // base HP for first queen
 function getBossGateHP() {
@@ -6492,8 +6561,13 @@ function _resetQueenDebuffs() {
   _queenStingerProj = null;
 }
 
-function _queenWeightedAttack() {
-  const w = QUEEN_ATK.weights;
+function _queenWeightedAttack(queenNum) {
+  const w = { ...QUEEN_ATK.weights };
+  // Progressive attack unlock: limit early queens
+  if (queenNum < 4) delete w.split;
+  if (queenNum < 3) delete w.teleport;
+  if (queenNum < 2) delete w.babyHends;
+  if (queenNum < 1) delete w.splotch;
   const entries = Object.entries(w);
   const total = entries.reduce((s,[,v])=>s+v,0);
   let r = Math.random()*total;
@@ -6691,7 +6765,7 @@ function updateQueenAttacks() {
     if (gate.atkState === 'idle') {
       // Don't attack while split is active
       if (gate.splitTimer > 0) continue;
-      gate.atkCurrent = _queenWeightedAttack();
+      gate.atkCurrent = _queenWeightedAttack(gate._queenNumber || 0);
       // Don't re-split if just reformed
       if (gate.atkCurrent === 'split' && gate._splitOrigins) {
         gate.atkCurrent = 'stinger'; // fallback
@@ -6705,8 +6779,10 @@ function updateQueenAttacks() {
       if (gate.atkTelegraph <= 0) {
         _executeQueenAttack(gate, gate.atkCurrent);
         gate.atkState = 'cooldown';
-        gate.atkCooldown = QUEEN_ATK.cooldownMin +
-          Math.floor(Math.random()*(QUEEN_ATK.cooldownMax - QUEEN_ATK.cooldownMin));
+        const _qn = gate._queenNumber || 0;
+        const _cdMin = Math.max(240, 480 - _qn * 60);
+        const _cdMax = Math.max(480, 720 - _qn * 60);
+        gate.atkCooldown = _cdMin + Math.floor(Math.random() * (_cdMax - _cdMin));
       }
     }
   }
@@ -6829,24 +6905,25 @@ function renderQueenAttacks_screen() {
   if (queenDebuffs.babyHends > 0) activeDebuffs.push({name:'SHRINK',col:'#ff40b0',frac:queenDebuffs.babyHends/QUEEN_ATK.babyHendsDur});
   if (queenDebuffs.splotches.length > 0) activeDebuffs.push({name:'HONEY',col:'#d4a020',frac:1});
   if (activeDebuffs.length > 0) {
-    const dbY = 42;
+    const dbY = 36;
+    const dbW = 140;
     for (let i=0;i<activeDebuffs.length;i++) {
       const db = activeDebuffs[i];
-      const dbX = (W - activeDebuffs.length*60)/2 + i*60;
+      const dbX = (W - activeDebuffs.length*(dbW+10))/2 + i*(dbW+10);
       // Background
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(dbX, dbY, 50, 12);
+      ctx.fillRect(dbX, dbY, dbW, 14);
       // Fill bar
       ctx.fillStyle = db.col;
-      ctx.fillRect(dbX, dbY, 50*db.frac, 12);
+      ctx.fillRect(dbX, dbY, dbW*db.frac, 14);
       // Border
       ctx.strokeStyle = db.col; ctx.lineWidth = 1;
-      ctx.strokeRect(dbX, dbY, 50, 12);
+      ctx.strokeRect(dbX, dbY, dbW, 14);
       // Label
       ctx.fillStyle = '#fff';
-      ctx.font = '4px "Press Start 2P",monospace';
+      ctx.font = '6px "Press Start 2P",monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(db.name, dbX+25, dbY+9);
+      ctx.fillText(db.name, dbX+dbW/2, dbY+11);
     }
     ctx.textAlign = 'left';
   }
@@ -6910,7 +6987,7 @@ function startLevel(lvl) {
   SaveManager.discover('THICK');
   currentLevel=lvl; gameOver=false; pickerPending=false; paused=false;
   destroyed=0; tick=0; levelHoneyEarned=0; lastTime=0;
-  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _nextBlueprintDepth=3; _resetQueenDebuffs();
+  scrollY=0; scrollYTarget=0; scrollYMin=0; generatedTop=0; totalDepth=0; portalChannelCounter=0; hiveDepthMax=0; bossGates=[]; _pendingBossGate=false; _nextBlueprintDepth=3; _resetQueenDebuffs();
   timeScale=1; blurAmount=0; pickerTransition=null; pickerResumeCallback=null;
   particles=[]; broodMsgs=[]; droplets=[]; powerupDrops=[]; activePowerup=null; activePowerups=[]; honeySurgeFills=0; touchX=null; touchX2=null; touchIdLeft=null; touchIdRight=null;
   paddle=mkPaddle();
@@ -7081,18 +7158,20 @@ function update() {
       const depth    = (currentLevel - 1) + totalDepth;
       const seed     = levelSeed + totalDepth * 1000003;
 
-      // Boss gate check — skip if blueprint cells are nearby
+      // Boss gate check — defer if blueprint cells are nearby
       const _hasBlueprintNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 5);
-      if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_hasBlueprintNear) {
+      const _shouldSpawnBossI = (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) || _pendingBossGate;
+      if (_shouldSpawnBossI && !_hasBlueprintNear) {
+        _pendingBossGate = false;
         const gateIndex = bossGates.length;
         const guardCells = spawnBossGateChunk(chunkTop);
         const gateHP = getBossGateHP();
         const gate = {
           guardCells, queenCells: [], hp: gateHP,
           maxHp: gateHP, gateY: chunkTop, dead: false,
-          // Queen attack state
+          _queenNumber: bossGates.length,
           damaged: false, atkState: 'cooldown',
-          atkCooldown: QUEEN_ATK.firstAttackDelay,
+          atkCooldown: Math.max(QUEEN_ATK.firstAttackDelay, 360 - bossGates.length * 40),
           atkTelegraph: 0, atkCurrent: null,
           splitTimer: 0, _splitOrigins: null,
           _splitPhase: null, _splitLerp: 0
@@ -7106,6 +7185,7 @@ function update() {
         gate.queenCells = queenCells;
         hexes.push(...queenCells);
       } else {
+        if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && _hasBlueprintNear) _pendingBossGate = true;
         hexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), hexes));
       }
 
@@ -7245,17 +7325,20 @@ function update() {
     const depth    = (currentLevel - 1) + totalDepth;
     const seed     = levelSeed + totalDepth * 1000003;
 
-    // Boss gate check: every BOSS_GATE_INTERVAL chunks, skip if blueprint nearby
+    // Boss gate check: every BOSS_GATE_INTERVAL chunks, defer if blueprint nearby
     const _bpNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 5);
-    if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && !_bpNear) {
+    const _shouldSpawnBoss = (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) || _pendingBossGate;
+    if (_shouldSpawnBoss && !_bpNear) {
+      _pendingBossGate = false;
       const gateIndex = bossGates.length;
       const guardCells = spawnBossGateChunk(chunkTop);
       const gateHP = getBossGateHP();
       const gate = {
         guardCells, queenCells: [], hp: gateHP,
         maxHp: gateHP, gateY: chunkTop, dead: false,
+        _queenNumber: bossGates.length,
         damaged: false, atkState: 'cooldown',
-        atkCooldown: QUEEN_ATK.firstAttackDelay,
+        atkCooldown: Math.max(QUEEN_ATK.firstAttackDelay, 360 - bossGates.length * 40),
         atkTelegraph: 0, atkCurrent: null,
         splitTimer: 0, _splitOrigins: null,
         _splitPhase: null, _splitLerp: 0
@@ -7270,6 +7353,7 @@ function update() {
       gate.queenCells = queenCells;
       hexes.push(...queenCells);
     } else {
+      if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && _bpNear) _pendingBossGate = true;
       hexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), hexes));
     }
 
@@ -7300,9 +7384,12 @@ function update() {
     for (let i = 0; i < hexes.length; i++) {
       const h = hexes[i];
       if (h.dead || h.y <= _kzTop) continue;
+      // Indestructible types skip kill zone
+      if (h.type === 'PORTAL' || h.type === 'ROYAL_GUARD' || h.type === 'QUEEN') continue;
+      if (h.bossGateId != null) { const gate = bossGates[h.bossGateId]; if (gate && !gate.dead) continue; }
       const depth = (h.y - _kzTop) / _kzH; // 0..1 how far into zone
       const maxHp = CELL_TYPES[h.type] ? CELL_TYPES[h.type].hp : 1;
-      const targetHp = Math.max(0, Math.round(maxHp * (1 - depth)));
+      const targetHp = depth > 0.67 ? 0 : Math.max(0, Math.round(maxHp * (1 - depth * 1.5)));
       if (h.hp > targetHp) {
         h.hp = targetHp;
         h.flash = 6;
@@ -8053,7 +8140,7 @@ function render() {
     ctx.save();
     ctx.globalAlpha = Math.max(0, alpha);
     // Large golden glow aura
-    const glowR = 100;
+    const glowR = 150;
     const glow = ctx.createRadialGradient(a.x, sy, 0, a.x, sy, glowR);
     glow.addColorStop(0, 'rgba(255,240,160,0.6)');
     glow.addColorStop(0.4, 'rgba(255,220,80,0.3)');
@@ -8064,7 +8151,7 @@ function render() {
     const fIdx = beeFrameSeq[Math.floor(tick / 3) % beeFrameSeq.length];
     const beeImg = beeFrames[fIdx];
     if (beeImg) {
-      const sz = 120;
+      const sz = 180;
       ctx.imageSmoothingEnabled = true;
       ctx.drawImage(beeImg, a.x - sz / 2, sy - sz / 2, sz, sz);
     }
@@ -8758,10 +8845,12 @@ function buildGuide() {
     let sc = 1;
     if (pId === 'beeBee') sc = 0.65;
     if (pId === 'beeGer') sc = 1.5;
-    if (pId === 'beeHemoth') sc = 2.4;
+    if (pId === 'beeHemoth') sc = 2.0;
     if (pId === 'booBee') gc.globalAlpha = 0.3;
     const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 4 : BEE_FLAP_SPEED;
-    const fIdx = beeFrameSeq[Math.floor(ft / flapSpeed) % beeFrameSeq.length];
+    // Use mid/low-biased frame sequence for guide icons (avoids HI-FLIGHT's wide wings)
+    const _gpFrameSeq = [1, 2, 3, 2, 1, 0];
+    const fIdx = _gpFrameSeq[Math.floor(ft / flapSpeed) % _gpFrameSeq.length];
     const bob = 0; // frames are now vertically aligned at load time
     const extraBob = (pId === 'booBee') ? Math.sin(ft * 0.02) * 2 : 0;
     // BOO-BEE teal ghost aura glow (slow, sleepy pulse)
@@ -8810,8 +8899,8 @@ function buildGuide() {
     // Use PNG bee frames if available
     const usePNG = beeFrames.length === 4 && beeFrames[0];
     if (usePNG) {
-      gc.imageSmoothingEnabled = true;
-      const img = beeFrames[beeFrameSeq[fIdx]];
+      gc.imageSmoothingEnabled = false;
+      const img = beeFrames[fIdx];
       const dw = BOX * 2.4, dh = BOY * 2.4;
       gc.drawImage(img, -dw/2, -dh/2, dw, dh);
       // BEE-R nauseous green tint — fades in/out (tipsy between normal and drunken)
@@ -10288,7 +10377,7 @@ function buildShopDots() {
       color: s.tint ? s.tint.replace(/,[0-9.]+\)$/, ',1)') : '#f5c030',
       active: selectedBeeSkin === s.id,
       name: s.name, desc: s.desc, cost: s.cost || 0,
-      locked, lockText: locked ? 'REACH DEPTH: ' + s.unlockDepth + ' TO UNLOCK' : '',
+      locked, lockText: locked ? s.name + '\nREACH DEPTH ' + s.unlockDepth + ' TO UNLOCK' : '',
       onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
     };
   }));
@@ -10316,7 +10405,7 @@ function buildShopDots() {
     return {
       color, active: selectedTracer === t.id,
       name: t.name, desc: t.desc, cost: t.cost || 0,
-      locked, lockText: locked ? 'REACH DEPTH: ' + t.unlockDepth + ' TO UNLOCK' : '',
+      locked, lockText: locked ? t.name + '\nREACH DEPTH ' + t.unlockDepth + ' TO UNLOCK' : '',
       swatchRender: (sw) => {
         const bg = 'rgba(10,5,0,0.9)';
         if (t.id === 'rainbow') {
@@ -10349,7 +10438,7 @@ function buildShopDots() {
     return {
       color, active: selectedAura === a.id,
       name: a.name, desc: '', cost: a.cost || 0,
-      locked, lockText: locked ? 'REACH DEPTH: ' + a.unlockDepth + ' TO UNLOCK' : '',
+      locked, lockText: locked ? a.name + '\nREACH DEPTH ' + a.unlockDepth + ' TO UNLOCK' : '',
       swatchRender: a.color ? (sw) => {
         const c = a.color + '0.8)';
         sw.style.background = `radial-gradient(circle, ${c} 30%, rgba(0,0,0,0.9) 80%)`;
@@ -10641,10 +10730,14 @@ function _shopLoop() {
         const scrollSpeed = 1.5; // pixels per tick
         const scrollOffset = (_shopTick * scrollSpeed) % dashSpacing; // continuous scroll
         const isPoop = tracerObj && tracerObj.id === 'poopLogs';
+        const isHoney = tracerObj && tracerObj.id === 'honeyDrip';
+        const isStar = tracerObj && tracerObj.id === 'stardust';
+        const isNeon = tracerObj && (tracerObj.id === 'neon' || tracerObj.id === 'smoky');
 
         bx.save();
         bx.lineCap = 'round';
-        bx.lineWidth = isPoop ? 3.5 : 1.8;
+        // Match in-game line widths per tracer type
+        bx.lineWidth = isHoney ? 5.4 : isPoop ? 4.0 : (isStar || isNeon) ? 2.5 : 1.8;
 
         // Draw dashes from just below bee to bottom of preview
         const startY = beeCY + 18; // start below bee stinger
@@ -10669,6 +10762,9 @@ function _shopLoop() {
             } else if (isPoop) {
               const seed = (Math.floor(dy / dashSpacing) * 7 + 3) & 0xFF;
               bx.strokeStyle = `rgba(${60+seed%40},${35+seed%25},${10+seed%15},${alpha.toFixed(2)})`;
+            } else if (isHoney) {
+              const pulse = 0.85 + 0.15 * Math.sin(_shopTick * 0.05 + dy * 0.1);
+              bx.strokeStyle = `rgba(255,210,60,${(alpha * pulse).toFixed(2)})`;
             } else {
               bx.strokeStyle = `${tracerObj.color}${alpha.toFixed(2)})`;
             }
