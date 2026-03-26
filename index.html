@@ -111,8 +111,9 @@
     text-shadow:1px 1px 0 #3a1800, 0 0 6px rgba(200,140,40,0.5), 0 0 14px rgba(180,120,30,0.3), 0 0 24px rgba(160,100,20,0.15) !important;
     transition:text-shadow 0.4s ease-out;
   }
-  #settingsPanel { background:#0e0500; }
-  #shopPanel { background:#0e0500; }
+  #settingsPanel { background:#0e0500; inset:-4px; }
+  #shopPanel { background:#0e0500; inset:-4px; }
+  #statsPanel, #devPasscode, #devPanel { inset:-4px; }
   #shopBody {
     flex:1; width:100%; overflow-y:auto; overflow-x:hidden;
     padding:0 12px 8px 12px; box-sizing:border-box;
@@ -250,8 +251,9 @@
 
   /* ── run summary ──────────────────────── */
   #summary {
-    background: rgba(4,1,0,0.97);
-    padding: 18px 14px;
+    background: #040100;
+    inset: -4px;
+    padding: 22px 18px;
     gap: 0;
   }
   #sumTitle {
@@ -270,7 +272,8 @@
   /* ── pause / guide ──────────────────── */
   #pause {
     background:#040100;
-    padding:10px 0 0 0;
+    inset:-4px;
+    padding:14px 4px 4px 4px;
     align-items:center;
   }
   #pauseBtns .ob { margin-left:auto; margin-right:auto; }
@@ -503,7 +506,7 @@
   </div>
 
   <!-- Passcode Lock Panel -->
-  <div id="devPasscode" class="panel" style="background:rgba(0,0,0,0.92);">
+  <div id="devPasscode" class="panel" style="background:#000;">
     <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">ENTER CODE</div>
     <div id="passcodeSlots" style="display:flex;gap:8px;margin-bottom:24px;"></div>
     <div id="passcodeKeys" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:180px;"></div>
@@ -511,7 +514,7 @@
   </div>
 
   <!-- Developer Menu Panel -->
-  <div id="devPanel" class="panel" style="background:rgba(0,0,0,0.92);">
+  <div id="devPanel" class="panel" style="background:#000;">
     <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.55rem;letter-spacing:2px;margin-bottom:20px;">DEV OPTIONS</div>
     <button id="devInspect" class="ob">INSPECT</button>
     <button id="devBuilder" class="ob">LEVEL BUILDER</button>
@@ -571,7 +574,7 @@
     <div id="sumContent"></div>
   </div>
 
-  <div id="statsPanel" class="panel" style="background:rgba(4,1,0,0.97);">
+  <div id="statsPanel" class="panel" style="background:#040100;">
     <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.7rem;letter-spacing:2px;margin-bottom:8px;">STATS</div>
     <div id="statsBody" style="width:300px;max-width:90%;background:rgba(10,5,0,0.6);border:1px solid #3a1e00;border-radius:4px;padding:14px;"></div>
     <button class="ob" id="statsBackBtn" style="margin-top:12px;">BACK</button>
@@ -624,7 +627,7 @@ scaleToFit();
 window.addEventListener('resize', scaleToFit);
 screen.orientation && screen.orientation.addEventListener('change', scaleToFit);
 
-const PLAY_BOTTOM = 0.87;                // fraction where play zone ends
+const PLAY_BOTTOM = 0.84;                // fraction where play zone ends
 const HUD_Y       = Math.round(H * PLAY_BOTTOM) + 2;   // ≈543
 const PADDLE_Y    = Math.round(H * PLAY_BOTTOM) - 17;  // ≈524
 
@@ -1218,6 +1221,7 @@ const sfx = {
   boost:    () => { _tone(300,'sine',0.15,0.12,900); },
   gameStart:() => { [262,330,392,523].forEach((f,i) => setTimeout(() => _tone(f,'square',0.14,0.12,f*1.2), i*60)); },
   gameOver: () => { [392,330,262,196].forEach((f,i) => setTimeout(() => _tone(f,'sine',0.18,0.35,f*0.6), i*120)); },
+  whoosh:   () => { _noise(0.08, 0.8); _tone(180, 'sine', 0.04, 0.7, 60); },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1803,22 +1807,6 @@ function loadBeeSprites() {
       }
       if (allHave) isBodyPixel[p] = 1;
     }
-    // Find topmost TRUE wing pixel — pixels that exist in some frames but not all,
-    // outside the body column. This excludes antennae (which are close to center).
-    const wingDetectHW = (refXMax - refXMin) * 0.40; // 80% width zone = "not a wing"
-    const wingDetectL = bodyCX - wingDetectHW, wingDetectR = bodyCX + wingDetectHW;
-    let wingTopY = refYMax;
-    for (let p = 0; p < nPx; p++) {
-      const x = p % w, y = Math.floor(p / w);
-      if (x >= wingDetectL && x <= wingDetectR) continue; // inside wide center = not a wing
-      // Check if this pixel exists in any frame (it's a wing candidate)
-      for (let f = 0; f < allFrameData.length; f++) {
-        if (allFrameData[f] && allFrameData[f][p * 4 + 3] > 10) {
-          if (y < wingTopY) wingTopY = y;
-          break;
-        }
-      }
-    }
 
     const stabilised = canvases.map((cv, idx) => {
       if (!cv || idx === 0) return cv; // 1-HI-FLIGHT stays as-is (it IS the reference)
@@ -1828,34 +1816,35 @@ function loadBeeSprites() {
       const nx = nc.getContext('2d');
       const out = nx.createImageData(w, h);
       const od = out.data;
-      const stingerY = refYMin + (refYMax - refYMin) * 0.70; // bottom 30% = stinger
+      const bodyH = refYMax - refYMin;
+      const antennaeY = refYMin + bodyH * 0.15; // top 15% = antennae zone
+      const stingerY = refYMin + bodyH * 0.70;  // bottom 30% = stinger zone
       for (let p = 0; p < nPx; p++) {
         const i4 = p * 4;
         const x = p % w, y = Math.floor(p / w);
         const sA = src[i4+3], rA = ref[i4+3];
         if (y < refYMin || y > refYMax) continue;
-        const inHead = (y < wingTopY); // above all wing pixels — safe to lock entirely
         const inStinger = (y >= stingerY);
-        if ((inHead || inStinger) && rA > 10) {
-          // Head/stinger zone — ALWAYS stamp HI-FLIGHT (no wings in these regions)
+        const inAntennae = (y <= antennaeY);
+        if ((inStinger || inAntennae) && rA > 10) {
+          // Stinger/antennae zone — ALWAYS stamp HI-FLIGHT (lock to reference)
           od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
           od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
-        } else if (inHead || inStinger) {
-          // Head/stinger zone, ref transparent → skip
+        } else if (inStinger || inAntennae) {
+          // Stinger/antennae zone, ref transparent → skip
         } else if (isBodyPixel[p]) {
-          // Body pixel (present in ALL frames) — lock to HI-FLIGHT (antennae, head, torso)
+          // Body pixel (present in ALL frames) — lock to HI-FLIGHT
           od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
           od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
         } else if (sA > 10) {
-          // Source-only pixel (not in all frames) — it's a wing pixel, keep it
+          // Source-only pixel (not in all frames) — wing pixel, keep it
           od[i4] = src[i4]; od[i4+1] = src[i4+1];
           od[i4+2] = src[i4+2]; od[i4+3] = src[i4+3];
         } else if (rA > 10 && x >= bodyLeft && x <= bodyRight) {
-          // Ref-only pixel near body center — shoulder/body pixel, stamp for consistency
+          // Ref-only pixel near body center — shoulder/body, stamp for consistency
           od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
           od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
         }
-        // else: ref-only pixel far from body — HI-FLIGHT wing, skip to avoid static ghost wings
       }
       nx.putImageData(out, 0, 0);
       return nc;
@@ -2014,14 +2003,22 @@ const powers = {
 function getChubScale() {
   return 1 + (powers.waxBreaker || 0) * 0.08;
 }
+let _hendCurrentPW = 0; // smooth-lerp current width
 function getPW() {
   const base = W * 0.27 * HEND_VISUAL_SCALE * getChubScale();
   // Queen stinger debuff temporarily removes twoHends bonus
   const twoH = (queenDebuffs.stinger > 0) ? 0 : powers.twoHends;
   let pw = Math.min(Math.round(twoH >= 1 ? base * 2 : base), Math.round(W * 0.65));
-  // Queen babyHends debuff shrinks paddle
-  if (queenDebuffs.babyHends > 0) pw = Math.round(pw * QUEEN_ATK.shrinkFactor);
-  return pw;
+  // Queen babyHends debuff shrinks paddle (with 0.5s ramp-in)
+  if (queenDebuffs.babyHends > 0) {
+    const rampIn = Math.min(1, (QUEEN_ATK.babyHendsDur - queenDebuffs.babyHends) / 30);
+    const factor = 1 - (1 - QUEEN_ATK.shrinkFactor) * rampIn;
+    pw = Math.round(pw * factor);
+  }
+  // Smooth lerp toward target width — never snap sizes
+  if (_hendCurrentPW === 0) _hendCurrentPW = pw;
+  _hendCurrentPW += (pw - _hendCurrentPW) * 0.12;
+  return Math.round(_hendCurrentPW);
 }
 
 // Flat list of all available upgrades with metadata
@@ -2249,8 +2246,10 @@ function activatePowerup(type, px, py) {
         && h.type !== 'PORTAL' && h.type !== 'BOOST' && h.type !== 'UNBREAKABLE');
       beeSusAnim = {
         x: W / 2, screenY: H + 60, targetScreenY: H * 0.3,
-        frame: 0, maxFrames: 160, cellsToKill: targets, killTriggered: false
+        frame: 0, maxFrames: 480, cellsToKill: targets, killTriggered: false,
+        whooshPlayed: false
       };
+      sfx.whoosh();
       break;
     }
     case 'beeElzebub': { // All bees become bomb-bees for 10 seconds
@@ -2813,14 +2812,14 @@ function drawAccessory(ox, oy, dw, dh, side) {
   if (bracId && _bracCols[bracId]) {
     const [bcOuter, bcInner] = _bracCols[bracId];
     const bx = ox + dw * 0.33, by = oy + dh * 0.88;
-    const bw = dw * 0.25, bh = dh * 0.065;
+    const bw = dw * 0.25, bh = dh * 0.068;
     ctx.strokeStyle = bcOuter;
-    ctx.lineWidth = Math.max(3.5, dw * 0.055);
+    ctx.lineWidth = Math.max(3.5, dw * 0.058);
     ctx.beginPath();
     ctx.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
     ctx.stroke();
     ctx.strokeStyle = bcInner;
-    ctx.lineWidth = Math.max(1, dw * 0.018);
+    ctx.lineWidth = Math.max(1, dw * 0.020);
     ctx.beginPath();
     ctx.ellipse(bx, by - 0.5, bw * 0.85, bh * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95);
     ctx.stroke();
@@ -3221,14 +3220,16 @@ function drawBee(b) {
   if (_hasPU('booBee')) ctx.globalAlpha = 0.5;
 
   // Flicker effect for expiring timed powerups (last ~2.5 seconds)
+  // Uses a gentle pulse instead of hard flicker to avoid jarring alpha snaps
   { let _minTL = Infinity;
     for (let _pi = 0; _pi < activePowerups.length; _pi++) {
       const _pt = activePowerups[_pi].ticksLeft;
       if (_pt > 0 && _pt < 150 && _pt < _minTL) _minTL = _pt;
     }
     if (_minTL < 150) {
+      const urgency = 1 - _minTL / 150; // 0→1 as time runs out
       const flickRate = _minTL < 60 ? 4 : 8;
-      if (Math.floor(tick / flickRate) % 2 === 0) ctx.globalAlpha *= 0.3;
+      if (Math.floor(tick / flickRate) % 2 === 0) ctx.globalAlpha *= (0.55 - urgency * 0.2);
     }
   }
 
@@ -3398,7 +3399,7 @@ const _hexStrokeColor = {
   ROYAL_GUARD: '#d4af37', QUEEN: '#ffd700', BOOST: '#30ff50'
 };
 const _hexLineW = {
-  QUEEN: 3, PORTAL: 2.5, UNBREAKABLE: 2.5, ROYAL_GUARD: 2.5, BOOST: 2.5
+  QUEEN: 2.5, PORTAL: 2.5, UNBREAKABLE: 2.5, ROYAL_GUARD: 2.5, BOOST: 2.5
 };
 
 // Pre-computed powerup aura color prefixes (avoids object creation per bee per frame)
@@ -3621,7 +3622,7 @@ function drawHex(h) {
   ctx.stroke();
 
   // Honey drip teardrops — multiple variants, cluster-sized
-  if (!h.flash && (h.type === 'NORMAL' || h.type === 'HONEY' || h.type === 'THICK'
+  if (!h._guideIcon && !h.flash && (h.type === 'NORMAL' || h.type === 'HONEY' || h.type === 'THICK'
       || h.type === 'HEAVY' || h.type === 'ROYAL' || h.type === 'REINFORCED'
       || h.type === 'ANCIENT')) {
     // Skip drips if a living cell sits directly below (cached every 15 frames)
@@ -3659,7 +3660,7 @@ function drawHex(h) {
   }
 
   // Inner accent / detail
-  hexPath(hexPts(h.x, h.y, HEX_R * 0.52));
+  hexPath(hexPts(h.x, h.y, HEX_R * 0.78));
   if (h.type === 'PORTAL') {
     const isSender = (h.portalRole === 'sender');
     const baseHue = isSender ? [180,100,255] : [100,220,255]; // purple sender, cyan receiver
@@ -3674,54 +3675,37 @@ function drawHex(h) {
     ctx.strokeStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${p})`;
     ctx.lineWidth = 2; ctx.stroke();
 
-    // Swirling center vortex — 3 curved arms rotating (with breathing scale)
+    // Pink spiraling particles — 8 particles with trailing ghosts (no swirl arms)
     ctx.save();
     ctx.translate(h.x, h.y);
     ctx.scale(breathScale, breathScale);
-    const swirlDir = isSender ? 1 : -1; // CW for sender, CCW for receiver
-    const swirlAngle = tick * 0.08 * swirlDir;
-    for (let arm = 0; arm < 3; arm++) {
-      const a0 = swirlAngle + (arm * Math.PI * 2 / 3);
-      ctx.strokeStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${0.25 + p*0.2})`;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      for (let t = 0; t <= 1; t += 0.1) {
-        const rad = t * HEX_R * 0.42;
-        const ang = a0 + t * 1.8 * swirlDir;
-        const px = Math.cos(ang) * rad;
-        const py = Math.sin(ang) * rad;
-        if (t === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.stroke();
-    }
-
-    // Pink spiraling particles — 8 particles with trailing ghosts
+    const swirlDir = isSender ? 1 : -1;
     for (let i = 0; i < 8; i++) {
       const seed = h.ci * 31 + i * 17;
-      const cycle = ((tick + seed) % 40) / 40; // 0→1 over 40 frames
+      const cycle = ((tick + seed) % 60) / 60; // 0→1 over 60 frames (slower spread)
       const angle = (seed * 2.399) + tick * 0.03 * swirlDir;
       let dist, alpha;
       if (isSender) {
-        dist = HEX_R * 0.55 * (1 - cycle) * (1 - cycle); // quadratic inward
+        dist = HEX_R * 1.65 * (1 - cycle) * (1 - cycle); // quadratic inward (3× bigger)
         alpha = 0.2 + cycle * 0.6;
       } else {
-        dist = HEX_R * 0.60 * cycle;
+        dist = HEX_R * 1.80 * cycle; // linear outward (3× bigger)
         alpha = 0.7 - cycle * 0.55;
       }
       const px = Math.cos(angle) * dist;
       const py = Math.sin(angle) * dist;
-      const sz = 2 + (isSender ? cycle : (1 - cycle)) * 2;
+      const sz = 1 + (isSender ? cycle : (1 - cycle)) * 1;
       ctx.fillStyle = `rgba(255,100,180,${alpha.toFixed(2)})`;
       ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI*2); ctx.fill();
       // Particle trail — 3 fading ghosts behind the particle
       for (let tr = 1; tr <= 3; tr++) {
-        const trCycle = ((tick + seed - tr * 4) % 40) / 40;
+        const trCycle = ((tick + seed - tr * 4) % 60) / 60;
         let trDist, trAlpha;
         if (isSender) {
-          trDist = HEX_R * 0.55 * (1 - trCycle) * (1 - trCycle);
+          trDist = HEX_R * 1.65 * (1 - trCycle) * (1 - trCycle);
           trAlpha = (0.2 + trCycle * 0.6) * (1 - tr * 0.3);
         } else {
-          trDist = HEX_R * 0.60 * trCycle;
+          trDist = HEX_R * 1.80 * trCycle;
           trAlpha = (0.7 - trCycle * 0.55) * (1 - tr * 0.3);
         }
         if (trAlpha < 0.03) continue;
@@ -3744,9 +3728,6 @@ function drawHex(h) {
     ctx.textAlign = 'left';
     ctx.globalAlpha = 1;
   } else if (h.type === 'HONEY') {
-    // bright inner ring
-    ctx.strokeStyle = 'rgba(255,240,80,0.55)';
-    ctx.lineWidth = 1.5; ctx.stroke();
     // animated sparkle crosses — crystalline honey effect
     const sparkPhase = (tick + h.ci * 7) % 30;
     if (sparkPhase < 12) {
@@ -3754,7 +3735,7 @@ function drawHex(h) {
       const sz = 1.5 + sp * 1.5;
       ctx.strokeStyle = `rgba(255,255,200,${0.45 - sp * 0.3})`;
       ctx.lineWidth = 0.8;
-      for (const [dx, dy] of [[-4, 0], [4, -2], [0, 4]]) {
+      for (const [dx, dy] of [[-6, 0], [6, -3], [0, 6]]) {
         ctx.beginPath();
         ctx.moveTo(h.x+dx-sz, h.y+dy); ctx.lineTo(h.x+dx+sz, h.y+dy);
         ctx.moveTo(h.x+dx, h.y+dy-sz); ctx.lineTo(h.x+dx, h.y+dy+sz);
@@ -3762,21 +3743,18 @@ function drawHex(h) {
       }
     }
   } else if (h.type === 'WAX') {
-    // faint inner honeycomb pattern — just a dimmer ring
-    ctx.strokeStyle = 'rgba(200,190,140,0.25)';
-    ctx.lineWidth = 1; ctx.stroke();
     // cross-hatch lines to look waxy / fibrous
     ctx.strokeStyle = 'rgba(180,170,120,0.22)'; ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(h.x - HEX_R * 0.5, h.y); ctx.lineTo(h.x + HEX_R * 0.5, h.y);
-    ctx.moveTo(h.x, h.y - HEX_R * 0.5); ctx.lineTo(h.x, h.y + HEX_R * 0.5);
+    ctx.moveTo(h.x - HEX_R * 0.7, h.y); ctx.lineTo(h.x + HEX_R * 0.7, h.y);
+    ctx.moveTo(h.x, h.y - HEX_R * 0.7); ctx.lineTo(h.x, h.y + HEX_R * 0.7);
     ctx.stroke();
   } else if (h.type === 'BROOD') {
     // Just a small static bee — no background, no egg dots
     const useBeeSprite = beeFrames.length === 4 && beeFrames[0];
     if (useBeeSprite) {
       const bImg = beeFrames[0];
-      const beeW = HEX_R * 1.5, beeH = HEX_R * 1.5;
+      const beeW = HEX_R * 1.8, beeH = HEX_R * 1.8;
       ctx.save();
       ctx.globalAlpha = 0.85;
       ctx.drawImage(bImg, h.x - beeW / 2, h.y - beeH / 2, beeW, beeH);
@@ -3798,18 +3776,15 @@ function drawHex(h) {
       ctx.restore();
     }
   } else if (h.type === 'HEAVY') {
-    // Thick bronze outline + rivets
-    ctx.strokeStyle = 'rgba(138,104,48,0.45)'; ctx.lineWidth = 2; ctx.stroke();
     // 3 rivets across center
     ctx.fillStyle = 'rgba(160,130,70,0.5)';
-    for (const dx of [-5, 0, 5]) {
-      ctx.beginPath(); ctx.arc(h.x + dx, h.y, 1.5, 0, Math.PI*2); ctx.fill();
+    for (const dx of [-7, 0, 7]) {
+      ctx.beginPath(); ctx.arc(h.x + dx, h.y, 2, 0, Math.PI*2); ctx.fill();
     }
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'ROYAL') {
-    ctx.strokeStyle = 'rgba(212,175,55,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
     // Crown icon — 3 pointed peaks, larger and filled
-    const r = HEX_R * 0.45;
+    const r = HEX_R * 0.68;
     ctx.fillStyle = 'rgba(255,220,80,0.65)';
     ctx.strokeStyle = 'rgba(180,140,20,0.6)'; ctx.lineWidth = 1;
     ctx.beginPath();
@@ -3821,9 +3796,8 @@ function drawHex(h) {
     ctx.closePath(); ctx.fill(); ctx.stroke();
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'ANCIENT') {
-    ctx.strokeStyle = 'rgba(74,96,80,0.45)'; ctx.lineWidth = 1.5; ctx.stroke();
     // Rune spiral — larger, more visible
-    const r = HEX_R * 0.45;
+    const r = HEX_R * 0.68;
     ctx.strokeStyle = 'rgba(100,160,110,0.45)'; ctx.lineWidth = 1.2;
     ctx.beginPath();
     // Angular spiral rune pattern
@@ -3837,9 +3811,8 @@ function drawHex(h) {
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'TITAN') {
     const p = (Math.floor(tick / 12) % 2) ? 0.40 : 0.18;
-    ctx.strokeStyle = `rgba(80,80,140,${p})`; ctx.lineWidth = 2.5; ctx.stroke();
     // Shield shape — diamond with horizontal bar
-    const r = HEX_R * 0.4;
+    const r = HEX_R * 0.62;
     ctx.fillStyle = `rgba(120,120,180,${p + 0.12})`;
     ctx.strokeStyle = `rgba(160,160,220,${p + 0.15})`; ctx.lineWidth = 1;
     ctx.beginPath();
@@ -3856,9 +3829,8 @@ function drawHex(h) {
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   } else if (h.type === 'CHARGED') {
     const p = (Math.floor(tick / 6) % 2) ? 0.65 : 0.25;
-    ctx.strokeStyle = `rgba(80,208,255,${p})`; ctx.lineWidth = 1.5; ctx.stroke();
     // Standard zigzag ⚡ lightning bolt
-    const r = HEX_R * 0.55;
+    const r = HEX_R * 0.75;
     ctx.fillStyle = `rgba(180,240,255,${p + 0.15})`;
     ctx.strokeStyle = `rgba(255,255,255,${p + 0.1})`; ctx.lineWidth = 1;
     ctx.beginPath();
@@ -3873,8 +3845,6 @@ function drawHex(h) {
     ctx.closePath(); ctx.fill(); ctx.stroke();
   } else if (h.type === 'BOOST') {
     const p = (Math.floor(tick / 6) % 2) ? 0.75 : 0.35;
-    ctx.strokeStyle = `rgba(32,224,64,${p})`; ctx.lineWidth = 2; ctx.stroke();
-
     // Chevron direction
     const dirIdx = BOOST_DIR_MAP[h.boostDir || 0];
     const bnx = HEX_NORMALS[dirIdx][0], bny = HEX_NORMALS[dirIdx][1];
@@ -3884,7 +3854,7 @@ function drawHex(h) {
     ctx.translate(h.x, h.y);
     ctx.rotate(angle);
 
-    const r = HEX_R * 0.55;
+    const r = HEX_R * 0.75;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
@@ -3911,9 +3881,9 @@ function drawHex(h) {
     const p = (Math.floor(tick / 8) % 2) ? 0.45 : 0.20;
     // Inner glow
     ctx.fillStyle = `rgba(255,64,32,${p})`;
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.45)); ctx.fill();
+    hexPath(hexPts(h.x, h.y, HEX_R * 0.65)); ctx.fill();
     // Bomb circle body
-    const r = HEX_R * 0.35;
+    const r = HEX_R * 0.45;
     ctx.fillStyle = `rgba(40,10,0,${0.5 + p*0.3})`;
     ctx.beginPath(); ctx.arc(h.x, h.y + 1, r, 0, Math.PI*2); ctx.fill();
     // Highlight on bomb
@@ -3933,64 +3903,139 @@ function drawHex(h) {
     // Stone texture — X cross + filled inner hex
     ctx.strokeStyle = 'rgba(120,120,120,0.35)'; ctx.lineWidth = 1.5;
     ctx.beginPath();
-    const r = HEX_R * 0.45;
+    const r = HEX_R * 0.68;
     ctx.moveTo(h.x - r, h.y - r*0.7); ctx.lineTo(h.x + r, h.y + r*0.7);
     ctx.moveTo(h.x + r, h.y - r*0.7); ctx.lineTo(h.x - r, h.y + r*0.7);
     ctx.stroke();
     ctx.fillStyle = 'rgba(60,60,60,0.35)';
-    hexPath(hexPts(h.x, h.y, HEX_R * 0.35)); ctx.fill();
+    hexPath(hexPts(h.x, h.y, HEX_R * 0.50)); ctx.fill();
     // Mortar lines
     ctx.strokeStyle = 'rgba(90,90,90,0.2)'; ctx.lineWidth = 0.5;
     ctx.beginPath();
     ctx.moveTo(h.x - r, h.y); ctx.lineTo(h.x + r, h.y);
     ctx.stroke();
   } else if (h.type === 'ROYAL_GUARD') {
-    // Animated gold shimmer pulse + shield icon
+    // Heater shield — wood + iron look
     const p = 0.25 + 0.25 * Math.sin(tick * 0.06 + h.ci);
-    ctx.strokeStyle = `rgba(212,175,55,${p})`; ctx.lineWidth = 2.5; ctx.stroke();
-    // Shield shape
-    const r = HEX_R * 0.4;
-    ctx.fillStyle = `rgba(212,175,55,${p * 0.7})`;
-    ctx.strokeStyle = `rgba(255,220,80,${p})`; ctx.lineWidth = 1;
+    const r = HEX_R * 0.65;
+    // Shield path — flat top, curved sides tapering to bottom point
     ctx.beginPath();
-    ctx.moveTo(h.x - r, h.y - r*0.7);
-    ctx.lineTo(h.x + r, h.y - r*0.7);
-    ctx.lineTo(h.x + r, h.y + r*0.1);
-    ctx.lineTo(h.x, h.y + r);
-    ctx.lineTo(h.x - r, h.y + r*0.1);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.moveTo(h.x - r*0.75, h.y - r*0.6);
+    ctx.lineTo(h.x + r*0.75, h.y - r*0.6);
+    ctx.lineTo(h.x + r*0.8, h.y + r*0.05);
+    ctx.quadraticCurveTo(h.x + r*0.55, h.y + r*0.65, h.x, h.y + r*0.9);
+    ctx.quadraticCurveTo(h.x - r*0.55, h.y + r*0.65, h.x - r*0.8, h.y + r*0.05);
+    ctx.closePath();
+    // Wood fill — brown radial gradient
+    const wg = ctx.createRadialGradient(h.x, h.y - r*0.1, 0, h.x, h.y, r);
+    wg.addColorStop(0, '#a0703c');
+    wg.addColorStop(0.6, '#7a4e2a');
+    wg.addColorStop(1, '#5c3317');
+    ctx.fillStyle = wg; ctx.fill();
+    // Iron border
+    ctx.strokeStyle = `rgba(212,175,55,${0.7 + p*0.3})`; ctx.lineWidth = 1.5;
+    ctx.stroke();
+    // Wood grain lines (subtle horizontal)
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(60,30,10,0.15)'; ctx.lineWidth = 0.6;
+    for (let gy = -3; gy <= 3; gy++) {
+      ctx.beginPath();
+      ctx.moveTo(h.x - r, h.y + gy * r*0.22);
+      ctx.lineTo(h.x + r, h.y + gy * r*0.22);
+      ctx.stroke();
+    }
+    ctx.restore();
+    // Iron cross
+    ctx.strokeStyle = `rgba(180,145,50,${0.55 + p*0.25})`; ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(h.x, h.y - r*0.5); ctx.lineTo(h.x, h.y + r*0.65);
+    ctx.moveTo(h.x - r*0.55, h.y - r*0.05); ctx.lineTo(h.x + r*0.55, h.y - r*0.05);
+    ctx.stroke();
+    // Gold rivets at cross endpoints
+    ctx.fillStyle = `rgba(255,220,80,${0.6 + p*0.35})`;
+    const rv = [[0,-r*0.5],[0,r*0.65],[-r*0.55,-r*0.05],[r*0.55,-r*0.05]];
+    for (const [rx,ry] of rv) { ctx.beginPath(); ctx.arc(h.x+rx, h.y+ry, 1.3, 0, Math.PI*2); ctx.fill(); }
+    // Animated shimmer sweep
+    const sweepX = h.x + r * Math.sin(tick * 0.03 + h.ci) * 0.6;
+    const sg = ctx.createLinearGradient(sweepX - 3, 0, sweepX + 3, 0);
+    sg.addColorStop(0, 'rgba(255,255,220,0)');
+    sg.addColorStop(0.5, `rgba(255,255,220,${p * 0.35})`);
+    sg.addColorStop(1, 'rgba(255,255,220,0)');
+    ctx.fillStyle = sg;
+    ctx.beginPath();
+    ctx.moveTo(h.x - r*0.75, h.y - r*0.6);
+    ctx.lineTo(h.x + r*0.75, h.y - r*0.6);
+    ctx.lineTo(h.x + r*0.8, h.y + r*0.05);
+    ctx.quadraticCurveTo(h.x + r*0.55, h.y + r*0.65, h.x, h.y + r*0.9);
+    ctx.quadraticCurveTo(h.x - r*0.55, h.y + r*0.65, h.x - r*0.8, h.y + r*0.05);
+    ctx.closePath(); ctx.fill();
   } else if (h.type === 'QUEEN') {
-    // Pulsing magenta/gold glow + large crown
+    // Ornate 5-peak crown with jewels
     const p = 0.3 + 0.3 * Math.sin(tick * 0.05 + h.ci * 0.5);
-    ctx.strokeStyle = `rgba(255,215,0,${p})`; ctx.lineWidth = 2; ctx.stroke();
-    // Large crown — 3 pointed peaks with base
-    const r = HEX_R * 0.5;
-    ctx.fillStyle = `rgba(255,215,0,${0.55 + p * 0.3})`;
-    ctx.strokeStyle = `rgba(200,160,0,${0.5 + p*0.2})`; ctx.lineWidth = 1;
+    const r = HEX_R * 0.72;
+    // Crown body — 5 peaks (tall-short-tallest-short-tall)
     ctx.beginPath();
-    ctx.moveTo(h.x - r, h.y + r*0.5);
-    ctx.lineTo(h.x - r, h.y - r*0.1);
-    ctx.lineTo(h.x - r*0.5, h.y - r*0.8);
-    ctx.lineTo(h.x - r*0.15, h.y - r*0.1);
-    ctx.lineTo(h.x, h.y - r);
-    ctx.lineTo(h.x + r*0.15, h.y - r*0.1);
-    ctx.lineTo(h.x + r*0.5, h.y - r*0.8);
-    ctx.lineTo(h.x + r, h.y - r*0.1);
-    ctx.lineTo(h.x + r, h.y + r*0.5);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // Gem dots on crown points
-    ctx.fillStyle = `rgba(255,100,160,${0.6 + p*0.3})`;
-    ctx.beginPath(); ctx.arc(h.x, h.y - r*0.7, 1.5, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(h.x - r*0.5, h.y - r*0.55, 1.2, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(h.x + r*0.5, h.y - r*0.55, 1.2, 0, Math.PI*2); ctx.fill();
+    ctx.moveTo(h.x - r*0.85, h.y + r*0.45);                // base left
+    ctx.lineTo(h.x - r*0.85, h.y + r*0.1);                 // left wall up to rim
+    ctx.lineTo(h.x - r*0.7,  h.y - r*0.65);                // peak 1 (tall)
+    ctx.lineTo(h.x - r*0.45, h.y - r*0.05);                // valley 1
+    ctx.lineTo(h.x - r*0.25, h.y - r*0.45);                // peak 2 (short)
+    ctx.lineTo(h.x - r*0.08, h.y - r*0.05);                // valley 2
+    ctx.lineTo(h.x,          h.y - r*0.9);                  // peak 3 (tallest)
+    ctx.lineTo(h.x + r*0.08, h.y - r*0.05);                // valley 3
+    ctx.lineTo(h.x + r*0.25, h.y - r*0.45);                // peak 4 (short)
+    ctx.lineTo(h.x + r*0.45, h.y - r*0.05);                // valley 4
+    ctx.lineTo(h.x + r*0.7,  h.y - r*0.65);                // peak 5 (tall)
+    ctx.lineTo(h.x + r*0.85, h.y + r*0.1);                 // right wall
+    ctx.lineTo(h.x + r*0.85, h.y + r*0.45);                // base right
+    ctx.closePath();
+    // Gold gradient fill
+    const cg = ctx.createLinearGradient(h.x, h.y - r*0.9, h.x, h.y + r*0.45);
+    cg.addColorStop(0, `rgba(255,230,100,${0.65 + p*0.25})`);
+    cg.addColorStop(0.5, `rgba(220,180,30,${0.6 + p*0.25})`);
+    cg.addColorStop(1, `rgba(180,130,10,${0.55 + p*0.2})`);
+    ctx.fillStyle = cg; ctx.fill();
+    ctx.strokeStyle = `rgba(200,160,0,${0.6 + p*0.25})`; ctx.lineWidth = 1;
+    ctx.stroke();
+    // Crown rim band
+    ctx.fillStyle = `rgba(180,140,20,${0.5 + p*0.2})`;
+    ctx.fillRect(h.x - r*0.85, h.y + r*0.1, r*1.7, r*0.12);
+    ctx.fillStyle = `rgba(255,230,120,${0.3 + p*0.15})`;
+    ctx.fillRect(h.x - r*0.85, h.y + r*0.1, r*1.7, r*0.04);
+    // Filigree scroll curves on sides
+    ctx.strokeStyle = `rgba(255,200,80,${0.3 + p*0.15})`; ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(h.x - r*0.6, h.y + r*0.08);
+    ctx.quadraticCurveTo(h.x - r*0.45, h.y + r*0.3, h.x - r*0.25, h.y + r*0.35);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(h.x + r*0.6, h.y + r*0.08);
+    ctx.quadraticCurveTo(h.x + r*0.45, h.y + r*0.3, h.x + r*0.25, h.y + r*0.35);
+    ctx.stroke();
+    // Jewel dots on peaks — magenta on tall, teal on short
+    const peaks = [
+      [h.x - r*0.7,  h.y - r*0.65, 1.8, '#ff60a0'],  // peak 1 tall
+      [h.x - r*0.25, h.y - r*0.45, 1.4, '#60ffcc'],   // peak 2 short
+      [h.x,          h.y - r*0.9,  2.0, '#ff60a0'],    // peak 3 tallest
+      [h.x + r*0.25, h.y - r*0.45, 1.4, '#60ffcc'],   // peak 4 short
+      [h.x + r*0.7,  h.y - r*0.65, 1.8, '#ff60a0'],   // peak 5 tall
+    ];
+    for (let pi = 0; pi < peaks.length; pi++) {
+      const [px, py, pr, pc] = peaks[pi];
+      // Sparkle flash — each peak staggers by 18 frames
+      const sparkle = ((tick + pi * 18) % 90 < 6) ? 1 : 0;
+      ctx.fillStyle = sparkle ? '#ffffff' : pc;
+      ctx.globalAlpha = sparkle ? 0.9 : (0.6 + p*0.3);
+      ctx.beginPath(); ctx.arc(px, py, sparkle ? pr*1.3 : pr, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
     // Outer glow ring
-    ctx.globalAlpha = 0.15 + p * 0.1;
-    ctx.strokeStyle = '#ff60a0'; ctx.lineWidth = 1;
-    hexPath(hexPts(h.x, h.y, HEX_R * 1.1)); ctx.stroke();
+    ctx.globalAlpha = 0.2 + p * 0.15;
+    ctx.strokeStyle = '#ff60a0'; ctx.lineWidth = 1.5;
+    hexPath(hexPts(h.x, h.y, HEX_R * 1.15)); ctx.stroke();
     ctx.globalAlpha = 1;
   } else {
-    ctx.strokeStyle = h.type === 'THICK' ? 'rgba(255,150,50,0.13)' : 'rgba(255,230,140,0.18)';
-    ctx.lineWidth = 1; ctx.stroke();
+    // Default cells (NORMAL, THICK, etc.) — no inner hex stroke, just cracks when damaged
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   }
 
@@ -5001,23 +5046,23 @@ const JAR_RW  = 59;            // rim width (matches jar body width)
 const JAR_RH  = 10;            // rim height (lowered)
 // Adaptive HUD: ensure content fits regardless of canvas height
 const _HUD_SPACE = H - HUD_Y;                // available pixels for HUD
-const _HUD_PAD   = Math.max(4, Math.min(12, _HUD_SPACE - 74)); // adaptive padding
-const JAR_NY  = H - JAR_NH - JAR_BH - _HUD_PAD;   // neck top y — adaptive above canvas bottom
-const JAR_RY  = JAR_NY - JAR_RH; // rim top y
-const JAR_BY  = JAR_NY + JAR_NH; // body top y
-const JAR_BB  = JAR_BY + JAR_BH; // body bottom
-const JAR_BX  = JAR_CX - JAR_BW / 2;
-const JAR_NX  = JAR_CX - JAR_NW / 2;
-const JAR_RX  = JAR_CX - JAR_RW / 2;
 // Upgrade slot constants — 6 tessellated flat-top hexes
-const SLOT_R   = Math.min(14, (_HUD_SPACE - 24) / 3.2); // smaller for 2 rows
+const SLOT_R   = Math.min(17, (_HUD_SPACE - 24) / 3.2); // bigger hex slots
 const SLOT_SPC = SLOT_R * 1.55;              // horizontal center-to-center
 const SLOT_YOFF= SLOT_R * Math.sqrt(3) / 2;  // vertical offset for odd cols
 const SLOT_ROW_H = SLOT_R * Math.sqrt(3) + 2; // vertical spacing between rows
 const SLOT_COLS = 10;                         // slots per row
 const SLOT_ROWS = 2;                          // 2 rows (row 2 for future upgrades)
-const SLOT_Y   = HUD_Y + 4 + SLOT_R + 6;    // anchored relative to HUD top
+const SLOT_Y   = HUD_Y + 4 + SLOT_R + 22;   // anchored relative to HUD top (extra padding below UPGRADES text)
 const SLOT0_X  = 20;
+// Jar positioning — top of jar aligns with top of upgrade slots
+const JAR_RY  = SLOT_Y - SLOT_R;            // rim top y = slot top
+const JAR_RX  = JAR_CX - JAR_RW / 2;
+const JAR_NY  = JAR_RY + JAR_RH;            // neck top y
+const JAR_BY  = JAR_NY + JAR_NH;            // body top y
+const JAR_BB  = JAR_BY + JAR_BH;            // body bottom
+const JAR_BX  = JAR_CX - JAR_BW / 2;
+const JAR_NX  = JAR_CX - JAR_NW / 2;
 
 function drawHexOutline(cx, cy, r) {
   const pts = hexPts(cx, cy, r);
@@ -5334,7 +5379,7 @@ function drawHUD() {
     ctx.font = '8px "Press Start 2P",monospace';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#c8a020';
-    ctx.fillText('UPGRADES', labelCX, SLOT_Y - SLOT_R - 5);
+    ctx.fillText('UPGRADES', labelCX, HUD_Y + 18);
   }
   const TAG_COL = {
     PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040',
@@ -5555,9 +5600,9 @@ function drawUpgradeBanner() {
   const bannerY = Math.round(H * 0.33);  // centered in play area
   const bannerX = 4;
   const bannerW = W - 8;
-  const btnH = 56;                   // snug fit: icon + text + pips
+  const btnH = 75;                   // taller: icon + text + pips with breathing room
   const gap = 4;
-  const bannerH = 14 + btnH + gap + 4; // title + button + padding
+  const bannerH = 16 + btnH + gap + 6; // title + button + padding
   const cr = 6;
 
   // ── Background rounded rect ──
@@ -5582,12 +5627,12 @@ function drawUpgradeBanner() {
   ctx.font = '6px "Press Start 2P",monospace';
   ctx.textAlign = 'center'; ctx.textBaseline = 'top';
   ctx.fillStyle = '#f0a020';
-  ctx.fillText('CHOOSE AN UPGRADE', bannerX + bannerW / 2, bannerY + 4);
+  ctx.fillText('CHOOSE AN UPGRADE', bannerX + bannerW / 2, bannerY + 5);
 
   // ── Two side-by-side buttons ──
   const btnGap = 5;
   const btnW = (bannerW - btnGap * 3) / 2;
-  const btnY = bannerY + 16;
+  const btnY = bannerY + 18;
   const iconR = 18;                  // hex icon radius
   const textLeft = iconR * 2 + 8;    // text starts after icon
 
@@ -5630,8 +5675,7 @@ function drawUpgradeBanner() {
     // Procedural symbol icon
     drawUpgradeIcon(ctx, hexX, hexY, iconR, pu.id);
 
-    // Text block — name + description + pips all in text column
-    // Name (9px) + gap (3) + desc line(s) (~10px each) + optional pip row (8px)
+    // Text block — name + description + pips, vertically distributed in button
     let desc = pu.desc || '';
     ctx.font = '7px "Press Start 2P",monospace';
     const availW = btnW - textLeft - 6;
@@ -5657,11 +5701,16 @@ function drawUpgradeBanner() {
     }
     const descLines = Math.min(lines.length, 5);
     const nameH = 9;                // name font height
-    const descLineH = 10;           // desc line spacing
-    const gapBetween = 3;           // gap between name and desc
-    const pipRowH = pu.max > 1 ? 10 : 0;  // extra height for pip row
-    const totalTextH = nameH + gapBetween + descLines * descLineH + pipRowH;
-    const textTopY = btnY + (btnH - totalTextH) / 2;
+    const descLineH = 11;           // desc line spacing (was 10)
+    const gapAfterName = 6;         // gap between name and desc (was 4)
+    const hasPips = pu.max > 1;
+    const pipR = 3;
+    const pipBlockH = hasPips ? pipR * 2 + 4 : 0;  // space for pip row
+    const gapBeforePips = hasPips ? 6 : 0;          // gap between desc and pips
+
+    // Calculate total content height and centre it vertically in button
+    const contentH = nameH + gapAfterName + descLines * descLineH + gapBeforePips + pipBlockH;
+    const textTopY = btnY + Math.max(8, (btnH - contentH) / 2); // vertically centred
 
     // Upgrade name — bold, sized to fit
     ctx.font = '8px "Press Start 2P",monospace';
@@ -5673,14 +5722,13 @@ function drawUpgradeBanner() {
     ctx.font = '7px "Press Start 2P",monospace';
     ctx.fillStyle = '#b09050';
     for (let ln = 0; ln < descLines; ln++) {
-      ctx.fillText(lines[ln], btnX + textLeft, textTopY + nameH + gapBetween + ln * descLineH);
+      ctx.fillText(lines[ln], btnX + textLeft, textTopY + nameH + gapAfterName + ln * descLineH);
     }
 
-    // Hex chain progress pips (stackable upgrades) — below description in text column
-    if (pu.max > 1) {
-      const pipR = 3;
+    // Hex chain progress pips (stackable upgrades) — centred vertically in remaining space
+    if (hasPips) {
       const pipSpc = 9;
-      const pipY = textTopY + nameH + gapBetween + descLines * descLineH + 5;
+      const pipY = textTopY + nameH + gapAfterName + descLines * descLineH + gapBeforePips + pipR;
       const pipStartX = btnX + textLeft;
       const curStacks = powers[pu.id] || 0;
       for (let p = 0; p < pu.max; p++) {
@@ -6024,7 +6072,7 @@ const _loadedBlueprints = [];   // filled by loadBlueprints()
 let _blueprintsReady = false;
 
 // ── Embedded blueprint data (exported from LevelExports/) ──
-const _EMBEDDED_BLUEPRINTS = [{"id":"level-export-2026-03-19T07-07-43","cells":[{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":45,"y":483.2421753117167},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":72,"y":342.94605989863766},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":288,"y":342.94605989863766},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":315,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":315,"y":483.2421753117167},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":180,"y":249.4153162899183},{"type":"BROOD","x":180,"y":467.6537180435968},{"type":"ROYAL","x":153,"y":483.2421753117167},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":207,"y":483.2421753117167},{"type":"ROYAL","x":153,"y":233.8268590217984},{"type":"ROYAL","x":180,"y":218.23840175367852},{"type":"ROYAL","x":207,"y":233.8268590217984}]},{"id":"level-export-2026-03-19T08-22-21","cells":[{"type":"NORMAL","x":72,"y":62.35382907247958},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":126,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"NORMAL","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"NORMAL","x":72,"y":311.76914536239786},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":72,"y":374.12297443487745},{"type":"NORMAL","x":126,"y":124.70765814495915},{"type":"NORMAL","x":126,"y":155.88457268119893},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"NORMAL","x":126,"y":218.23840175367852},{"type":"NORMAL","x":126,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"NORMAL","x":126,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"BOMB","x":99,"y":140.29611541307904},{"type":"NORMAL","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":202.64994448555862},{"type":"NORMAL","x":99,"y":233.8268590217984},{"type":"BROOD","x":99,"y":265.0037735580382},{"type":"NORMAL","x":99,"y":296.18068809427797},{"type":"NORMAL","x":99,"y":327.35760263051776},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":180,"y":124.70765814495915},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":187.06148721743872},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"NORMAL","x":180,"y":249.4153162899183},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":180,"y":311.76914536239786},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"NORMAL","x":207,"y":265.0037735580382},{"type":"BOMB","x":207,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":202.64994448555862},{"type":"NORMAL","x":207,"y":171.47302994931883},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":234,"y":155.88457268119893},{"type":"NORMAL","x":234,"y":187.06148721743872},{"type":"NORMAL","x":234,"y":218.23840175367852},{"type":"NORMAL","x":234,"y":249.4153162899183},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"NORMAL","x":288,"y":249.4153162899183},{"type":"NORMAL","x":288,"y":218.23840175367852},{"type":"NORMAL","x":288,"y":187.06148721743872},{"type":"NORMAL","x":315,"y":202.64994448555862},{"type":"NORMAL","x":315,"y":233.8268590217984},{"type":"CHARGED","x":342,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":31.17691453623979},{"type":"NORMAL","x":18,"y":62.35382907247958},{"type":"NORMAL","x":18,"y":93.53074360871936},{"type":"NORMAL","x":18,"y":124.70765814495915},{"type":"NORMAL","x":18,"y":155.88457268119893},{"type":"NORMAL","x":18,"y":187.06148721743872},{"type":"NORMAL","x":18,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":249.4153162899183},{"type":"NORMAL","x":18,"y":280.5922308261581},{"type":"NORMAL","x":18,"y":311.76914536239786},{"type":"NORMAL","x":18,"y":342.94605989863766},{"type":"NORMAL","x":18,"y":374.12297443487745},{"type":"NORMAL","x":18,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":140.29611541307904},{"type":"WAX","x":45,"y":109.11920087683926},{"type":"WAX","x":45,"y":77.94228634059947},{"type":"WAX","x":45,"y":46.76537180435968},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":261,"y":171.47302994931883}]},{"id":"level-export-2026-03-19T08-26-14","cells":[{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"HONEY","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":296.18068809427797},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":99,"y":233.8268590217984},{"type":"HONEY","x":99,"y":202.64994448555862},{"type":"HONEY","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":140.29611541307904},{"type":"HONEY","x":126,"y":218.23840175367852},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":180,"y":187.06148721743872},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":126,"y":124.70765814495915},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"HONEY","x":126,"y":93.53074360871936},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":153,"y":171.47302994931883},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"HONEY","x":180,"y":311.76914536239786},{"type":"HONEY","x":207,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"HONEY","x":207,"y":358.53451716675755},{"type":"HONEY","x":180,"y":374.12297443487745},{"type":"HONEY","x":207,"y":389.71143170299734},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"HONEY","x":207,"y":452.06526077547693},{"type":"NORMAL","x":180,"y":467.6537180435968},{"type":"NORMAL","x":207,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"HONEY","x":234,"y":374.12297443487745},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":261,"y":420.88834623923714},{"type":"HONEY","x":288,"y":436.47680350735703},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":288,"y":374.12297443487745},{"type":"HONEY","x":288,"y":342.94605989863766},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"NORMAL","x":261,"y":452.06526077547693},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"PORTAL","x":126,"y":155.88457268119893},{"type":"PORTAL","x":234,"y":342.94605989863766},{"type":"UNBREAKABLE","x":72,"y":405.29988897111724},{"type":"UNBREAKABLE","x":45,"y":420.88834623923714},{"type":"UNBREAKABLE","x":45,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":467.6537180435968},{"type":"UNBREAKABLE","x":99,"y":452.06526077547693},{"type":"UNBREAKABLE","x":72,"y":436.47680350735703},{"type":"UNBREAKABLE","x":99,"y":420.88834623923714},{"type":"UNBREAKABLE","x":261,"y":140.29611541307904},{"type":"UNBREAKABLE","x":288,"y":124.70765814495915},{"type":"UNBREAKABLE","x":315,"y":140.29611541307904},{"type":"UNBREAKABLE","x":315,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":187.06148721743872},{"type":"UNBREAKABLE","x":261,"y":171.47302994931883},{"type":"UNBREAKABLE","x":288,"y":155.88457268119893}]},{"id":"level-export-2026-03-19T08-30-09","cells":[{"type":"CHARGED","x":180,"y":498.8306325798366},{"type":"THICK","x":153,"y":514.4190898479565},{"type":"THICK","x":180,"y":530.0075471160764},{"type":"THICK","x":207,"y":514.4190898479565},{"type":"THICK","x":207,"y":483.2421753117167},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":153,"y":483.2421753117167},{"type":"THICK","x":153,"y":109.11920087683926},{"type":"THICK","x":180,"y":93.53074360871936},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":99,"y":296.18068809427797},{"type":"THICK","x":99,"y":327.35760263051776},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":45,"y":327.35760263051776},{"type":"THICK","x":45,"y":296.18068809427797},{"type":"CHARGED","x":72,"y":311.76914536239786},{"type":"CHARGED","x":288,"y":311.76914536239786},{"type":"THICK","x":261,"y":296.18068809427797},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":315,"y":296.18068809427797},{"type":"THICK","x":315,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":261,"y":327.35760263051776},{"type":"THICK","x":180,"y":155.88457268119893},{"type":"THICK","x":207,"y":140.29611541307904},{"type":"THICK","x":207,"y":109.11920087683926},{"type":"THICK","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":342,"y":280.5922308261581},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":342,"y":342.94605989863766},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":18,"y":280.5922308261581},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":18,"y":342.94605989863766},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":207,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":234,"y":124.70765814495915},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":207,"y":77.94228634059947},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":126,"y":124.70765814495915},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"BOMB","x":234,"y":405.29988897111724},{"type":"BOMB","x":126,"y":405.29988897111724},{"type":"BOMB","x":234,"y":218.23840175367852},{"type":"BOMB","x":126,"y":218.23840175367852},{"type":"BROOD","x":180,"y":311.76914536239786}]},{"id":"level-export-2026-03-19T08-38-58","cells":[{"type":"NORMAL","x":153,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":233.8268590217984},{"type":"THICK","x":180,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":153,"y":265.0037735580382},{"type":"THICK","x":207,"y":265.0037735580382},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":311.76914536239786},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"NORMAL","x":180,"y":342.94605989863766},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"THICK","x":234,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":153,"y":358.53451716675755},{"type":"NORMAL","x":207,"y":358.53451716675755},{"type":"NORMAL","x":234,"y":342.94605989863766},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"UNBREAKABLE","x":180,"y":436.47680350735703},{"type":"THICK","x":180,"y":374.12297443487745},{"type":"NORMAL","x":180,"y":405.29988897111724},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":261,"y":296.18068809427797},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":18,"y":218.23840175367852},{"type":"WAX","x":18,"y":249.4153162899183},{"type":"WAX","x":342,"y":249.4153162899183},{"type":"WAX","x":342,"y":218.23840175367852},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"BROOD","x":153,"y":202.64994448555862},{"type":"BROOD","x":207,"y":202.64994448555862},{"type":"TITAN","x":153,"y":171.47302994931883},{"type":"TITAN","x":126,"y":155.88457268119893},{"type":"TITAN","x":207,"y":171.47302994931883},{"type":"TITAN","x":234,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"UNBREAKABLE","x":180,"y":187.06148721743872},{"type":"NORMAL","x":153,"y":296.18068809427797},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"THICK","x":126,"y":374.12297443487745},{"type":"THICK","x":234,"y":374.12297443487745},{"type":"WAX","x":18,"y":187.06148721743872},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":342,"y":187.06148721743872},{"type":"UNBREAKABLE","x":180,"y":467.6537180435968},{"type":"CHARGED","x":180,"y":530.0075471160764},{"type":"HONEY","x":180,"y":62.35382907247958},{"type":"HONEY","x":153,"y":77.94228634059947},{"type":"HONEY","x":153,"y":109.11920087683926},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":207,"y":77.94228634059947},{"type":"BOMB","x":180,"y":93.53074360871936}]},{"id":"level-export-2026-03-19T08-41-52","cells":[{"type":"UNBREAKABLE","x":153,"y":327.35760263051776},{"type":"UNBREAKABLE","x":126,"y":311.76914536239786},{"type":"UNBREAKABLE","x":99,"y":327.35760263051776},{"type":"UNBREAKABLE","x":72,"y":311.76914536239786},{"type":"UNBREAKABLE","x":207,"y":327.35760263051776},{"type":"UNBREAKABLE","x":234,"y":311.76914536239786},{"type":"UNBREAKABLE","x":261,"y":327.35760263051776},{"type":"UNBREAKABLE","x":288,"y":311.76914536239786},{"type":"UNBREAKABLE","x":180,"y":311.76914536239786},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":436.47680350735703},{"type":"NORMAL","x":72,"y":405.29988897111724},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":126,"y":436.47680350735703},{"type":"BROOD","x":99,"y":420.88834623923714},{"type":"PORTAL","x":261,"y":420.88834623923714},{"type":"PORTAL","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":99,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"ANCIENT","x":234,"y":187.06148721743872},{"type":"ANCIENT","x":234,"y":218.23840175367852},{"type":"ANCIENT","x":261,"y":233.8268590217984},{"type":"ANCIENT","x":288,"y":218.23840175367852},{"type":"ANCIENT","x":288,"y":187.06148721743872},{"type":"ANCIENT","x":261,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":202.64994448555862}]},{"id":"level-export-2026-03-19T08-45-54","cells":[{"type":"CHARGED","x":99,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":171.47302994931883},{"type":"TITAN","x":126,"y":187.06148721743872},{"type":"TITAN","x":99,"y":202.64994448555862},{"type":"TITAN","x":261,"y":202.64994448555862},{"type":"TITAN","x":288,"y":187.06148721743872},{"type":"TITAN","x":72,"y":187.06148721743872},{"type":"WAX","x":72,"y":155.88457268119893},{"type":"WAX","x":99,"y":140.29611541307904},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"TITAN","x":234,"y":187.06148721743872},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":140.29611541307904},{"type":"WAX","x":288,"y":155.88457268119893},{"type":"HEAVY","x":180,"y":187.06148721743872},{"type":"HEAVY","x":180,"y":218.23840175367852},{"type":"HEAVY","x":153,"y":233.8268590217984},{"type":"HEAVY","x":153,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":296.18068809427797},{"type":"HEAVY","x":126,"y":280.5922308261581},{"type":"HEAVY","x":207,"y":233.8268590217984},{"type":"HEAVY","x":234,"y":280.5922308261581},{"type":"HEAVY","x":153,"y":296.18068809427797},{"type":"BROOD","x":153,"y":327.35760263051776},{"type":"HEAVY","x":180,"y":342.94605989863766},{"type":"BROOD","x":207,"y":327.35760263051776},{"type":"HEAVY","x":126,"y":311.76914536239786},{"type":"HEAVY","x":234,"y":311.76914536239786},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":153,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"NORMAL","x":207,"y":420.88834623923714},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":288,"y":342.94605989863766},{"type":"NORMAL","x":45,"y":358.53451716675755},{"type":"NORMAL","x":45,"y":389.71143170299734},{"type":"NORMAL","x":315,"y":358.53451716675755},{"type":"NORMAL","x":315,"y":389.71143170299734},{"type":"NORMAL","x":45,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":452.06526077547693},{"type":"NORMAL","x":45,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":467.6537180435968},{"type":"NORMAL","x":99,"y":483.2421753117167},{"type":"NORMAL","x":126,"y":498.8306325798366},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"NORMAL","x":261,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":498.8306325798366},{"type":"BOMB","x":207,"y":514.4190898479565},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"BOMB","x":153,"y":514.4190898479565},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"BOMB","x":180,"y":498.8306325798366},{"type":"BOMB","x":153,"y":483.2421753117167},{"type":"BOMB","x":207,"y":483.2421753117167},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"PORTAL","x":315,"y":265.0037735580382},{"type":"PORTAL","x":45,"y":265.0037735580382},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":93.53074360871936},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":261,"y":77.94228634059947},{"type":"ANCIENT","x":288,"y":93.53074360871936},{"type":"ANCIENT","x":315,"y":77.94228634059947}]},{"id":"level-export-2026-03-19T08-47-59","cells":[{"type":"BOMB","x":72,"y":561.1844616523161},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"BOMB","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"BOMB","x":288,"y":187.06148721743872},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":99,"y":77.94228634059947},{"type":"BOMB","x":72,"y":62.35382907247958},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":99,"y":483.2421753117167},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":99,"y":140.29611541307904}]},{"id":"level-export-2026-03-19T08-53-06","cells":[{"type":"HONEY","x":45,"y":77.94228634059947},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":99,"y":77.94228634059947},{"type":"HONEY","x":99,"y":109.11920087683926},{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"HONEY","x":45,"y":109.11920087683926},{"type":"HONEY","x":45,"y":140.29611541307904},{"type":"HONEY","x":45,"y":171.47302994931883},{"type":"HONEY","x":207,"y":171.47302994931883},{"type":"HONEY","x":207,"y":202.64994448555862},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":153,"y":171.47302994931883},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":153,"y":233.8268590217984},{"type":"HONEY","x":153,"y":265.0037735580382},{"type":"HONEY","x":180,"y":218.23840175367852},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":249.4153162899183},{"type":"HONEY","x":315,"y":265.0037735580382},{"type":"HONEY","x":315,"y":296.18068809427797},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":261,"y":358.53451716675755},{"type":"PORTAL","x":288,"y":280.5922308261581},{"type":"PORTAL","x":72,"y":93.53074360871936},{"type":"CHARGED","x":180,"y":187.06148721743872}]},{"id":"level-export-2026-03-19T08-55-51","cells":[{"type":"WAX","x":72,"y":592.3613761885559},{"type":"ANCIENT","x":72,"y":561.1844616523161},{"type":"ANCIENT","x":99,"y":545.5960043841962},{"type":"ANCIENT","x":126,"y":530.0075471160764},{"type":"ANCIENT","x":126,"y":498.8306325798366},{"type":"ANCIENT","x":126,"y":467.6537180435968},{"type":"ANCIENT","x":99,"y":452.06526077547693},{"type":"ANCIENT","x":72,"y":436.47680350735703},{"type":"ANCIENT","x":72,"y":405.29988897111724},{"type":"ANCIENT","x":72,"y":374.12297443487745},{"type":"ANCIENT","x":99,"y":358.53451716675755},{"type":"ANCIENT","x":126,"y":342.94605989863766},{"type":"ANCIENT","x":126,"y":311.76914536239786},{"type":"ANCIENT","x":126,"y":280.5922308261581},{"type":"ANCIENT","x":99,"y":265.0037735580382},{"type":"ANCIENT","x":72,"y":249.4153162899183},{"type":"ANCIENT","x":72,"y":218.23840175367852},{"type":"ANCIENT","x":72,"y":187.06148721743872},{"type":"ANCIENT","x":99,"y":171.47302994931883},{"type":"ANCIENT","x":126,"y":155.88457268119893},{"type":"ANCIENT","x":126,"y":124.70765814495915},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":62.35382907247958},{"type":"CHARGED","x":72,"y":498.8306325798366},{"type":"CHARGED","x":72,"y":124.70765814495915},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"BROOD","x":126,"y":405.29988897111724},{"type":"BROOD","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":62.35382907247958},{"type":"WAX","x":99,"y":46.76537180435968},{"type":"WAX","x":72,"y":31.17691453623979},{"type":"HONEY","x":261,"y":77.94228634059947},{"type":"HONEY","x":234,"y":93.53074360871936},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":288,"y":93.53074360871936},{"type":"HONEY","x":315,"y":109.11920087683926},{"type":"HONEY","x":261,"y":576.772918920436},{"type":"HONEY","x":261,"y":545.5960043841962},{"type":"HONEY","x":261,"y":514.4190898479565},{"type":"HONEY","x":261,"y":483.2421753117167},{"type":"HONEY","x":261,"y":452.06526077547693},{"type":"HONEY","x":261,"y":389.71143170299734},{"type":"HONEY","x":234,"y":405.29988897111724},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":261,"y":140.29611541307904},{"type":"HONEY","x":261,"y":171.47302994931883},{"type":"HONEY","x":261,"y":202.64994448555862},{"type":"HONEY","x":261,"y":233.8268590217984},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"HONEY","x":315,"y":420.88834623923714}]},{"id":"level-export-2026-03-19T23-28-38","cells":[{"type":"CHARGED","x":126,"y":405.29988897111724},{"type":"CHARGED","x":234,"y":405.29988897111724},{"type":"TITAN","x":180,"y":436.47680350735703},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":99,"y":452.06526077547693},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":514.4190898479565},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"TITAN","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"TITAN","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":72,"y":467.6537180435968},{"type":"THICK","x":45,"y":452.06526077547693},{"type":"THICK","x":45,"y":420.88834623923714},{"type":"THICK","x":45,"y":389.71143170299734},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":467.6537180435968},{"type":"THICK","x":315,"y":452.06526077547693},{"type":"THICK","x":315,"y":420.88834623923714},{"type":"THICK","x":315,"y":389.71143170299734},{"type":"THICK","x":72,"y":405.29988897111724},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":153,"y":358.53451716675755},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"THICK","x":207,"y":358.53451716675755},{"type":"THICK","x":288,"y":405.29988897111724},{"type":"THICK","x":234,"y":342.94605989863766},{"type":"THICK","x":126,"y":342.94605989863766},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"BOMB","x":261,"y":265.0037735580382},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":99,"y":265.0037735580382},{"type":"THICK","x":99,"y":233.8268590217984},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":288,"y":218.23840175367852},{"type":"THICK","x":288,"y":249.4153162899183},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":288,"y":311.76914536239786},{"type":"THICK","x":72,"y":218.23840175367852},{"type":"THICK","x":72,"y":249.4153162899183},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":72,"y":311.76914536239786},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":72,"y":374.12297443487745},{"type":"THICK","x":45,"y":358.53451716675755},{"type":"THICK","x":99,"y":358.53451716675755},{"type":"THICK","x":153,"y":296.18068809427797},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":315,"y":358.53451716675755},{"type":"THICK","x":288,"y":374.12297443487745},{"type":"THICK","x":261,"y":358.53451716675755},{"type":"BOMB","x":261,"y":327.35760263051776},{"type":"BOMB","x":234,"y":311.76914536239786},{"type":"THICK","x":207,"y":296.18068809427797},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"BOMB","x":126,"y":311.76914536239786},{"type":"BOMB","x":99,"y":327.35760263051776},{"type":"THICK","x":261,"y":233.8268590217984},{"type":"THICK","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":207,"y":420.88834623923714},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"NORMAL","x":153,"y":109.11920087683926},{"type":"NORMAL","x":180,"y":93.53074360871936},{"type":"NORMAL","x":207,"y":109.11920087683926},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":72,"y":31.17691453623979},{"type":"NORMAL","x":45,"y":46.76537180435968},{"type":"NORMAL","x":45,"y":77.94228634059947},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":99,"y":46.76537180435968},{"type":"NORMAL","x":288,"y":31.17691453623979},{"type":"NORMAL","x":315,"y":46.76537180435968},{"type":"NORMAL","x":315,"y":77.94228634059947},{"type":"NORMAL","x":288,"y":93.53074360871936},{"type":"NORMAL","x":261,"y":77.94228634059947},{"type":"NORMAL","x":261,"y":46.76537180435968},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":288,"y":62.35382907247958}]},{"id":"level-export-2026-03-19T23-33-21","cells":[{"type":"HONEY","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":126,"y":280.5922308261581},{"type":"HONEY","x":234,"y":280.5922308261581},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":280.5922308261581},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":389.71143170299734},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"THICK","x":72,"y":498.8306325798366},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":126,"y":467.6537180435968},{"type":"THICK","x":153,"y":452.06526077547693},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":207,"y":452.06526077547693},{"type":"THICK","x":234,"y":467.6537180435968},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":498.8306325798366},{"type":"THICK","x":72,"y":530.0075471160764},{"type":"THICK","x":99,"y":545.5960043841962},{"type":"THICK","x":126,"y":561.1844616523161},{"type":"THICK","x":153,"y":576.772918920436},{"type":"THICK","x":180,"y":592.3613761885559},{"type":"THICK","x":288,"y":530.0075471160764},{"type":"THICK","x":261,"y":545.5960043841962},{"type":"THICK","x":234,"y":561.1844616523161},{"type":"THICK","x":207,"y":576.772918920436},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":72,"y":405.29988897111724},{"type":"BROOD","x":288,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"ANCIENT","x":207,"y":420.88834623923714},{"type":"HONEY","x":72,"y":311.76914536239786},{"type":"HONEY","x":99,"y":327.35760263051776},{"type":"HONEY","x":126,"y":311.76914536239786},{"type":"HONEY","x":234,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":288,"y":311.76914536239786}]},{"id":"level-export-2026-03-21T18-52-49","cells":[{"type":"UNBREAKABLE","x":-9,"y":545.5960043841962},{"type":"UNBREAKABLE","x":18,"y":530.0075471160764},{"type":"UNBREAKABLE","x":45,"y":514.4190898479565},{"type":"UNBREAKABLE","x":72,"y":498.8306325798366},{"type":"UNBREAKABLE","x":369,"y":545.5960043841962},{"type":"UNBREAKABLE","x":342,"y":530.0075471160764},{"type":"UNBREAKABLE","x":315,"y":514.4190898479565},{"type":"UNBREAKABLE","x":288,"y":498.8306325798366},{"type":"UNBREAKABLE","x":288,"y":467.6537180435968},{"type":"UNBREAKABLE","x":288,"y":436.47680350735703},{"type":"UNBREAKABLE","x":288,"y":405.29988897111724},{"type":"UNBREAKABLE","x":72,"y":467.6537180435968},{"type":"UNBREAKABLE","x":72,"y":436.47680350735703},{"type":"UNBREAKABLE","x":72,"y":405.29988897111724},{"type":"UNBREAKABLE","x":126,"y":280.5922308261581},{"type":"UNBREAKABLE","x":153,"y":296.18068809427797},{"type":"UNBREAKABLE","x":180,"y":311.76914536239786},{"type":"UNBREAKABLE","x":207,"y":296.18068809427797},{"type":"UNBREAKABLE","x":234,"y":280.5922308261581},{"type":"WAX","x":180,"y":530.0075471160764},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":72,"y":342.94605989863766},{"type":"WAX","x":288,"y":342.94605989863766},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":207,"y":109.11920087683926},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"CHARGED","x":180,"y":249.4153162899183},{"type":"BOMB","x":45,"y":483.2421753117167},{"type":"BOMB","x":315,"y":483.2421753117167},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":18,"y":436.47680350735703},{"type":"WAX","x":18,"y":405.29988897111724},{"type":"WAX","x":18,"y":374.12297443487745},{"type":"WAX","x":18,"y":342.94605989863766},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":342,"y":342.94605989863766},{"type":"WAX","x":342,"y":374.12297443487745},{"type":"WAX","x":342,"y":405.29988897111724},{"type":"WAX","x":342,"y":436.47680350735703},{"type":"HONEY","x":342,"y":467.6537180435968},{"type":"HONEY","x":18,"y":467.6537180435968},{"type":"HONEY","x":18,"y":498.8306325798366},{"type":"HONEY","x":342,"y":498.8306325798366},{"type":"WAX","x":315,"y":452.06526077547693},{"type":"HONEY","x":45,"y":420.88834623923714},{"type":"HONEY","x":315,"y":420.88834623923714},{"type":"HONEY","x":45,"y":389.71143170299734},{"type":"ROYAL","x":45,"y":358.53451716675755},{"type":"ROYAL","x":45,"y":327.35760263051776},{"type":"HONEY","x":315,"y":389.71143170299734},{"type":"ROYAL","x":315,"y":358.53451716675755},{"type":"ROYAL","x":315,"y":327.35760263051776},{"type":"ROYAL","x":72,"y":374.12297443487745},{"type":"ROYAL","x":288,"y":374.12297443487745},{"type":"HONEY","x":369,"y":327.35760263051776},{"type":"HONEY","x":369,"y":358.53451716675755},{"type":"HONEY","x":369,"y":389.71143170299734},{"type":"HONEY","x":369,"y":420.88834623923714},{"type":"HONEY","x":369,"y":452.06526077547693},{"type":"HONEY","x":369,"y":483.2421753117167},{"type":"HONEY","x":369,"y":514.4190898479565},{"type":"HONEY","x":-9,"y":514.4190898479565},{"type":"HONEY","x":-9,"y":483.2421753117167},{"type":"HONEY","x":-9,"y":452.06526077547693},{"type":"HONEY","x":-9,"y":420.88834623923714},{"type":"HONEY","x":-9,"y":389.71143170299734},{"type":"HONEY","x":-9,"y":358.53451716675755},{"type":"HONEY","x":-9,"y":327.35760263051776},{"type":"BROOD","x":180,"y":187.06148721743872},{"type":"ROYAL","x":153,"y":202.64994448555862},{"type":"ROYAL","x":180,"y":218.23840175367852},{"type":"ROYAL","x":207,"y":202.64994448555862},{"type":"ROYAL","x":45,"y":77.94228634059947},{"type":"ROYAL","x":45,"y":109.11920087683926},{"type":"ROYAL","x":72,"y":93.53074360871936},{"type":"ROYAL","x":288,"y":93.53074360871936},{"type":"ROYAL","x":315,"y":77.94228634059947},{"type":"ROYAL","x":315,"y":109.11920087683926}]},{"id":"level-export-2026-03-21T18-56-44","cells":[{"type":"PORTAL","x":315,"y":483.2421753117167,"portalChannel":0,"portalRole":"sender"},{"type":"PORTAL","x":45,"y":327.35760263051776,"portalChannel":0,"portalRole":"receiver"},{"type":"BOOST","x":288,"y":498.8306325798366,"boostDir":2},{"type":"BOOST","x":72,"y":311.76914536239786,"boostDir":2},{"type":"ROYAL","x":-9,"y":389.71143170299734},{"type":"WAX","x":18,"y":405.29988897111724},{"type":"ROYAL","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"ROYAL","x":99,"y":389.71143170299734},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"ROYAL","x":153,"y":389.71143170299734},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"ROYAL","x":207,"y":389.71143170299734},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"ROYAL","x":261,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"ROYAL","x":315,"y":389.71143170299734},{"type":"WAX","x":342,"y":405.29988897111724},{"type":"ROYAL","x":369,"y":389.71143170299734},{"type":"ROYAL","x":342,"y":374.12297443487745},{"type":"ROYAL","x":288,"y":374.12297443487745},{"type":"ROYAL","x":234,"y":374.12297443487745},{"type":"ROYAL","x":180,"y":374.12297443487745},{"type":"ROYAL","x":126,"y":374.12297443487745},{"type":"ROYAL","x":72,"y":374.12297443487745},{"type":"ROYAL","x":18,"y":374.12297443487745},{"type":"ROYAL","x":45,"y":420.88834623923714},{"type":"ROYAL","x":99,"y":420.88834623923714},{"type":"ROYAL","x":153,"y":420.88834623923714},{"type":"ROYAL","x":207,"y":420.88834623923714},{"type":"ROYAL","x":261,"y":420.88834623923714},{"type":"ROYAL","x":315,"y":420.88834623923714},{"type":"ROYAL","x":369,"y":420.88834623923714},{"type":"ROYAL","x":-9,"y":420.88834623923714},{"type":"ROYAL","x":18,"y":436.47680350735703},{"type":"ROYAL","x":72,"y":436.47680350735703},{"type":"ROYAL","x":126,"y":436.47680350735703},{"type":"ROYAL","x":180,"y":436.47680350735703},{"type":"ROYAL","x":234,"y":436.47680350735703},{"type":"ROYAL","x":288,"y":436.47680350735703},{"type":"ROYAL","x":342,"y":436.47680350735703},{"type":"CHARGED","x":180,"y":249.4153162899183},{"type":"ANCIENT","x":45,"y":140.29611541307904},{"type":"ANCIENT","x":72,"y":124.70765814495915},{"type":"ANCIENT","x":72,"y":155.88457268119893},{"type":"ANCIENT","x":288,"y":249.4153162899183},{"type":"ANCIENT","x":315,"y":233.8268590217984},{"type":"ANCIENT","x":315,"y":265.0037735580382},{"type":"ANCIENT","x":207,"y":109.11920087683926},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":234,"y":124.70765814495915},{"type":"ANCIENT","x":72,"y":530.0075471160764},{"type":"ANCIENT","x":99,"y":514.4190898479565},{"type":"ANCIENT","x":99,"y":545.5960043841962}]},{"id":"level-export-2026-03-22T18-18-37","cells":[{"type":"WAX","x":-9,"y":545.5960043841962},{"type":"WAX","x":-9,"y":514.4190898479565},{"type":"WAX","x":18,"y":530.0075471160764},{"type":"WAX","x":18,"y":498.8306325798366},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":45,"y":545.5960043841962},{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":72,"y":530.0075471160764},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":180,"y":530.0075471160764},{"type":"WAX","x":207,"y":514.4190898479565},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":261,"y":545.5960043841962},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":288,"y":530.0075471160764},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":315,"y":545.5960043841962},{"type":"WAX","x":342,"y":498.8306325798366},{"type":"WAX","x":342,"y":530.0075471160764},{"type":"WAX","x":369,"y":514.4190898479565},{"type":"WAX","x":369,"y":545.5960043841962},{"type":"BOMB","x":45,"y":483.2421753117167},{"type":"BOMB","x":315,"y":483.2421753117167},{"type":"BOMB","x":99,"y":483.2421753117167},{"type":"BOMB","x":261,"y":483.2421753117167},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"BROOD","x":180,"y":405.29988897111724},{"type":"ROYAL","x":180,"y":436.47680350735703},{"type":"ROYAL","x":153,"y":420.88834623923714},{"type":"ROYAL","x":153,"y":389.71143170299734},{"type":"ROYAL","x":180,"y":374.12297443487745},{"type":"ROYAL","x":207,"y":389.71143170299734},{"type":"ROYAL","x":207,"y":420.88834623923714},{"type":"BOOST","x":288,"y":405.29988897111724,"boostDir":1},{"type":"BOOST","x":72,"y":405.29988897111724,"boostDir":1},{"type":"CHARGED","x":288,"y":280.5922308261581},{"type":"CHARGED","x":72,"y":280.5922308261581},{"type":"WAX","x":-9,"y":327.35760263051776},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":369,"y":327.35760263051776},{"type":"WAX","x":-9,"y":233.8268590217984},{"type":"WAX","x":18,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":249.4153162899183},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":342,"y":249.4153162899183},{"type":"WAX","x":369,"y":233.8268590217984},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"HEAVY","x":153,"y":109.11920087683926},{"type":"HEAVY","x":180,"y":93.53074360871936},{"type":"HEAVY","x":207,"y":109.11920087683926},{"type":"HEAVY","x":207,"y":140.29611541307904},{"type":"HEAVY","x":180,"y":155.88457268119893},{"type":"HEAVY","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"BOMB","x":72,"y":124.70765814495915},{"type":"BOMB","x":288,"y":124.70765814495915},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":180,"y":592.3613761885559},{"type":"WAX","x":180,"y":623.5382907247957}]},{"id":"level-export-2026-03-22T18-24-25","cells":[{"type":"ROYAL","x":18,"y":561.1844616523161},{"type":"ROYAL","x":18,"y":530.0075471160764},{"type":"ROYAL","x":45,"y":514.4190898479565},{"type":"ROYAL","x":72,"y":530.0075471160764},{"type":"ROYAL","x":72,"y":561.1844616523161},{"type":"ROYAL","x":45,"y":576.772918920436},{"type":"BROOD","x":45,"y":545.5960043841962},{"type":"ROYAL","x":153,"y":514.4190898479565},{"type":"ROYAL","x":153,"y":545.5960043841962},{"type":"ROYAL","x":180,"y":561.1844616523161},{"type":"ROYAL","x":207,"y":545.5960043841962},{"type":"ROYAL","x":207,"y":514.4190898479565},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":288,"y":561.1844616523161},{"type":"ROYAL","x":315,"y":576.772918920436},{"type":"ROYAL","x":342,"y":561.1844616523161},{"type":"ROYAL","x":342,"y":530.0075471160764},{"type":"ROYAL","x":315,"y":514.4190898479565},{"type":"ROYAL","x":288,"y":530.0075471160764},{"type":"BROOD","x":315,"y":545.5960043841962},{"type":"BROOD","x":180,"y":530.0075471160764},{"type":"BOOST","x":99,"y":483.2421753117167,"boostDir":0},{"type":"BOOST","x":261,"y":483.2421753117167,"boostDir":2},{"type":"BOOST","x":99,"y":389.71143170299734,"boostDir":2},{"type":"BOOST","x":261,"y":389.71143170299734,"boostDir":0},{"type":"BOOST","x":99,"y":296.18068809427797,"boostDir":0},{"type":"BOOST","x":261,"y":296.18068809427797,"boostDir":2},{"type":"ANCIENT","x":180,"y":405.29988897111724},{"type":"ANCIENT","x":180,"y":374.12297443487745},{"type":"ANCIENT","x":180,"y":342.94605989863766},{"type":"ANCIENT","x":180,"y":311.76914536239786},{"type":"ANCIENT","x":180,"y":280.5922308261581},{"type":"ANCIENT","x":180,"y":249.4153162899183},{"type":"ANCIENT","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":207,"y":420.88834623923714},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":207,"y":265.0037735580382},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":180,"y":218.23840175367852},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":389.71143170299734},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":99,"y":452.06526077547693},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":153,"y":576.772918920436},{"type":"WAX","x":180,"y":592.3613761885559},{"type":"WAX","x":207,"y":576.772918920436},{"type":"WAX","x":234,"y":561.1844616523161},{"type":"WAX","x":261,"y":576.772918920436},{"type":"WAX","x":288,"y":592.3613761885559},{"type":"WAX","x":315,"y":607.9498334566758},{"type":"WAX","x":342,"y":592.3613761885559},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":72,"y":592.3613761885559},{"type":"WAX","x":45,"y":607.9498334566758},{"type":"WAX","x":18,"y":592.3613761885559},{"type":"WAX","x":-9,"y":576.772918920436},{"type":"WAX","x":369,"y":576.772918920436},{"type":"WAX","x":369,"y":545.5960043841962},{"type":"WAX","x":-9,"y":545.5960043841962},{"type":"WAX","x":-9,"y":514.4190898479565},{"type":"WAX","x":369,"y":514.4190898479565},{"type":"BOMB","x":45,"y":452.06526077547693},{"type":"BOMB","x":315,"y":452.06526077547693},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"BOMB","x":315,"y":202.64994448555862},{"type":"BOMB","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":99,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"CHARGED","x":180,"y":155.88457268119893},{"type":"ANCIENT","x":18,"y":62.35382907247958},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":18,"y":93.53074360871936},{"type":"ANCIENT","x":342,"y":62.35382907247958},{"type":"ANCIENT","x":315,"y":77.94228634059947},{"type":"ANCIENT","x":342,"y":93.53074360871936},{"type":"BOOST","x":99,"y":202.64994448555862,"boostDir":2},{"type":"BOOST","x":261,"y":202.64994448555862,"boostDir":0}]}];
+const _EMBEDDED_BLUEPRINTS = [{"id":"level-export-2026-03-19T07-07-43","cells":[{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":45,"y":483.2421753117167},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":72,"y":342.94605989863766},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":72,"y":280.5922308261581},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":288,"y":342.94605989863766},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":315,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":315,"y":483.2421753117167},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":288,"y":280.5922308261581},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":180,"y":249.4153162899183},{"type":"BROOD","x":180,"y":467.6537180435968},{"type":"ROYAL","x":153,"y":483.2421753117167},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":207,"y":483.2421753117167},{"type":"ROYAL","x":153,"y":233.8268590217984},{"type":"ROYAL","x":180,"y":218.23840175367852},{"type":"ROYAL","x":207,"y":233.8268590217984}]},{"id":"level-export-2026-03-19T08-22-21","cells":[{"type":"NORMAL","x":72,"y":62.35382907247958},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":126,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":72,"y":124.70765814495915},{"type":"NORMAL","x":72,"y":155.88457268119893},{"type":"NORMAL","x":72,"y":187.06148721743872},{"type":"NORMAL","x":72,"y":218.23840175367852},{"type":"NORMAL","x":72,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":280.5922308261581},{"type":"NORMAL","x":72,"y":311.76914536239786},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":72,"y":374.12297443487745},{"type":"NORMAL","x":126,"y":124.70765814495915},{"type":"NORMAL","x":126,"y":155.88457268119893},{"type":"NORMAL","x":126,"y":187.06148721743872},{"type":"NORMAL","x":126,"y":218.23840175367852},{"type":"NORMAL","x":126,"y":249.4153162899183},{"type":"NORMAL","x":126,"y":280.5922308261581},{"type":"NORMAL","x":126,"y":311.76914536239786},{"type":"NORMAL","x":126,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":109.11920087683926},{"type":"BOMB","x":99,"y":140.29611541307904},{"type":"NORMAL","x":99,"y":171.47302994931883},{"type":"NORMAL","x":99,"y":202.64994448555862},{"type":"NORMAL","x":99,"y":233.8268590217984},{"type":"BROOD","x":99,"y":265.0037735580382},{"type":"NORMAL","x":99,"y":296.18068809427797},{"type":"NORMAL","x":99,"y":327.35760263051776},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":180,"y":124.70765814495915},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":180,"y":187.06148721743872},{"type":"NORMAL","x":180,"y":218.23840175367852},{"type":"NORMAL","x":180,"y":249.4153162899183},{"type":"NORMAL","x":180,"y":280.5922308261581},{"type":"NORMAL","x":180,"y":311.76914536239786},{"type":"NORMAL","x":207,"y":296.18068809427797},{"type":"NORMAL","x":207,"y":265.0037735580382},{"type":"BOMB","x":207,"y":233.8268590217984},{"type":"NORMAL","x":207,"y":202.64994448555862},{"type":"NORMAL","x":207,"y":171.47302994931883},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":234,"y":155.88457268119893},{"type":"NORMAL","x":234,"y":187.06148721743872},{"type":"NORMAL","x":234,"y":218.23840175367852},{"type":"NORMAL","x":234,"y":249.4153162899183},{"type":"NORMAL","x":234,"y":280.5922308261581},{"type":"NORMAL","x":288,"y":249.4153162899183},{"type":"NORMAL","x":288,"y":218.23840175367852},{"type":"NORMAL","x":288,"y":187.06148721743872},{"type":"NORMAL","x":315,"y":202.64994448555862},{"type":"NORMAL","x":315,"y":233.8268590217984},{"type":"CHARGED","x":342,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":31.17691453623979},{"type":"NORMAL","x":18,"y":62.35382907247958},{"type":"NORMAL","x":18,"y":93.53074360871936},{"type":"NORMAL","x":18,"y":124.70765814495915},{"type":"NORMAL","x":18,"y":155.88457268119893},{"type":"NORMAL","x":18,"y":187.06148721743872},{"type":"NORMAL","x":18,"y":218.23840175367852},{"type":"NORMAL","x":18,"y":249.4153162899183},{"type":"NORMAL","x":18,"y":280.5922308261581},{"type":"NORMAL","x":18,"y":311.76914536239786},{"type":"NORMAL","x":18,"y":342.94605989863766},{"type":"NORMAL","x":18,"y":374.12297443487745},{"type":"NORMAL","x":18,"y":405.29988897111724},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":140.29611541307904},{"type":"WAX","x":45,"y":109.11920087683926},{"type":"WAX","x":45,"y":77.94228634059947},{"type":"WAX","x":45,"y":46.76537180435968},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":261,"y":171.47302994931883}]},{"id":"level-export-2026-03-19T08-30-09","cells":[{"type":"CHARGED","x":180,"y":498.8306325798366},{"type":"THICK","x":153,"y":514.4190898479565},{"type":"THICK","x":180,"y":530.0075471160764},{"type":"THICK","x":207,"y":514.4190898479565},{"type":"THICK","x":207,"y":483.2421753117167},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":153,"y":483.2421753117167},{"type":"THICK","x":153,"y":109.11920087683926},{"type":"THICK","x":180,"y":93.53074360871936},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":99,"y":296.18068809427797},{"type":"THICK","x":99,"y":327.35760263051776},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":45,"y":327.35760263051776},{"type":"THICK","x":45,"y":296.18068809427797},{"type":"CHARGED","x":72,"y":311.76914536239786},{"type":"CHARGED","x":288,"y":311.76914536239786},{"type":"THICK","x":261,"y":296.18068809427797},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":315,"y":296.18068809427797},{"type":"THICK","x":315,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":261,"y":327.35760263051776},{"type":"THICK","x":180,"y":155.88457268119893},{"type":"THICK","x":207,"y":140.29611541307904},{"type":"THICK","x":207,"y":109.11920087683926},{"type":"THICK","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":342,"y":280.5922308261581},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":342,"y":342.94605989863766},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":99,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":99,"y":265.0037735580382},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":18,"y":280.5922308261581},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":18,"y":342.94605989863766},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":207,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":234,"y":124.70765814495915},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":207,"y":77.94228634059947},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":126,"y":124.70765814495915},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"BOMB","x":234,"y":405.29988897111724},{"type":"BOMB","x":126,"y":405.29988897111724},{"type":"BOMB","x":234,"y":218.23840175367852},{"type":"BOMB","x":126,"y":218.23840175367852},{"type":"BROOD","x":180,"y":311.76914536239786}]},{"id":"level-export-2026-03-19T08-45-54","cells":[{"type":"CHARGED","x":99,"y":171.47302994931883},{"type":"CHARGED","x":261,"y":171.47302994931883},{"type":"TITAN","x":126,"y":187.06148721743872},{"type":"TITAN","x":99,"y":202.64994448555862},{"type":"TITAN","x":261,"y":202.64994448555862},{"type":"TITAN","x":288,"y":187.06148721743872},{"type":"TITAN","x":72,"y":187.06148721743872},{"type":"WAX","x":72,"y":155.88457268119893},{"type":"WAX","x":99,"y":140.29611541307904},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"TITAN","x":234,"y":187.06148721743872},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":140.29611541307904},{"type":"WAX","x":288,"y":155.88457268119893},{"type":"HEAVY","x":180,"y":187.06148721743872},{"type":"HEAVY","x":180,"y":218.23840175367852},{"type":"HEAVY","x":153,"y":233.8268590217984},{"type":"HEAVY","x":153,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":265.0037735580382},{"type":"HEAVY","x":207,"y":296.18068809427797},{"type":"HEAVY","x":126,"y":280.5922308261581},{"type":"HEAVY","x":207,"y":233.8268590217984},{"type":"HEAVY","x":234,"y":280.5922308261581},{"type":"HEAVY","x":153,"y":296.18068809427797},{"type":"BROOD","x":153,"y":327.35760263051776},{"type":"HEAVY","x":180,"y":342.94605989863766},{"type":"BROOD","x":207,"y":327.35760263051776},{"type":"HEAVY","x":126,"y":311.76914536239786},{"type":"HEAVY","x":234,"y":311.76914536239786},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"NORMAL","x":72,"y":342.94605989863766},{"type":"NORMAL","x":99,"y":358.53451716675755},{"type":"NORMAL","x":99,"y":389.71143170299734},{"type":"NORMAL","x":126,"y":405.29988897111724},{"type":"NORMAL","x":153,"y":420.88834623923714},{"type":"NORMAL","x":180,"y":436.47680350735703},{"type":"NORMAL","x":207,"y":420.88834623923714},{"type":"NORMAL","x":234,"y":405.29988897111724},{"type":"NORMAL","x":261,"y":389.71143170299734},{"type":"NORMAL","x":261,"y":358.53451716675755},{"type":"NORMAL","x":288,"y":342.94605989863766},{"type":"NORMAL","x":45,"y":358.53451716675755},{"type":"NORMAL","x":45,"y":389.71143170299734},{"type":"NORMAL","x":315,"y":358.53451716675755},{"type":"NORMAL","x":315,"y":389.71143170299734},{"type":"NORMAL","x":45,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":420.88834623923714},{"type":"NORMAL","x":315,"y":452.06526077547693},{"type":"NORMAL","x":45,"y":452.06526077547693},{"type":"NORMAL","x":72,"y":467.6537180435968},{"type":"NORMAL","x":99,"y":483.2421753117167},{"type":"NORMAL","x":126,"y":498.8306325798366},{"type":"NORMAL","x":288,"y":467.6537180435968},{"type":"NORMAL","x":261,"y":483.2421753117167},{"type":"NORMAL","x":234,"y":498.8306325798366},{"type":"BOMB","x":207,"y":514.4190898479565},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"BOMB","x":153,"y":514.4190898479565},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"WAX","x":72,"y":374.12297443487745},{"type":"WAX","x":288,"y":374.12297443487745},{"type":"BOMB","x":180,"y":498.8306325798366},{"type":"BOMB","x":153,"y":483.2421753117167},{"type":"BOMB","x":207,"y":483.2421753117167},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"PORTAL","x":315,"y":265.0037735580382},{"type":"PORTAL","x":45,"y":265.0037735580382},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":93.53074360871936},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":261,"y":77.94228634059947},{"type":"ANCIENT","x":288,"y":93.53074360871936},{"type":"ANCIENT","x":315,"y":77.94228634059947}]},{"id":"level-export-2026-03-19T08-47-59","cells":[{"type":"BOMB","x":72,"y":561.1844616523161},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"BOMB","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":342.94605989863766},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":296.18068809427797},{"type":"WAX","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"BOMB","x":288,"y":187.06148721743872},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":99,"y":77.94228634059947},{"type":"BOMB","x":72,"y":62.35382907247958},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":234,"y":280.5922308261581},{"type":"WAX","x":261,"y":265.0037735580382},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":342.94605989863766},{"type":"WAX","x":261,"y":358.53451716675755},{"type":"WAX","x":99,"y":483.2421753117167},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":202.64994448555862},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":452.06526077547693},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":99,"y":140.29611541307904}]},{"id":"level-export-2026-03-19T08-53-06","cells":[{"type":"HONEY","x":45,"y":77.94228634059947},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":99,"y":77.94228634059947},{"type":"HONEY","x":99,"y":109.11920087683926},{"type":"HONEY","x":72,"y":124.70765814495915},{"type":"HONEY","x":45,"y":109.11920087683926},{"type":"HONEY","x":45,"y":140.29611541307904},{"type":"HONEY","x":45,"y":171.47302994931883},{"type":"HONEY","x":207,"y":171.47302994931883},{"type":"HONEY","x":207,"y":202.64994448555862},{"type":"HONEY","x":180,"y":155.88457268119893},{"type":"HONEY","x":153,"y":171.47302994931883},{"type":"HONEY","x":153,"y":202.64994448555862},{"type":"HONEY","x":153,"y":233.8268590217984},{"type":"HONEY","x":153,"y":265.0037735580382},{"type":"HONEY","x":180,"y":218.23840175367852},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":249.4153162899183},{"type":"HONEY","x":315,"y":265.0037735580382},{"type":"HONEY","x":315,"y":296.18068809427797},{"type":"HONEY","x":288,"y":311.76914536239786},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":261,"y":358.53451716675755},{"type":"PORTAL","x":288,"y":280.5922308261581},{"type":"PORTAL","x":72,"y":93.53074360871936},{"type":"CHARGED","x":180,"y":187.06148721743872}]},{"id":"level-export-2026-03-19T08-55-51","cells":[{"type":"WAX","x":72,"y":592.3613761885559},{"type":"ANCIENT","x":72,"y":561.1844616523161},{"type":"ANCIENT","x":99,"y":545.5960043841962},{"type":"ANCIENT","x":126,"y":530.0075471160764},{"type":"ANCIENT","x":126,"y":498.8306325798366},{"type":"ANCIENT","x":126,"y":467.6537180435968},{"type":"ANCIENT","x":99,"y":452.06526077547693},{"type":"ANCIENT","x":72,"y":436.47680350735703},{"type":"ANCIENT","x":72,"y":405.29988897111724},{"type":"ANCIENT","x":72,"y":374.12297443487745},{"type":"ANCIENT","x":99,"y":358.53451716675755},{"type":"ANCIENT","x":126,"y":342.94605989863766},{"type":"ANCIENT","x":126,"y":311.76914536239786},{"type":"ANCIENT","x":126,"y":280.5922308261581},{"type":"ANCIENT","x":99,"y":265.0037735580382},{"type":"ANCIENT","x":72,"y":249.4153162899183},{"type":"ANCIENT","x":72,"y":218.23840175367852},{"type":"ANCIENT","x":72,"y":187.06148721743872},{"type":"ANCIENT","x":99,"y":171.47302994931883},{"type":"ANCIENT","x":126,"y":155.88457268119893},{"type":"ANCIENT","x":126,"y":124.70765814495915},{"type":"ANCIENT","x":126,"y":93.53074360871936},{"type":"ANCIENT","x":99,"y":77.94228634059947},{"type":"ANCIENT","x":72,"y":62.35382907247958},{"type":"CHARGED","x":72,"y":498.8306325798366},{"type":"CHARGED","x":72,"y":124.70765814495915},{"type":"BOMB","x":72,"y":311.76914536239786},{"type":"BROOD","x":126,"y":405.29988897111724},{"type":"BROOD","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":171.47302994931883},{"type":"WAX","x":126,"y":187.06148721743872},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":153,"y":109.11920087683926},{"type":"WAX","x":153,"y":77.94228634059947},{"type":"WAX","x":126,"y":62.35382907247958},{"type":"WAX","x":99,"y":46.76537180435968},{"type":"WAX","x":72,"y":31.17691453623979},{"type":"HONEY","x":261,"y":77.94228634059947},{"type":"HONEY","x":234,"y":93.53074360871936},{"type":"HONEY","x":207,"y":109.11920087683926},{"type":"HONEY","x":288,"y":93.53074360871936},{"type":"HONEY","x":315,"y":109.11920087683926},{"type":"HONEY","x":261,"y":576.772918920436},{"type":"HONEY","x":261,"y":545.5960043841962},{"type":"HONEY","x":261,"y":514.4190898479565},{"type":"HONEY","x":261,"y":483.2421753117167},{"type":"HONEY","x":261,"y":452.06526077547693},{"type":"HONEY","x":261,"y":389.71143170299734},{"type":"HONEY","x":234,"y":405.29988897111724},{"type":"HONEY","x":288,"y":405.29988897111724},{"type":"HONEY","x":261,"y":140.29611541307904},{"type":"HONEY","x":261,"y":171.47302994931883},{"type":"HONEY","x":261,"y":202.64994448555862},{"type":"HONEY","x":261,"y":233.8268590217984},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":207,"y":420.88834623923714},{"type":"HONEY","x":315,"y":420.88834623923714}]},{"id":"level-export-2026-03-19T23-28-38","cells":[{"type":"CHARGED","x":126,"y":405.29988897111724},{"type":"CHARGED","x":234,"y":405.29988897111724},{"type":"TITAN","x":180,"y":436.47680350735703},{"type":"WAX","x":126,"y":374.12297443487745},{"type":"WAX","x":99,"y":389.71143170299734},{"type":"WAX","x":99,"y":420.88834623923714},{"type":"WAX","x":72,"y":436.47680350735703},{"type":"WAX","x":234,"y":374.12297443487745},{"type":"WAX","x":261,"y":389.71143170299734},{"type":"WAX","x":261,"y":420.88834623923714},{"type":"WAX","x":288,"y":436.47680350735703},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":99,"y":452.06526077547693},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":207,"y":514.4190898479565},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"TITAN","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"TITAN","x":207,"y":452.06526077547693},{"type":"WAX","x":234,"y":436.47680350735703},{"type":"WAX","x":126,"y":436.47680350735703},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"WAX","x":180,"y":374.12297443487745},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":72,"y":467.6537180435968},{"type":"THICK","x":45,"y":452.06526077547693},{"type":"THICK","x":45,"y":420.88834623923714},{"type":"THICK","x":45,"y":389.71143170299734},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":467.6537180435968},{"type":"THICK","x":315,"y":452.06526077547693},{"type":"THICK","x":315,"y":420.88834623923714},{"type":"THICK","x":315,"y":389.71143170299734},{"type":"THICK","x":72,"y":405.29988897111724},{"type":"THICK","x":153,"y":389.71143170299734},{"type":"THICK","x":153,"y":358.53451716675755},{"type":"THICK","x":207,"y":389.71143170299734},{"type":"THICK","x":207,"y":358.53451716675755},{"type":"THICK","x":288,"y":405.29988897111724},{"type":"THICK","x":234,"y":342.94605989863766},{"type":"THICK","x":126,"y":342.94605989863766},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"BOMB","x":261,"y":265.0037735580382},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":99,"y":265.0037735580382},{"type":"THICK","x":99,"y":233.8268590217984},{"type":"THICK","x":180,"y":311.76914536239786},{"type":"THICK","x":234,"y":249.4153162899183},{"type":"THICK","x":126,"y":249.4153162899183},{"type":"THICK","x":288,"y":218.23840175367852},{"type":"THICK","x":288,"y":249.4153162899183},{"type":"THICK","x":288,"y":280.5922308261581},{"type":"THICK","x":288,"y":311.76914536239786},{"type":"THICK","x":72,"y":218.23840175367852},{"type":"THICK","x":72,"y":249.4153162899183},{"type":"THICK","x":72,"y":280.5922308261581},{"type":"THICK","x":72,"y":311.76914536239786},{"type":"THICK","x":72,"y":342.94605989863766},{"type":"THICK","x":72,"y":374.12297443487745},{"type":"THICK","x":45,"y":358.53451716675755},{"type":"THICK","x":99,"y":358.53451716675755},{"type":"THICK","x":153,"y":296.18068809427797},{"type":"THICK","x":153,"y":327.35760263051776},{"type":"THICK","x":288,"y":342.94605989863766},{"type":"THICK","x":315,"y":358.53451716675755},{"type":"THICK","x":288,"y":374.12297443487745},{"type":"THICK","x":261,"y":358.53451716675755},{"type":"BOMB","x":261,"y":327.35760263051776},{"type":"BOMB","x":234,"y":311.76914536239786},{"type":"THICK","x":207,"y":296.18068809427797},{"type":"THICK","x":207,"y":327.35760263051776},{"type":"BOMB","x":126,"y":311.76914536239786},{"type":"BOMB","x":99,"y":327.35760263051776},{"type":"THICK","x":261,"y":233.8268590217984},{"type":"THICK","x":234,"y":280.5922308261581},{"type":"THICK","x":126,"y":280.5922308261581},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":207,"y":420.88834623923714},{"type":"TITAN","x":180,"y":467.6537180435968},{"type":"HONEY","x":180,"y":124.70765814495915},{"type":"NORMAL","x":153,"y":109.11920087683926},{"type":"NORMAL","x":180,"y":93.53074360871936},{"type":"NORMAL","x":207,"y":109.11920087683926},{"type":"NORMAL","x":207,"y":140.29611541307904},{"type":"NORMAL","x":180,"y":155.88457268119893},{"type":"NORMAL","x":153,"y":140.29611541307904},{"type":"NORMAL","x":72,"y":31.17691453623979},{"type":"NORMAL","x":45,"y":46.76537180435968},{"type":"NORMAL","x":45,"y":77.94228634059947},{"type":"NORMAL","x":72,"y":93.53074360871936},{"type":"NORMAL","x":99,"y":77.94228634059947},{"type":"NORMAL","x":99,"y":46.76537180435968},{"type":"NORMAL","x":288,"y":31.17691453623979},{"type":"NORMAL","x":315,"y":46.76537180435968},{"type":"NORMAL","x":315,"y":77.94228634059947},{"type":"NORMAL","x":288,"y":93.53074360871936},{"type":"NORMAL","x":261,"y":77.94228634059947},{"type":"NORMAL","x":261,"y":46.76537180435968},{"type":"HONEY","x":72,"y":62.35382907247958},{"type":"HONEY","x":288,"y":62.35382907247958}]},{"id":"level-export-2026-03-19T23-33-21","cells":[{"type":"HONEY","x":72,"y":280.5922308261581},{"type":"HONEY","x":99,"y":265.0037735580382},{"type":"HONEY","x":126,"y":280.5922308261581},{"type":"HONEY","x":234,"y":280.5922308261581},{"type":"HONEY","x":261,"y":265.0037735580382},{"type":"HONEY","x":288,"y":280.5922308261581},{"type":"WAX","x":72,"y":218.23840175367852},{"type":"WAX","x":99,"y":202.64994448555862},{"type":"WAX","x":126,"y":218.23840175367852},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":389.71143170299734},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"BOMB","x":99,"y":296.18068809427797},{"type":"BOMB","x":261,"y":296.18068809427797},{"type":"WAX","x":234,"y":218.23840175367852},{"type":"WAX","x":261,"y":202.64994448555862},{"type":"WAX","x":288,"y":218.23840175367852},{"type":"THICK","x":72,"y":498.8306325798366},{"type":"THICK","x":99,"y":483.2421753117167},{"type":"THICK","x":126,"y":467.6537180435968},{"type":"THICK","x":153,"y":452.06526077547693},{"type":"THICK","x":180,"y":467.6537180435968},{"type":"THICK","x":207,"y":452.06526077547693},{"type":"THICK","x":234,"y":467.6537180435968},{"type":"THICK","x":261,"y":483.2421753117167},{"type":"THICK","x":288,"y":498.8306325798366},{"type":"THICK","x":72,"y":530.0075471160764},{"type":"THICK","x":99,"y":545.5960043841962},{"type":"THICK","x":126,"y":561.1844616523161},{"type":"THICK","x":153,"y":576.772918920436},{"type":"THICK","x":180,"y":592.3613761885559},{"type":"THICK","x":288,"y":530.0075471160764},{"type":"THICK","x":261,"y":545.5960043841962},{"type":"THICK","x":234,"y":561.1844616523161},{"type":"THICK","x":207,"y":576.772918920436},{"type":"BOMB","x":153,"y":545.5960043841962},{"type":"BOMB","x":180,"y":561.1844616523161},{"type":"BOMB","x":207,"y":545.5960043841962},{"type":"BOMB","x":180,"y":530.0075471160764},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":483.2421753117167},{"type":"WAX","x":207,"y":483.2421753117167},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"BROOD","x":72,"y":405.29988897111724},{"type":"BROOD","x":288,"y":405.29988897111724},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"ANCIENT","x":207,"y":420.88834623923714},{"type":"HONEY","x":72,"y":311.76914536239786},{"type":"HONEY","x":99,"y":327.35760263051776},{"type":"HONEY","x":126,"y":311.76914536239786},{"type":"HONEY","x":234,"y":311.76914536239786},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":288,"y":311.76914536239786}]},{"id":"level-export-2026-03-21T18-56-44","cells":[{"type":"PORTAL","x":315,"y":483.2421753117167,"portalChannel":0,"portalRole":"sender"},{"type":"PORTAL","x":45,"y":327.35760263051776,"portalChannel":0,"portalRole":"receiver"},{"type":"BOOST","x":288,"y":498.8306325798366,"boostDir":2},{"type":"BOOST","x":72,"y":311.76914536239786,"boostDir":2},{"type":"ROYAL","x":-9,"y":389.71143170299734},{"type":"WAX","x":18,"y":405.29988897111724},{"type":"ROYAL","x":45,"y":389.71143170299734},{"type":"WAX","x":72,"y":405.29988897111724},{"type":"ROYAL","x":99,"y":389.71143170299734},{"type":"WAX","x":126,"y":405.29988897111724},{"type":"ROYAL","x":153,"y":389.71143170299734},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"ROYAL","x":207,"y":389.71143170299734},{"type":"WAX","x":234,"y":405.29988897111724},{"type":"ROYAL","x":261,"y":389.71143170299734},{"type":"WAX","x":288,"y":405.29988897111724},{"type":"ROYAL","x":315,"y":389.71143170299734},{"type":"WAX","x":342,"y":405.29988897111724},{"type":"ROYAL","x":369,"y":389.71143170299734},{"type":"ROYAL","x":342,"y":374.12297443487745},{"type":"ROYAL","x":288,"y":374.12297443487745},{"type":"ROYAL","x":234,"y":374.12297443487745},{"type":"ROYAL","x":180,"y":374.12297443487745},{"type":"ROYAL","x":126,"y":374.12297443487745},{"type":"ROYAL","x":72,"y":374.12297443487745},{"type":"ROYAL","x":18,"y":374.12297443487745},{"type":"ROYAL","x":45,"y":420.88834623923714},{"type":"ROYAL","x":99,"y":420.88834623923714},{"type":"ROYAL","x":153,"y":420.88834623923714},{"type":"ROYAL","x":207,"y":420.88834623923714},{"type":"ROYAL","x":261,"y":420.88834623923714},{"type":"ROYAL","x":315,"y":420.88834623923714},{"type":"ROYAL","x":369,"y":420.88834623923714},{"type":"ROYAL","x":-9,"y":420.88834623923714},{"type":"ROYAL","x":18,"y":436.47680350735703},{"type":"ROYAL","x":72,"y":436.47680350735703},{"type":"ROYAL","x":126,"y":436.47680350735703},{"type":"ROYAL","x":180,"y":436.47680350735703},{"type":"ROYAL","x":234,"y":436.47680350735703},{"type":"ROYAL","x":288,"y":436.47680350735703},{"type":"ROYAL","x":342,"y":436.47680350735703},{"type":"CHARGED","x":180,"y":249.4153162899183},{"type":"ANCIENT","x":45,"y":140.29611541307904},{"type":"ANCIENT","x":72,"y":124.70765814495915},{"type":"ANCIENT","x":72,"y":155.88457268119893},{"type":"ANCIENT","x":288,"y":249.4153162899183},{"type":"ANCIENT","x":315,"y":233.8268590217984},{"type":"ANCIENT","x":315,"y":265.0037735580382},{"type":"ANCIENT","x":207,"y":109.11920087683926},{"type":"ANCIENT","x":234,"y":93.53074360871936},{"type":"ANCIENT","x":234,"y":124.70765814495915},{"type":"ANCIENT","x":72,"y":530.0075471160764},{"type":"ANCIENT","x":99,"y":514.4190898479565},{"type":"ANCIENT","x":99,"y":545.5960043841962}]},{"id":"level-export-2026-03-22T18-18-37","cells":[{"type":"WAX","x":-9,"y":545.5960043841962},{"type":"WAX","x":-9,"y":514.4190898479565},{"type":"WAX","x":18,"y":530.0075471160764},{"type":"WAX","x":18,"y":498.8306325798366},{"type":"WAX","x":45,"y":514.4190898479565},{"type":"WAX","x":45,"y":545.5960043841962},{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":72,"y":530.0075471160764},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":99,"y":545.5960043841962},{"type":"WAX","x":126,"y":530.0075471160764},{"type":"WAX","x":126,"y":498.8306325798366},{"type":"WAX","x":153,"y":514.4190898479565},{"type":"WAX","x":153,"y":545.5960043841962},{"type":"WAX","x":180,"y":498.8306325798366},{"type":"WAX","x":180,"y":530.0075471160764},{"type":"WAX","x":207,"y":514.4190898479565},{"type":"WAX","x":207,"y":545.5960043841962},{"type":"WAX","x":234,"y":530.0075471160764},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":261,"y":545.5960043841962},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":288,"y":530.0075471160764},{"type":"WAX","x":315,"y":514.4190898479565},{"type":"WAX","x":315,"y":545.5960043841962},{"type":"WAX","x":342,"y":498.8306325798366},{"type":"WAX","x":342,"y":530.0075471160764},{"type":"WAX","x":369,"y":514.4190898479565},{"type":"WAX","x":369,"y":545.5960043841962},{"type":"BOMB","x":45,"y":483.2421753117167},{"type":"BOMB","x":315,"y":483.2421753117167},{"type":"BOMB","x":99,"y":483.2421753117167},{"type":"BOMB","x":261,"y":483.2421753117167},{"type":"WAX","x":234,"y":498.8306325798366},{"type":"BROOD","x":180,"y":405.29988897111724},{"type":"ROYAL","x":180,"y":436.47680350735703},{"type":"ROYAL","x":153,"y":420.88834623923714},{"type":"ROYAL","x":153,"y":389.71143170299734},{"type":"ROYAL","x":180,"y":374.12297443487745},{"type":"ROYAL","x":207,"y":389.71143170299734},{"type":"ROYAL","x":207,"y":420.88834623923714},{"type":"BOOST","x":288,"y":405.29988897111724,"boostDir":1},{"type":"BOOST","x":72,"y":405.29988897111724,"boostDir":1},{"type":"CHARGED","x":288,"y":280.5922308261581},{"type":"CHARGED","x":72,"y":280.5922308261581},{"type":"WAX","x":-9,"y":327.35760263051776},{"type":"WAX","x":18,"y":311.76914536239786},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":72,"y":311.76914536239786},{"type":"WAX","x":99,"y":327.35760263051776},{"type":"WAX","x":126,"y":311.76914536239786},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":180,"y":311.76914536239786},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":234,"y":311.76914536239786},{"type":"WAX","x":261,"y":327.35760263051776},{"type":"WAX","x":288,"y":311.76914536239786},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":342,"y":311.76914536239786},{"type":"WAX","x":369,"y":327.35760263051776},{"type":"WAX","x":-9,"y":233.8268590217984},{"type":"WAX","x":18,"y":249.4153162899183},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":72,"y":249.4153162899183},{"type":"WAX","x":99,"y":233.8268590217984},{"type":"WAX","x":126,"y":249.4153162899183},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":180,"y":249.4153162899183},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":234,"y":249.4153162899183},{"type":"WAX","x":261,"y":233.8268590217984},{"type":"WAX","x":288,"y":249.4153162899183},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"WAX","x":342,"y":249.4153162899183},{"type":"WAX","x":369,"y":233.8268590217984},{"type":"WAX","x":180,"y":187.06148721743872},{"type":"WAX","x":180,"y":62.35382907247958},{"type":"WAX","x":126,"y":93.53074360871936},{"type":"WAX","x":234,"y":93.53074360871936},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"HEAVY","x":153,"y":109.11920087683926},{"type":"HEAVY","x":180,"y":93.53074360871936},{"type":"HEAVY","x":207,"y":109.11920087683926},{"type":"HEAVY","x":207,"y":140.29611541307904},{"type":"HEAVY","x":180,"y":155.88457268119893},{"type":"HEAVY","x":153,"y":140.29611541307904},{"type":"CHARGED","x":180,"y":124.70765814495915},{"type":"BOMB","x":72,"y":124.70765814495915},{"type":"BOMB","x":288,"y":124.70765814495915},{"type":"WAX","x":45,"y":202.64994448555862},{"type":"WAX","x":45,"y":171.47302994931883},{"type":"WAX","x":315,"y":202.64994448555862},{"type":"WAX","x":315,"y":171.47302994931883},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"WAX","x":180,"y":561.1844616523161},{"type":"WAX","x":180,"y":592.3613761885559},{"type":"WAX","x":180,"y":623.5382907247957}]},{"id":"level-export-2026-03-22T18-24-25","cells":[{"type":"ROYAL","x":18,"y":561.1844616523161},{"type":"ROYAL","x":18,"y":530.0075471160764},{"type":"ROYAL","x":45,"y":514.4190898479565},{"type":"ROYAL","x":72,"y":530.0075471160764},{"type":"ROYAL","x":72,"y":561.1844616523161},{"type":"ROYAL","x":45,"y":576.772918920436},{"type":"BROOD","x":45,"y":545.5960043841962},{"type":"ROYAL","x":153,"y":514.4190898479565},{"type":"ROYAL","x":153,"y":545.5960043841962},{"type":"ROYAL","x":180,"y":561.1844616523161},{"type":"ROYAL","x":207,"y":545.5960043841962},{"type":"ROYAL","x":207,"y":514.4190898479565},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"ROYAL","x":288,"y":561.1844616523161},{"type":"ROYAL","x":315,"y":576.772918920436},{"type":"ROYAL","x":342,"y":561.1844616523161},{"type":"ROYAL","x":342,"y":530.0075471160764},{"type":"ROYAL","x":315,"y":514.4190898479565},{"type":"ROYAL","x":288,"y":530.0075471160764},{"type":"BROOD","x":315,"y":545.5960043841962},{"type":"BROOD","x":180,"y":530.0075471160764},{"type":"BOOST","x":99,"y":483.2421753117167,"boostDir":0},{"type":"BOOST","x":261,"y":483.2421753117167,"boostDir":2},{"type":"BOOST","x":99,"y":389.71143170299734,"boostDir":2},{"type":"BOOST","x":261,"y":389.71143170299734,"boostDir":0},{"type":"BOOST","x":99,"y":296.18068809427797,"boostDir":0},{"type":"BOOST","x":261,"y":296.18068809427797,"boostDir":2},{"type":"ANCIENT","x":180,"y":405.29988897111724},{"type":"ANCIENT","x":180,"y":374.12297443487745},{"type":"ANCIENT","x":180,"y":342.94605989863766},{"type":"ANCIENT","x":180,"y":311.76914536239786},{"type":"ANCIENT","x":180,"y":280.5922308261581},{"type":"ANCIENT","x":180,"y":249.4153162899183},{"type":"ANCIENT","x":180,"y":436.47680350735703},{"type":"WAX","x":153,"y":452.06526077547693},{"type":"WAX","x":207,"y":452.06526077547693},{"type":"WAX","x":207,"y":420.88834623923714},{"type":"WAX","x":207,"y":389.71143170299734},{"type":"WAX","x":207,"y":358.53451716675755},{"type":"WAX","x":207,"y":327.35760263051776},{"type":"WAX","x":207,"y":296.18068809427797},{"type":"WAX","x":207,"y":265.0037735580382},{"type":"WAX","x":207,"y":233.8268590217984},{"type":"WAX","x":180,"y":218.23840175367852},{"type":"WAX","x":153,"y":233.8268590217984},{"type":"WAX","x":153,"y":265.0037735580382},{"type":"WAX","x":153,"y":296.18068809427797},{"type":"WAX","x":153,"y":327.35760263051776},{"type":"WAX","x":153,"y":358.53451716675755},{"type":"WAX","x":153,"y":389.71143170299734},{"type":"WAX","x":153,"y":420.88834623923714},{"type":"WAX","x":234,"y":467.6537180435968},{"type":"WAX","x":261,"y":452.06526077547693},{"type":"WAX","x":288,"y":467.6537180435968},{"type":"WAX","x":288,"y":498.8306325798366},{"type":"WAX","x":261,"y":514.4190898479565},{"type":"WAX","x":126,"y":467.6537180435968},{"type":"WAX","x":99,"y":452.06526077547693},{"type":"WAX","x":72,"y":467.6537180435968},{"type":"WAX","x":72,"y":498.8306325798366},{"type":"WAX","x":99,"y":514.4190898479565},{"type":"WAX","x":126,"y":561.1844616523161},{"type":"WAX","x":153,"y":576.772918920436},{"type":"WAX","x":180,"y":592.3613761885559},{"type":"WAX","x":207,"y":576.772918920436},{"type":"WAX","x":234,"y":561.1844616523161},{"type":"WAX","x":261,"y":576.772918920436},{"type":"WAX","x":288,"y":592.3613761885559},{"type":"WAX","x":315,"y":607.9498334566758},{"type":"WAX","x":342,"y":592.3613761885559},{"type":"WAX","x":99,"y":576.772918920436},{"type":"WAX","x":72,"y":592.3613761885559},{"type":"WAX","x":45,"y":607.9498334566758},{"type":"WAX","x":18,"y":592.3613761885559},{"type":"WAX","x":-9,"y":576.772918920436},{"type":"WAX","x":369,"y":576.772918920436},{"type":"WAX","x":369,"y":545.5960043841962},{"type":"WAX","x":-9,"y":545.5960043841962},{"type":"WAX","x":-9,"y":514.4190898479565},{"type":"WAX","x":369,"y":514.4190898479565},{"type":"BOMB","x":45,"y":452.06526077547693},{"type":"BOMB","x":315,"y":452.06526077547693},{"type":"WAX","x":45,"y":420.88834623923714},{"type":"WAX","x":45,"y":389.71143170299734},{"type":"WAX","x":315,"y":420.88834623923714},{"type":"WAX","x":315,"y":389.71143170299734},{"type":"WAX","x":315,"y":358.53451716675755},{"type":"WAX","x":315,"y":327.35760263051776},{"type":"WAX","x":315,"y":296.18068809427797},{"type":"WAX","x":45,"y":358.53451716675755},{"type":"WAX","x":45,"y":327.35760263051776},{"type":"WAX","x":45,"y":296.18068809427797},{"type":"WAX","x":45,"y":265.0037735580382},{"type":"WAX","x":45,"y":233.8268590217984},{"type":"WAX","x":315,"y":265.0037735580382},{"type":"WAX","x":315,"y":233.8268590217984},{"type":"BOMB","x":315,"y":202.64994448555862},{"type":"BOMB","x":45,"y":202.64994448555862},{"type":"WAX","x":72,"y":187.06148721743872},{"type":"WAX","x":99,"y":171.47302994931883},{"type":"WAX","x":126,"y":155.88457268119893},{"type":"WAX","x":153,"y":140.29611541307904},{"type":"WAX","x":180,"y":124.70765814495915},{"type":"WAX","x":207,"y":140.29611541307904},{"type":"WAX","x":234,"y":155.88457268119893},{"type":"WAX","x":261,"y":171.47302994931883},{"type":"WAX","x":288,"y":187.06148721743872},{"type":"CHARGED","x":180,"y":155.88457268119893},{"type":"ANCIENT","x":18,"y":62.35382907247958},{"type":"ANCIENT","x":45,"y":77.94228634059947},{"type":"ANCIENT","x":18,"y":93.53074360871936},{"type":"ANCIENT","x":342,"y":62.35382907247958},{"type":"ANCIENT","x":315,"y":77.94228634059947},{"type":"ANCIENT","x":342,"y":93.53074360871936},{"type":"BOOST","x":99,"y":202.64994448555862,"boostDir":2},{"type":"BOOST","x":261,"y":202.64994448555862,"boostDir":0}]},{"id":"level-export-2026-03-26T03-25-17","cells":[{"type":"PORTAL","x":288,"y":592.3613761885559,"portalChannel":3,"portalRole":"sender"},{"type":"PORTAL","x":72,"y":530.0075471160764,"portalChannel":3,"portalRole":"receiver"},{"type":"PORTAL","x":288,"y":467.6537180435968,"portalChannel":4,"portalRole":"sender"},{"type":"PORTAL","x":72,"y":405.29988897111724,"portalChannel":4,"portalRole":"receiver"},{"type":"PORTAL","x":288,"y":342.94605989863766,"portalChannel":5,"portalRole":"sender"},{"type":"PORTAL","x":72,"y":280.5922308261581,"portalChannel":5,"portalRole":"receiver"},{"type":"PORTAL","x":288,"y":218.23840175367852,"portalChannel":6,"portalRole":"sender"},{"type":"PORTAL","x":72,"y":155.88457268119893,"portalChannel":6,"portalRole":"receiver"},{"type":"WAX","x":180,"y":592.3613761885559},{"type":"ROYAL","x":180,"y":561.1844616523161},{"type":"WAX","x":180,"y":530.0075471160764},{"type":"ROYAL","x":180,"y":498.8306325798366},{"type":"WAX","x":180,"y":467.6537180435968},{"type":"ROYAL","x":180,"y":436.47680350735703},{"type":"WAX","x":180,"y":405.29988897111724},{"type":"ROYAL","x":180,"y":374.12297443487745},{"type":"WAX","x":180,"y":342.94605989863766},{"type":"ROYAL","x":180,"y":311.76914536239786},{"type":"WAX","x":180,"y":280.5922308261581},{"type":"ROYAL","x":180,"y":249.4153162899183},{"type":"WAX","x":180,"y":218.23840175367852},{"type":"ROYAL","x":180,"y":187.06148721743872},{"type":"WAX","x":180,"y":155.88457268119893},{"type":"ROYAL","x":153,"y":607.9498334566758},{"type":"WAX","x":126,"y":623.5382907247957},{"type":"ROYAL","x":99,"y":639.1267479929156},{"type":"WAX","x":72,"y":654.7152052610355},{"type":"ROYAL","x":207,"y":140.29611541307904},{"type":"WAX","x":234,"y":124.70765814495915},{"type":"ROYAL","x":261,"y":109.11920087683926},{"type":"WAX","x":288,"y":93.53074360871936},{"type":"CHARGED","x":126,"y":530.0075471160764},{"type":"CHARGED","x":234,"y":218.23840175367852},{"type":"BROOD","x":126,"y":218.23840175367852},{"type":"BROOD","x":234,"y":530.0075471160764}]},{"id":"level-export-2026-03-26T03-26-36","cells":[{"type":"HEAVY","x":180,"y":187.06148721743872},{"type":"HEAVY","x":207,"y":202.64994448555862},{"type":"HEAVY","x":234,"y":218.23840175367852},{"type":"HEAVY","x":261,"y":233.8268590217984},{"type":"HEAVY","x":288,"y":249.4153162899183},{"type":"HEAVY","x":153,"y":202.64994448555862},{"type":"HEAVY","x":126,"y":218.23840175367852},{"type":"HEAVY","x":99,"y":233.8268590217984},{"type":"HEAVY","x":72,"y":249.4153162899183},{"type":"HEAVY","x":72,"y":280.5922308261581},{"type":"HEAVY","x":72,"y":311.76914536239786},{"type":"HEAVY","x":72,"y":342.94605989863766},{"type":"HEAVY","x":72,"y":374.12297443487745},{"type":"HEAVY","x":288,"y":374.12297443487745},{"type":"HEAVY","x":288,"y":342.94605989863766},{"type":"HEAVY","x":288,"y":311.76914536239786},{"type":"HEAVY","x":288,"y":280.5922308261581},{"type":"HEAVY","x":99,"y":265.0037735580382},{"type":"HEAVY","x":126,"y":280.5922308261581},{"type":"HEAVY","x":153,"y":296.18068809427797},{"type":"HEAVY","x":180,"y":311.76914536239786},{"type":"HEAVY","x":207,"y":296.18068809427797},{"type":"HEAVY","x":234,"y":280.5922308261581},{"type":"HEAVY","x":261,"y":265.0037735580382},{"type":"HEAVY","x":180,"y":374.12297443487745},{"type":"HEAVY","x":180,"y":405.29988897111724},{"type":"HEAVY","x":180,"y":436.47680350735703},{"type":"HEAVY","x":180,"y":342.94605989863766},{"type":"HEAVY","x":261,"y":389.71143170299734},{"type":"HEAVY","x":234,"y":405.29988897111724},{"type":"HEAVY","x":207,"y":420.88834623923714},{"type":"HEAVY","x":153,"y":420.88834623923714},{"type":"HEAVY","x":126,"y":405.29988897111724},{"type":"HEAVY","x":99,"y":389.71143170299734},{"type":"HONEY","x":153,"y":389.71143170299734},{"type":"HONEY","x":126,"y":374.12297443487745},{"type":"HONEY","x":99,"y":358.53451716675755},{"type":"HONEY","x":99,"y":327.35760263051776},{"type":"HONEY","x":99,"y":296.18068809427797},{"type":"HONEY","x":126,"y":311.76914536239786},{"type":"HONEY","x":153,"y":327.35760263051776},{"type":"HONEY","x":153,"y":358.53451716675755},{"type":"HONEY","x":126,"y":342.94605989863766},{"type":"HONEY","x":207,"y":327.35760263051776},{"type":"HONEY","x":234,"y":311.76914536239786},{"type":"HONEY","x":261,"y":296.18068809427797},{"type":"HONEY","x":261,"y":327.35760263051776},{"type":"HONEY","x":234,"y":342.94605989863766},{"type":"HONEY","x":207,"y":358.53451716675755},{"type":"HONEY","x":207,"y":389.71143170299734},{"type":"HONEY","x":234,"y":374.12297443487745},{"type":"HONEY","x":261,"y":358.53451716675755},{"type":"HONEY","x":234,"y":249.4153162899183},{"type":"HONEY","x":207,"y":265.0037735580382},{"type":"HONEY","x":180,"y":280.5922308261581},{"type":"HONEY","x":153,"y":265.0037735580382},{"type":"HONEY","x":126,"y":249.4153162899183},{"type":"HONEY","x":153,"y":233.8268590217984},{"type":"HONEY","x":180,"y":249.4153162899183},{"type":"HONEY","x":180,"y":218.23840175367852},{"type":"HONEY","x":207,"y":233.8268590217984}]},{"id":"level-export-ANIMATION-2026-03-21T04-27-41","cells":[{"type":"UNBREAKABLE","x":45,"y":77.94228634059947},{"type":"UNBREAKABLE","x":72,"y":62.35382907247958},{"type":"UNBREAKABLE","x":99,"y":77.94228634059947},{"type":"UNBREAKABLE","x":126,"y":62.35382907247958},{"type":"UNBREAKABLE","x":153,"y":77.94228634059947},{"type":"UNBREAKABLE","x":180,"y":62.35382907247958},{"type":"UNBREAKABLE","x":207,"y":77.94228634059947},{"type":"UNBREAKABLE","x":234,"y":62.35382907247958},{"type":"UNBREAKABLE","x":261,"y":77.94228634059947},{"type":"UNBREAKABLE","x":288,"y":62.35382907247958},{"type":"UNBREAKABLE","x":315,"y":77.94228634059947},{"type":"UNBREAKABLE","x":342,"y":62.35382907247958},{"type":"UNBREAKABLE","x":18,"y":62.35382907247958},{"type":"CHARGED","x":180,"y":187.06148721743872}]}];
 
 function _makeStampFromCells(cells) {
   // Pre-compute offsets from the design's center
@@ -6187,26 +6235,21 @@ function hasMinDist(hex, type, hexMap, minDist) {
 }
 
 // ── Single-chunk generator ───────────────────────────────
-// Remove procedural cells that overlap blueprint cells from adjacent chunks
+// Remove procedural cells that overlap ANY existing cells (prevents stacking)
 function _dedupBlueprintOverlap(newCells, existingCells) {
-  const minDist = HEX_R * Math.sqrt(3) * 0.9;
-  const bpCells = [];
+  // Build a fast lookup of all existing live cell positions
+  const existingPos = new Set();
   for (let i = 0; i < existingCells.length; i++) {
     const h = existingCells[i];
-    if (!h.dead && (h._blueprint || h.type === 'ROYAL_GUARD' || h.type === 'QUEEN' || h.type === 'UNBREAKABLE' || h.type === 'PORTAL' || h.type === 'BOOST')) bpCells.push(h);
+    if (!h.dead) existingPos.add(`${Math.round(h.x)},${Math.round(h.y)}`);
   }
-  if (bpCells.length === 0) return newCells;
+  if (existingPos.size === 0) return newCells;
   let w = 0;
   for (let i = 0; i < newCells.length; i++) {
     const c = newCells[i];
     if (c._blueprint) { newCells[w++] = c; continue; }
-    let overlap = false;
-    for (let j = 0; j < bpCells.length; j++) {
-      if (Math.hypot(c.x - bpCells[j].x, c.y - bpCells[j].y) < minDist) {
-        overlap = true; break;
-      }
-    }
-    if (!overlap) newCells[w++] = c;
+    const key = `${Math.round(c.x)},${Math.round(c.y)}`;
+    if (!existingPos.has(key)) newCells[w++] = c;
   }
   newCells.length = w;
   return newCells;
@@ -6359,7 +6402,7 @@ function spawnChunk(chunkTop, depth, seed) {
 function spawnBossGateChunk(chunkTop) {
   const rowH = HEX_R * Math.sqrt(3);
   const bandTop = chunkTop;
-  const bandBot = chunkTop + rowH * 2;   // 2 rows tall
+  const bandBot = chunkTop + rowH * 3;   // 3 rows tall
   const positions = enumHexPositions(bandTop, bandBot);
   const guardCells = [];
   const gateIndex = bossGates.length;
@@ -6377,8 +6420,8 @@ function spawnBossGateChunk(chunkTop) {
 function spawnQueenCluster(gateY, gateIndex) {
   const rowH = HEX_R * Math.sqrt(3);
   const colW = HEX_R * 1.5;
-  // Target center: middle of screen, 1.5 chunks below the barrier
-  const targetY = gateY + HIVE_CONFIG.CHUNK_HEIGHT * 1.5;
+  // Target center: middle of screen, 2.5 chunks below the barrier
+  const targetY = gateY + HIVE_CONFIG.CHUNK_HEIGHT * 2.5;
   // Find the nearest grid column to screen center
   const centerCol = Math.round((W / 2 - HEX_R) / colW);
   // Snap to nearest grid row in that column
@@ -6534,7 +6577,7 @@ let _isRushing           = false; // true when camera scrolling fast with multip
 let bossGates = []; // { guardCells:[], queenCells:[], hp, maxHp, gateY, dead }
 let _pendingBossGate = false; // true when a queen spawn was deferred due to blueprint proximity
 const BOSS_GATE_INTERVAL = 20;        // chunks between boss gates (~100 hex rows)
-const BOSS_GATE_QUEEN_HP_BASE = 100;  // base HP for first queen
+const BOSS_GATE_QUEEN_HP_BASE = 66;   // base HP for first queen (-33%)
 function getBossGateHP() {
   return Math.min(500, BOSS_GATE_QUEEN_HP_BASE + bossGates.length * 50);
 }
@@ -6551,7 +6594,7 @@ const QUEEN_ATK = {
   splotchDur:   240,        // 4s screen honey
   babyHendsDur: 300,        // 5s shrink
   splitDur:     480,        // 8s split form
-  shrinkFactor: 0.55,       // paddle shrinks to 55%
+  shrinkFactor: 0.67,       // paddle shrinks to 67% (-33%)
 };
 let queenDebuffs = { stinger:0, babyHends:0, splotches:[] };
 let _queenStingerProj = null;  // {x,y,tx,ty,t,maxT} — active projectile
@@ -6559,6 +6602,7 @@ let _queenStingerProj = null;  // {x,y,tx,ty,t,maxT} — active projectile
 function _resetQueenDebuffs() {
   queenDebuffs = { stinger:0, babyHends:0, splotches:[] };
   _queenStingerProj = null;
+  _hendCurrentPW = 0; // reset smooth paddle width lerp
 }
 
 function _queenWeightedAttack(queenNum) {
@@ -6593,7 +6637,7 @@ function _executeQueenAttack(gate, atkId) {
       _queenStingerProj = {
         x:center.x, y:center.y,
         tx: paddle.x + getPW()/2, ty: paddleScreenY,
-        t:0, maxT:18
+        t:0, maxT:72          // 1.2 seconds travel time
       };
       triggerShake(3, 8);
       sfx.bomb();
@@ -6905,25 +6949,25 @@ function renderQueenAttacks_screen() {
   if (queenDebuffs.babyHends > 0) activeDebuffs.push({name:'SHRINK',col:'#ff40b0',frac:queenDebuffs.babyHends/QUEEN_ATK.babyHendsDur});
   if (queenDebuffs.splotches.length > 0) activeDebuffs.push({name:'HONEY',col:'#d4a020',frac:1});
   if (activeDebuffs.length > 0) {
-    const dbY = 36;
-    const dbW = 140;
+    const dbY = 40;
+    const dbW = 180;
     for (let i=0;i<activeDebuffs.length;i++) {
       const db = activeDebuffs[i];
       const dbX = (W - activeDebuffs.length*(dbW+10))/2 + i*(dbW+10);
       // Background
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(dbX, dbY, dbW, 14);
+      ctx.fillRect(dbX, dbY, dbW, 18);
       // Fill bar
       ctx.fillStyle = db.col;
-      ctx.fillRect(dbX, dbY, dbW*db.frac, 14);
+      ctx.fillRect(dbX, dbY, dbW*db.frac, 18);
       // Border
       ctx.strokeStyle = db.col; ctx.lineWidth = 1;
-      ctx.strokeRect(dbX, dbY, dbW, 14);
+      ctx.strokeRect(dbX, dbY, dbW, 18);
       // Label
       ctx.fillStyle = '#fff';
-      ctx.font = '6px "Press Start 2P",monospace';
+      ctx.font = '8px "Press Start 2P",monospace';
       ctx.textAlign = 'center';
-      ctx.fillText(db.name, dbX+dbW/2, dbY+11);
+      ctx.fillText(db.name, dbX+dbW/2, dbY+14);
     }
     ctx.textAlign = 'left';
   }
@@ -7205,10 +7249,10 @@ function update() {
       }
     }
     hexes.length = _hw;
-    // Kill zone: progressively crack cells in bottom 3 rows above paddle
+    // Kill zone: progressively crack cells in bottom 4 rows above paddle
     const _kzRowH = HEX_R * Math.sqrt(3);
-    const _kzTop = scrollY + PADDLE_Y - _kzRowH * 3;
-    const _kzH = _kzRowH * 3;
+    const _kzTop = scrollY + PADDLE_Y - _kzRowH * 4;
+    const _kzH = _kzRowH * 4;
     for (let i = 0; i < hexes.length; i++) {
       const h = hexes[i];
       if (h.dead || h.y <= _kzTop) continue;
@@ -7376,11 +7420,11 @@ function update() {
     }
     hexes.length = _hw;
   }
-  // Kill zone: progressively crack cells in bottom 3 rows above paddle
+  // Kill zone: progressively crack cells in bottom 4 rows above paddle
   {
     const _kzRowH = HEX_R * Math.sqrt(3);
-    const _kzTop = scrollY + PADDLE_Y - _kzRowH * 3;
-    const _kzH = _kzRowH * 3;
+    const _kzTop = scrollY + PADDLE_Y - _kzRowH * 4;
+    const _kzH = _kzRowH * 4;
     for (let i = 0; i < hexes.length; i++) {
       const h = hexes[i];
       if (h.dead || h.y <= _kzTop) continue;
@@ -7422,9 +7466,9 @@ function update() {
   {
     const rowH_cz = HEX_R * Math.sqrt(3);
     const czBottom = paddleWorldY;
-    const czTop1 = czBottom - rowH_cz * 3; // tier 1: 3 rows
-    const czTop2 = czBottom - rowH_cz * 2; // tier 2: 2 rows
-    const czTop3 = czBottom - rowH_cz * 1; // tier 3: 1 row
+    const czTop1 = czBottom - rowH_cz * 4; // tier 1: 4 rows
+    const czTop2 = czBottom - rowH_cz * 3; // tier 2: 3 rows
+    const czTop3 = czBottom - rowH_cz * 2; // tier 3: 2 rows
     const tier3Margin = EDGE_MARGIN + HEX_R * 1.5 * 2; // two columns inward from edge
 
     for (const h of hexes) {
@@ -7443,12 +7487,12 @@ function update() {
       const czBottomRow = czBottom - rowH_cz * 0.5; // bottom row: last half-cell above paddle
       if (h.y >= czBottomRow) {
         inZone = true; // bottom row cleanup: ALL cells at hend level
-      } else if (isEdgeCell(h.x) && h.y >= czTop1) {
-        inZone = true; // tier 1: edge cells, 3 rows
-      } else if (isNearEdge(h.x) && h.y >= czTop2) {
-        inZone = true; // tier 2: one column inward, 2 rows
-      } else if ((h.x < tier3Margin || h.x > W - tier3Margin) && h.y >= czTop3) {
-        inZone = true; // tier 3: two columns inward, 1 row
+      } else if (h.y >= czTop1) {
+        inZone = true; // tier 1: full width, 4 rows
+      } else if (h.y >= czTop2) {
+        inZone = true; // tier 2: full width, 3 rows
+      } else if (h.y >= czTop3) {
+        inZone = true; // tier 3: full width, 2 rows
       }
 
       if (!inZone) continue;
@@ -7709,7 +7753,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
     // Capture visible cells for hive collapse death animation
     const fallLine = paddleWorldY + CONFIG.HEND_COLL_H + 40;
     const _prevCount = bees.length;
-    bees=bees.filter(b=>b.y-BALL_R<fallLine);
+    bees=bees.filter(b=>b.y<paddleWorldY||b.y-BALL_R<fallLine); // safe above hend
     if (bees.length === 0 && _prevCount > 0 && !deathAnim && !demoMode && !hasHendOfGod && !hendOfGodAnim) {
       const vTop = scrollY - HEX_R, vBot = scrollY + H + HEX_R;
       const collapseCells = hexes.filter(h => !h.dead && h.y >= vTop && h.y <= vBot)
@@ -7801,8 +7845,8 @@ if (b._boostCooldown > 0) b._boostCooldown--;
     const a = beeSusAnim;
     a.frame++;
     const prog = a.frame / a.maxFrames;
-    // Phase 1 (0-40%): swoop up from bottom (screen space)
-    if (prog < 0.4) a.screenY += (a.targetScreenY - a.screenY) * 0.15;
+    // Phase 1 (0-40%): swoop up from bottom (screen space) — gentler lerp for 3× duration
+    if (prog < 0.4) a.screenY += (a.targetScreenY - a.screenY) * 0.05;
     // Phase 2 (35%): kill all visible cells at peak
     if (!a.killTriggered && prog >= 0.35) {
       a.killTriggered = true;
@@ -7824,8 +7868,11 @@ if (b._boostCooldown > 0) b._boostCooldown--;
       }
       _hexGridRebuild();
     }
-    // Phase 3 (40-100%): drift upward and fade
-    if (prog >= 0.4) a.screenY -= 1;
+    // Phase 3 (40-100%): drift upward and fade — whoosh on exit
+    if (prog >= 0.4) {
+      a.screenY -= 0.5;
+      if (!a.whooshPlayed && prog >= 0.5) { a.whooshPlayed = true; sfx.whoosh(); }
+    }
     if (a.frame >= a.maxFrames) beeSusAnim = null;
   }
 
@@ -8130,7 +8177,7 @@ function render() {
     ctx.restore();
   }
 
-  // ── BEE-SUS divine swoop sprite ──
+  // ── BEE-SUS divine swoop sprite (screen-space overlay) ──
   if (beeSusAnim) {
     const a = beeSusAnim;
     const prog = a.frame / a.maxFrames;
@@ -8138,6 +8185,7 @@ function render() {
                 : 0.95 * Math.max(0, 1 - (prog - 0.35) / 0.65);
     const sy = a.screenY;
     ctx.save();
+    ctx.translate(0, scrollY);           // pop to screen space (undo world transform)
     ctx.globalAlpha = Math.max(0, alpha);
     // Large golden glow aura
     const glowR = 150;
@@ -8147,9 +8195,8 @@ function render() {
     glow.addColorStop(1, 'rgba(240,200,60,0)');
     ctx.fillStyle = glow;
     ctx.fillRect(a.x - glowR, sy - glowR, glowR * 2, glowR * 2);
-    // Massive bee sprite — 120px wide
-    const fIdx = beeFrameSeq[Math.floor(tick / 3) % beeFrameSeq.length];
-    const beeImg = beeFrames[fIdx];
+    // Massive bee sprite — use fixed HI-FLIGHT frame to avoid flicker at large scale
+    const beeImg = beeFrames[0];
     if (beeImg) {
       const sz = 180;
       ctx.imageSmoothingEnabled = true;
@@ -8379,11 +8426,11 @@ function render() {
       scrollY < g.gateY + HIVE_CONFIG.CHUNK_HEIGHT * 4 &&
       scrollY > g.gateY - H * 0.5);
     if (activeBoss) {
-      const bw = 160, bh = 10;
+      const bw = 220, bh = 14;
       const bx = (W - bw) / 2, by = 20;
       // Background
       ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillRect(bx - 3, by - 3, bw + 6, bh + 16);
+      ctx.fillRect(bx - 4, by - 4, bw + 8, bh + 20);
       // HP fill — magenta to gold gradient
       const frac = Math.max(0, activeBoss.hp / activeBoss.maxHp);
       const hpGrad = ctx.createLinearGradient(bx, by, bx + bw * frac, by);
@@ -8396,9 +8443,9 @@ function render() {
       ctx.strokeRect(bx, by, bw, bh);
       // Label
       ctx.fillStyle = '#ffd700';
-      ctx.font = '6px "Press Start 2P",monospace';
+      ctx.font = '8px "Press Start 2P",monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('QUEEN', W / 2, by + bh + 11);
+      ctx.fillText('QUEEN', W / 2, by + bh + 13);
       ctx.textAlign = 'left';
     }
   }
@@ -8598,7 +8645,7 @@ function _renderGuideIcons() {
   tick = 10;
   for (const typeName in CELL_TYPES) {
     ctx.clearRect(0, 0, sz, sz);
-    const tempHex = { x: sz / 2, y: sz / 2, type: typeName, hp: CELL_TYPES[typeName].hp, dead: false, flash: 0, ci: 0 };
+    const tempHex = { x: sz / 2, y: sz / 2, type: typeName, hp: CELL_TYPES[typeName].hp, dead: false, flash: 0, ci: 0, _guideIcon: true };
     if (typeName === 'BOOST') tempHex.boostDir = 1;
     if (typeName === 'PORTAL') { tempHex.portalRole = 'sender'; tempHex.portalChannel = 0; }
     try { drawHex(tempHex); } catch(e) { /* skip */ }
@@ -10834,14 +10881,14 @@ function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
   if (accId && _spBracCols[accId]) {
     const [bcO, bcI] = _spBracCols[accId];
     const bx = ox + dw * 0.33, by = oy + dh * 0.88;
-    const bw = dw * 0.22, bh = dh * 0.055;
+    const bw = dw * 0.22, bh = dh * 0.058;
     cx2.strokeStyle = bcO;
-    cx2.lineWidth = Math.max(3, dw * 0.05);
+    cx2.lineWidth = Math.max(3, dw * 0.058);
     cx2.beginPath();
     cx2.ellipse(bx, by, bw, bh, 0, Math.PI, Math.PI * 2);
     cx2.stroke();
     cx2.strokeStyle = bcI;
-    cx2.lineWidth = Math.max(1, dw * 0.018);
+    cx2.lineWidth = Math.max(1, dw * 0.020);
     cx2.beginPath();
     cx2.ellipse(bx, by - 0.5, bw * 0.85, bh * 0.7, 0, Math.PI * 1.05, Math.PI * 1.95);
     cx2.stroke();
