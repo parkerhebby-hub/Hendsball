@@ -1199,11 +1199,19 @@ const SaveManager = {
 const PATCH_NOTES = [
   {
     version: '1.3.2',
-    date: '2026-03-26',
+    date: '2026-03-27',
     notes: [
-      '+ ADDED PIERCING STING UPGRADE (UNTESTED)',
-      '+ ADDED TONS OF OTHER BULLSHIT, OPTIMIZATION, BLAH BLAH BLAH',
-      '* STILL WORKING ON QUEEN DEFENSIVE ATTACKS AND OVERLAPPING CELLS',
+      '+ ADDED CRACK EFFECTS ON QUEEN CELLS AS BOSS GATE HP DROPS',
+      '+ ADDED CONTINUE NOW RESTORES THE FULL HIVE — NO MORE BYPASSING QUEENS',
+      '* REVISED PIERCING STING UPGRADE — BEES PIERCE THROUGH ONE-SHOT CELLS (STACKS 6x)',
+      "* QUEENS SHOULD NOW ONLY APPEAR AT DEPTHS 200, 400, 600, 800 & 1000 BUT FOR SOME REASON THE GAME STRUGGLES HARD WITH THIS SO WE'LL FACKIN' SEE THERE BUD",
+      '* REDUCED QUEEN HP BY 50% AND SCALED PROGRESSION',
+      '* REMOVED STINGER QUEEN ATTACK CUZ STUPID',
+      '* REMOVED DASHED LINES FROM STARDUST TRAIL — SPARKLES ONLY',
+      '* IMPROVED COUNTDOWN FONT RENDERING',
+      '* ADJUSTED SKIN TONE COLORS — REDUCED GREEN TINT CUZ EW',
+      '* SLOWED IN-GAME BEE WING FLAP SPEED BY 10%',
+      '- TRIED TO FIX "CONTINUE" CLEARING CELLS AND SKIPPING BOSS GATES',
     ],
   },
   {
@@ -1523,12 +1531,12 @@ let lifetimeHoney = 0; // loaded from SaveManager meta
 ;(function() { const m = SaveManager.loadMeta(); lifetimeHoney = m.totalLifetimeHoney || 0; })();
 
 const SKIN_TONES = [
-  { id:'porcelain', name:'PORCELAIN', cost:0, desc:'', base:[240,200,168], light:[255,224,200], shadow:[200,148,106] },
-  { id:'peach',     name:'PEACH',     cost:0, desc:'', base:[230,190,148], light:[245,216,188], shadow:[170,120,72]  },
-  { id:'honey',     name:'HONEY',     cost:0, desc:'', base:[200,142,76],  light:[216,166,98],  shadow:[144,96,38]   },
-  { id:'caramel',   name:'CARAMEL',   cost:0, desc:'', base:[160,112,64],  light:[184,136,88],  shadow:[112,72,32]   },
-  { id:'espresso',  name:'ESPRESSO',  cost:0, desc:'', base:[112,72,48],   light:[136,96,72],   shadow:[74,40,24]    },
-  { id:'cocoa',     name:'SEYMOUR',   cost:0, desc:'', base:[80,48,32],    light:[104,72,56],   shadow:[48,24,16]    },
+  { id:'porcelain', name:'PORCELAIN', cost:0, desc:'', base:[240,190,168], light:[255,210,200], shadow:[200,140,106] },
+  { id:'peach',     name:'PEACH',     cost:0, desc:'', base:[230,178,148], light:[245,202,188], shadow:[170,112,72]  },
+  { id:'honey',     name:'HONEY',     cost:0, desc:'', base:[200,134,76],  light:[216,156,98],  shadow:[144,90,38]   },
+  { id:'caramel',   name:'CARAMEL',   cost:0, desc:'', base:[160,106,64],  light:[184,130,88],  shadow:[112,68,32]   },
+  { id:'espresso',  name:'ESPRESSO',  cost:0, desc:'', base:[112,68,48],   light:[136,90,72],   shadow:[74,36,24]    },
+  { id:'cocoa',     name:'SEYMOUR',   cost:0, desc:'', base:[80,44,32],    light:[104,66,56],   shadow:[48,22,16]    },
 ];
 const DEFAULT_SKIN = 1; // Peach
 
@@ -2206,11 +2214,6 @@ function getPW() {
     const rampIn = Math.min(1, (QUEEN_ATK.babyHendsDur - queenDebuffs.babyHends) / 30);
     const factor = 1 - (1 - QUEEN_ATK.shrinkFactor) * rampIn;
     pw = Math.round(pw * factor);
-  }
-  // Queen stinger debuff removes twoHends bonus (but capped — never smaller than babyHends)
-  if (queenDebuffs.stinger > 0 && powers.twoHends >= 1) {
-    const singlePw = Math.round(base);
-    pw = Math.max(pw, singlePw);
   }
   // Smooth lerp toward target width — never snap sizes
   if (_hendCurrentPW === 0) _hendCurrentPW = pw;
@@ -3400,11 +3403,14 @@ function drawTrail(b) {
     const ey = mx1y + (d.y - mx1y) * GAP_RATIO;
 
     // Draw: start → center → end (bends naturally at corners)
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(d.x, d.y);
-    ctx.lineTo(ex, ey);
-    ctx.stroke();
+    // Stardust uses only sparkles/stars — skip the dashed line stroke
+    if (!(tracerObj && tracerObj.id === 'stardust')) {
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(d.x, d.y);
+      ctx.lineTo(ex, ey);
+      ctx.stroke();
+    }
     if (ctx.shadowBlur) { ctx.shadowBlur = 0; ctx.shadowColor = 'transparent'; }
   }
 
@@ -4297,6 +4303,17 @@ function drawHex(h) {
     ctx.strokeStyle = '#ff60a0'; ctx.lineWidth = 1.5;
     hexPath(hexPts(h.x, h.y, HEX_R * 1.15)); ctx.stroke();
     ctx.globalAlpha = 1;
+    // Cracks on queen cell based on boss gate HP
+    const _qGate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
+    if (_qGate && _qGate.maxHp > 0) {
+      const ratio = _qGate.hp / _qGate.maxHp;
+      let crackLvl = 0;
+      if (ratio <= 0.8) crackLvl = 1;
+      if (ratio <= 0.6) crackLvl = 2;
+      if (ratio <= 0.4) crackLvl = 3;
+      if (ratio <= 0.2) crackLvl = 4;
+      if (crackLvl > 0) drawCracks(h.x, h.y, crackLvl, Math.round(h.x)*1000+Math.round(h.y));
+    }
   } else {
     // Default cells (NORMAL, THICK, etc.) — no inner hex stroke, just cracks when damaged
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
@@ -6628,13 +6645,13 @@ function spawnChunk(chunkTop, depth, seed) {
 
   // Blueprint stamps run LAST so they override everything
   // Spawn blueprints every 10-20 chunks (50-100 cell depths), in random order
-  // Skip if too close to a boss gate depth (within 3 chunks of a multiple of BOSS_GATE_INTERVAL)
+  // Skip if too close to a boss gate depth (within 3 chunks of a BOSS_GATE_DEPTHS entry)
   if (_loadedBlueprints.length > 0 && depth >= _nextBlueprintDepth) {
-    const distToGate = depth % BOSS_GATE_INTERVAL;
-    const nearGate = distToGate <= 3 || distToGate >= BOSS_GATE_INTERVAL - 3;
+    const _nearestGateDist = Math.min(...BOSS_GATE_DEPTHS.map(d => Math.abs(depth - d)));
+    const nearGate = _nearestGateDist <= 3;
     if (nearGate) {
       // Push blueprint past the gate zone
-      _nextBlueprintDepth = depth + (BOSS_GATE_INTERVAL - distToGate) + 4;
+      _nextBlueprintDepth = depth + _nearestGateDist + 4;
     } else {
       const bp = _loadedBlueprints[Math.floor(rng() * _loadedBlueprints.length)];
       if (bp) bp.stamp(hexMap, rng);
@@ -6880,10 +6897,10 @@ let _isRushing           = false; // true when camera scrolling fast with multip
 // ── Boss Gate system ──
 let bossGates = []; // { guardCells:[], queenCells:[], hp, maxHp, gateY, dead }
 let _pendingBossGate = false; // true when a queen spawn was deferred due to blueprint proximity
-const BOSS_GATE_INTERVAL = 20;        // chunks between boss gates (~100 hex rows)
-const BOSS_GATE_QUEEN_HP_BASE = 66;   // base HP for first queen (-33%)
+const BOSS_GATE_DEPTHS = [200, 400, 600, 800, 1000]; // exact chunk depths for boss gates
+const BOSS_GATE_QUEEN_HP_BASE = 33;   // base HP for first queen (halved)
 function getBossGateHP() {
-  return Math.min(500, BOSS_GATE_QUEEN_HP_BASE + bossGates.length * 50);
+  return Math.min(250, BOSS_GATE_QUEEN_HP_BASE + bossGates.length * 25);
 }
 const BOSS_GATE_PORTAL_EXCLUSION = 15; // rows of no-portal zone each side
 
@@ -6893,7 +6910,7 @@ const QUEEN_ATK = {
   cooldownMin:      240,    // 4s min between attacks
   cooldownMax:      480,    // 8s max between attacks
   telegraphFrames:  60,     // 1s telegraph before attack fires
-  weights: { stinger:3, splotch:2, babyHends:2, teleport:2, split:1 },
+  weights: { splotch:2, babyHends:2, teleport:2, split:1 },
   stingerDur:   300,        // 5s debuff
   splotchDur:   240,        // 4s screen honey
   babyHendsDur: 300,        // 5s shrink
@@ -6936,23 +6953,6 @@ function _executeQueenAttack(gate, atkId) {
   if (!center) return;
 
   switch(atkId) {
-    case 'stinger': {
-      // Spawn dodgeable orb from queen toward paddle
-      const paddleWorldY = scrollY + PADDLE_Y;
-      const targetX = paddle.x + getPW()/2;
-      const dx = targetX - center.x, dy = paddleWorldY - center.y;
-      const dist = Math.sqrt(dx*dx + dy*dy) || 1;
-      const spd = 1.5; // slow enough to dodge
-      _queenAttackOrbs.push({
-        x: center.x, y: center.y,
-        vx: dx/dist * spd, vy: dy/dist * spd,
-        type: 'stinger', radius: 8,
-        born: performance.now()
-      });
-      sfx.bomb();
-      broodMsgs.push({x:center.x,y:center.y-20,life:60,txt:'STINGER!'});
-      break;
-    }
     case 'splotch': {
       // Spawn 3-5 amber blobs at random screen positions
       const count = 3 + Math.floor(Math.random()*3);
@@ -7047,7 +7047,6 @@ function _queenSplit(gate) {
 
 function updateQueenAttacks() {
   // Debuff tick-down
-  if (queenDebuffs.stinger > 0) queenDebuffs.stinger--;
   if (queenDebuffs.babyHends > 0) queenDebuffs.babyHends--;
   // Splotch drip + fade
   for (const sp of queenDebuffs.splotches) {
@@ -7076,10 +7075,7 @@ function updateQueenAttacks() {
     if (orb.x + orb.radius > paddleLeft && orb.x - orb.radius < paddleRight &&
         orb.y + orb.radius > paddleWorldTop && orb.y - orb.radius < paddleWorldBot) {
       // Hit! Apply debuff
-      if (orb.type === 'stinger') {
-        queenDebuffs.stinger = QUEEN_ATK.stingerDur;
-        triggerShake(3, 8);
-      } else if (orb.type === 'babyHends') {
+      if (orb.type === 'babyHends') {
         queenDebuffs.babyHends = QUEEN_ATK.babyHendsDur;
         triggerShake(2, 6);
       }
@@ -7161,7 +7157,7 @@ function updateQueenAttacks() {
       gate.atkCurrent = _queenWeightedAttack(gate._queenNumber || 0);
       // Don't re-split if just reformed
       if (gate.atkCurrent === 'split' && gate._splitOrigins) {
-        gate.atkCurrent = 'stinger'; // fallback
+        gate.atkCurrent = 'splotch'; // fallback
       }
       gate.atkTelegraph = QUEEN_ATK.telegraphFrames;
       gate.atkState = 'telegraph';
@@ -7190,29 +7186,6 @@ function renderQueenAttacks_world() {
     const prog = 1 - gate.atkTelegraph / QUEEN_ATK.telegraphFrames;
 
     switch(gate.atkCurrent) {
-      case 'stinger': {
-        // Pulsing magenta glow on queen center
-        const pulse = 0.4 + 0.6 * Math.sin(prog * Math.PI * 6);
-        ctx.globalAlpha = pulse * prog;
-        const g = ctx.createRadialGradient(center.x,center.y,0,center.x,center.y,HEX_R*2);
-        g.addColorStop(0,'rgba(208,48,136,0.6)');
-        g.addColorStop(1,'rgba(208,48,136,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(center.x,center.y,HEX_R*2,0,Math.PI*2); ctx.fill();
-        // Growing stinger line toward paddle
-        const paddleScreenWorldY = scrollY + PADDLE_Y;
-        ctx.strokeStyle = `rgba(255,60,180,${prog*0.7})`;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4,4]);
-        ctx.beginPath();
-        ctx.moveTo(center.x, center.y);
-        ctx.lineTo(center.x + (paddle.x+getPW()/2-center.x)*prog,
-                   center.y + (paddleScreenWorldY-center.y)*prog);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-        break;
-      }
       case 'splotch': {
         // Amber drip particles from queen cells
         ctx.globalAlpha = prog * 0.5;
@@ -7273,11 +7246,7 @@ function renderQueenAttacks_world() {
     const pulse = 0.7 + 0.3 * Math.sin(performance.now() * 0.008);
     const r = orb.radius * pulse;
     const grd = ctx.createRadialGradient(orb.x, orb.y, 0, orb.x, orb.y, r * 2);
-    if (orb.type === 'stinger') {
-      grd.addColorStop(0, 'rgba(255,180,60,0.95)');
-      grd.addColorStop(0.4, 'rgba(255,80,20,0.7)');
-      grd.addColorStop(1, 'rgba(255,40,0,0)');
-    } else {
+    {
       grd.addColorStop(0, 'rgba(220,130,255,0.95)');
       grd.addColorStop(0.4, 'rgba(160,40,200,0.7)');
       grd.addColorStop(1, 'rgba(120,20,160,0)');
@@ -7285,7 +7254,7 @@ function renderQueenAttacks_world() {
     ctx.fillStyle = grd;
     ctx.beginPath(); ctx.arc(orb.x, orb.y, r * 2, 0, Math.PI * 2); ctx.fill();
     // Bright core
-    ctx.fillStyle = orb.type === 'stinger' ? '#fff8e0' : '#f0d0ff';
+    ctx.fillStyle = '#f0d0ff';
     ctx.beginPath(); ctx.arc(orb.x, orb.y, r * 0.4, 0, Math.PI * 2); ctx.fill();
   }
 
@@ -7315,7 +7284,6 @@ function renderQueenAttacks_screen() {
 
   // Debuff indicators near boss HP bar
   const activeDebuffs = [];
-  if (queenDebuffs.stinger > 0) activeDebuffs.push({name:'STUNG',col:'#ff40b0',frac:queenDebuffs.stinger/QUEEN_ATK.stingerDur});
   if (queenDebuffs.babyHends > 0) activeDebuffs.push({name:'SHRINK',col:'#ff40b0',frac:queenDebuffs.babyHends/QUEEN_ATK.babyHendsDur});
   if (queenDebuffs.splotches.length > 0) activeDebuffs.push({name:'HONEY',col:'#d4a020',frac:1});
   if (activeDebuffs.length > 0) {
@@ -7618,7 +7586,7 @@ function update() {
 
       // Boss gate check — defer if blueprint cells are nearby
       const _hasBlueprintNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 5);
-      const _shouldSpawnBossI = (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) || _pendingBossGate;
+      const _shouldSpawnBossI = (totalDepth > 0 && BOSS_GATE_DEPTHS.includes(totalDepth)) || _pendingBossGate;
       if (_shouldSpawnBossI && !_hasBlueprintNear) {
         _pendingBossGate = false;
         const gateIndex = bossGates.length;
@@ -7643,7 +7611,7 @@ function update() {
         gate.queenCells = queenCells;
         hexes.push(...queenCells);
       } else {
-        if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && _hasBlueprintNear) _pendingBossGate = true;
+        if (totalDepth > 0 && BOSS_GATE_DEPTHS.includes(totalDepth) && _hasBlueprintNear) _pendingBossGate = true;
         hexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), hexes));
       }
 
@@ -7695,7 +7663,7 @@ function update() {
   if (dt <= 0 && !pickerTransition) return;  // fully frozen, skip physics
 
   tick++;
-  beeFrameTick += 4.8; // wing flap speed (100% faster for 5-frame cycle)
+  beeFrameTick += 4.32; // wing flap speed (-10% from 4.8)
   const pw=getPW();
 
   paddle.prevX = paddle.x;
@@ -7785,7 +7753,7 @@ function update() {
 
     // Boss gate check: every BOSS_GATE_INTERVAL chunks, defer if blueprint nearby
     const _bpNear = hexes.some(h => h._blueprint && Math.abs(h.y - chunkTop) < HIVE_CONFIG.CHUNK_HEIGHT * 5);
-    const _shouldSpawnBoss = (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0) || _pendingBossGate;
+    const _shouldSpawnBoss = (totalDepth > 0 && BOSS_GATE_DEPTHS.includes(totalDepth)) || _pendingBossGate;
     if (_shouldSpawnBoss && !_bpNear) {
       _pendingBossGate = false;
       const gateIndex = bossGates.length;
@@ -7811,7 +7779,7 @@ function update() {
       gate.queenCells = queenCells;
       hexes.push(...queenCells);
     } else {
-      if (totalDepth > 0 && totalDepth % BOSS_GATE_INTERVAL === 0 && _bpNear) _pendingBossGate = true;
+      if (totalDepth > 0 && BOSS_GATE_DEPTHS.includes(totalDepth) && _bpNear) _pendingBossGate = true;
       hexes.push(..._dedupBlueprintOverlap(spawnChunk(chunkTop, depth, seed), hexes));
     }
 
@@ -8350,7 +8318,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
     da.fadeBlack = prog < 0.5 ? 0 : Math.min(1, (prog - 0.5) / 0.4);
     // Animation complete
     if (da.frame >= da.maxFrames) {
-      for (const c of da.cells) { c.h.y = c.origY; c.h.dead = true; }
+      for (const c of da.cells) { c.h.y = c.origY; c.h.dead = true; c.h._deathAnimKilled = true; }
       deathAnim = null;
       gameOver=true;touchX=null;touchX2=null;touchIdLeft=null;touchIdRight=null;
       upgradeBannerActive=false;upgradeBannerChoices=[];upgradeBannerGeom=null;
@@ -11627,8 +11595,7 @@ function _shopLoop() {
               // Bright sparkly dash with flickering sparks + star crosses
               const sparkle = Math.sin(_shopTick * 0.15 + dy * 2.3) * 0.3 + 0.9;
               bx.strokeStyle = `rgba(255,250,220,${(alpha * sparkle).toFixed(2)})`;
-              // Draw the dash line first
-              bx.beginPath(); bx.moveTo(beeCX, dashY); bx.lineTo(beeCX, dashY + dashLen); bx.stroke();
+              // Sparkles only — no dashed line for stardust
               // Flickering sparks around each dash
               const dashMid = dashY + dashLen / 2;
               for (let sp = 0; sp < 3; sp++) {
@@ -11820,6 +11787,13 @@ function showContinuePrompt() {
     cdEl.remove();
     continueUsed = true;
     gameOver = false;
+    // Restore cells killed by death animation (not legitimately destroyed)
+    for (const h of hexes) {
+      if (h._deathAnimKilled) {
+        h.dead = false;
+        h._deathAnimKilled = false;
+      }
+    }
     // Clear active powerups
     deactivatePowerup();
     _beeLaxActive = false; timeScale = 1;
@@ -11951,7 +11925,7 @@ function startCountdown(cb) {
   let count = 3;
   // Use HTML overlay so countdown is visible above all panels
   const cdEl = document.createElement('div');
-  cdEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:10000;font-family:"Press Start 2P",monospace;font-size:min(64px,15vw);color:#f5c030;pointer-events:none;';
+  cdEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);z-index:10000;font-family:"Press Start 2P",monospace;font-size:min(64px,15vw);color:#f5c030;pointer-events:none;text-shadow:0 0 20px rgba(240,160,40,0.6),3px 3px 0 #4a2000;-webkit-font-smoothing:none;text-rendering:optimizeSpeed;';
   document.body.appendChild(cdEl);
   render(); // draw game backdrop on canvas
   cdEl.textContent = String(count);
