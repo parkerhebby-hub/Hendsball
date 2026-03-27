@@ -1198,6 +1198,15 @@ const SaveManager = {
 // ═══════════════════════════════════════════════════════════
 const PATCH_NOTES = [
   {
+    version: '1.3.2',
+    date: '2026-03-26',
+    notes: [
+      '+ ADDED PIERCING STING UPGRADE (UNTESTED)',
+      '+ ADDED TONS OF OTHER BULLSHIT, OPTIMIZATION, BLAH BLAH BLAH',
+      '* STILL WORKING ON QUEEN DEFENSIVE ATTACKS AND OVERLAPPING CELLS',
+    ],
+  },
+  {
     version: '1.3.1',
     date: '2026-03-26',
     notes: [
@@ -1516,7 +1525,7 @@ let lifetimeHoney = 0; // loaded from SaveManager meta
 const SKIN_TONES = [
   { id:'porcelain', name:'PORCELAIN', cost:0, desc:'', base:[240,200,168], light:[255,224,200], shadow:[200,148,106] },
   { id:'peach',     name:'PEACH',     cost:0, desc:'', base:[230,190,148], light:[245,216,188], shadow:[170,120,72]  },
-  { id:'honey',     name:'HONEY',     cost:0, desc:'', base:[200,152,80],  light:[216,176,104], shadow:[144,104,40]  },
+  { id:'honey',     name:'HONEY',     cost:0, desc:'', base:[200,142,76],  light:[216,166,98],  shadow:[144,96,38]   },
   { id:'caramel',   name:'CARAMEL',   cost:0, desc:'', base:[160,112,64],  light:[184,136,88],  shadow:[112,72,32]   },
   { id:'espresso',  name:'ESPRESSO',  cost:0, desc:'', base:[112,72,48],   light:[136,96,72],   shadow:[74,40,24]    },
   { id:'cocoa',     name:'SEYMOUR',   cost:0, desc:'', base:[80,48,32],    light:[104,72,56],   shadow:[48,24,16]    },
@@ -2181,6 +2190,7 @@ const powers = {
   powerExtend:   0,  // +2s powerup duration per stack
   fireBees:      0,  // residual burn damage on hit cells
   electricBees:  0,  // chain lightning to adjacent cells
+  piercingSting: 0,  // bee pierces through one-shot cells
 };
 
 function getChubScale() {
@@ -2309,6 +2319,16 @@ const ALL_POWERUPS = [
     color: '#40d0ff', outline: '#2080b0',
     max:  6,
     apply() { powers.electricBees++; }
+  },
+  {
+    id: 'piercingSting',
+    name: 'PIERCING STING',
+    short: 'PRCG',
+    desc: 'BEES PIERCE THROUGH CELLS\nTHAT BREAK IN 1 HIT.',
+    tag:  'DAMAGE',
+    color: '#30e0a0', outline: '#18805a',
+    max:  6,
+    apply() { powers.piercingSting++; }
   },
 ];
 
@@ -4445,9 +4465,17 @@ function checkHex(b) {
         }
       }
 
+      // ── Pre-compute damage (needed for pierce decision) ──
+      let dmg = 1 + powers.beefyBees;
+      if (_hasPU('beeGer')) dmg *= 2;
+      if (_hasPU('beeHemoth')) dmg = 5;
+      const willDie = (h.hp - dmg) <= 0;
+
       // Phase-through check (BOO-BEE or BEE-HEMOTH)
       const phasing = _hasPU('booBee') || _hasPU('beeHemoth');
-      if (!phasing) {
+      // PIERCING STING: skip reflection if bee will one-shot this cell
+      const piercing = powers.piercingSting > 0 && (b._pierceLeft || 0) > 0 && willDie;
+      if (!phasing && !piercing) {
         // reflect velocity
         const dot = b.vx*nx + b.vy*ny;
         if (dot < 0) { b.vx -= 2*dot*nx; b.vy -= 2*dot*ny; }
@@ -4496,11 +4524,7 @@ function checkHex(b) {
         return {dead: false, h};
       }
 
-      // damage
-      let dmg = 1 + powers.beefyBees;
-      // waxBreaker (CHUBBY HENDS) now affects paddle size, not damage
-      if (_hasPU('beeGer')) dmg *= 2;
-      if (_hasPU('beeHemoth')) dmg = 5;
+      // damage (dmg pre-computed above for pierce decision)
       h.hp -= dmg; h.flash = 10;
       triggerDiscovery(h.type); // track cell discovery for guide
 
@@ -5828,6 +5852,32 @@ function drawUpgradeIcon(ctx, cx, cy, r, id, color) {
       ctx.lineTo(s*0.1, -s*0.7);
       ctx.closePath();
       ctx.fill();
+      break;
+    case 'piercingSting': // Arrow piercing through a hex
+      // Arrow shaft
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.85);
+      ctx.lineTo(0, s*0.85);
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = s*0.12;
+      ctx.stroke();
+      // Arrowhead (V at top)
+      ctx.beginPath();
+      ctx.moveTo(-s*0.3, -s*0.45);
+      ctx.lineTo(0, -s*0.85);
+      ctx.lineTo(s*0.3, -s*0.45);
+      ctx.lineWidth = s*0.12;
+      ctx.stroke();
+      // Small hex outline in the middle
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 6 + i * Math.PI / 3;
+        const hx = Math.cos(a) * s * 0.3, hy = Math.sin(a) * s * 0.3;
+        if (i === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.lineWidth = s*0.08;
+      ctx.stroke();
       break;
     default:
       // Fallback: first letter
@@ -7907,6 +7957,8 @@ function update() {
   const newBees=[];
 
   for (const b of bees) {
+    // PIERCING STING: reset pierce charges each frame
+    b._pierceLeft = powers.piercingSting;
     // BEE-BEE size restore timer
     if (b._shrinkTimer > 0) { b._shrinkTimer--; if (b._shrinkTimer <= 0) b.sizeScale = 1.0; }
     // BEE-ELZEBUB bomb timer
@@ -8009,6 +8061,10 @@ if (b._boostCooldown > 0) b._boostCooldown--;
     let hit = _rushPhase ? null : checkHex(b);
     // Second pass catches bees pushed into indestructible cells (tunneling fix)
     if (hit && !hit.dead && hit.h.type === 'UNBREAKABLE') { const h2 = checkHex(b); if (h2) hit = h2; }
+    // PIERCING STING: loop processes multiple hits when bee pierces through one-shot cells
+    let _pierceLoop = true;
+    while (_pierceLoop) {
+    _pierceLoop = false;
     if (hit) {
       const h=hit.h;
       if (hit.dead) {
@@ -8092,12 +8148,21 @@ if (b._boostCooldown > 0) b._boostCooldown--;
           spawnDroplet(h.x,h.y);
           sfx.normal(); haptic(HAPTIC.normal); spawnParts(h.x,h.y,10,PAL.hexNorm);
         }
+
+        // PIERCING STING: if pierce charges remain, try to hit next cell
+        if (b._pierceLeft > 0) {
+          b._pierceLeft--;
+          spawnParts(h.x, h.y, 6, ['#30e0a0','#60ffc0','#a0ffe0']);
+          hit = checkHex(b);
+          if (hit) { _pierceLoop = true; continue; }
+        }
       } else {
         // partial hit flash
         sfx.hit(); haptic(HAPTIC.hit); spawnParts(h.x,h.y,4,['#fff','#ffc840']);
       }
       normSpd(b,b.speed);
     }
+    } // end pierce loop
     normSpd(b,b.speed);
   }
 
@@ -9003,6 +9068,16 @@ function _upgradeIconSVG(id, col) {
         <path d="M0,${-s*0.3} Q${s*0.2},${s*0.1} ${s*0.15},${s*0.4} Q0,${s*0.55} ${-s*0.15},${s*0.4} Q${-s*0.2},${s*0.1} 0,${-s*0.3}Z" fill="rgba(0,0,0,0.2)"/>`;
     case 'electricBees': // Lightning bolt
       return `<polygon points="${s*0.1},${-s*0.7} ${-s*0.25},${-s*0.05} ${s*0.05},${-s*0.05} ${-s*0.1},${s*0.7} ${s*0.35},0 0,0" fill="${c}"/>`;
+    case 'piercingSting': { // Arrow through hex
+      let hex = '';
+      for (let i = 0; i < 6; i++) {
+        const a = Math.PI / 6 + i * Math.PI / 3;
+        hex += `${Math.cos(a)*s*0.3},${Math.sin(a)*s*0.3} `;
+      }
+      return `<line x1="0" y1="${-s*0.85}" x2="0" y2="${s*0.85}" stroke="${c}" stroke-width="${s*0.12}" stroke-linecap="round"/>
+        <polyline points="${-s*0.3},${-s*0.45} 0,${-s*0.85} ${s*0.3},${-s*0.45}" stroke="${c}" stroke-width="${s*0.12}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <polygon points="${hex.trim()}" stroke="${c}" stroke-width="${s*0.08}" fill="none"/>`;
+    }
     default:
       return `<text x="0" y="4" text-anchor="middle" font-family="Press Start 2P,monospace" font-size="5" fill="${c}">?</text>`;
   }
