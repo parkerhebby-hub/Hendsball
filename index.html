@@ -112,7 +112,7 @@
     transition:text-shadow 0.4s ease-out;
   }
   #settingsPanel { background:#120800; inset:-12px; }
-  #shopPanel { background:#120800; inset:-12px; }
+  #shopPanel { background:#120800; inset:-12px; padding:20px 6px 6px 6px; align-items:center; }
   #statsPanel, #devPasscode, #devPanel { inset:-12px; }
   #shopBody {
     flex:1; width:100%; overflow-y:auto; overflow-x:hidden;
@@ -277,13 +277,26 @@
   #pause {
     background:#120800;
     inset:-12px;
-    padding:14px 6px 6px 6px;
+    padding:20px 6px 6px 6px;
     align-items:center;
   }
   #pauseBtns .ob { margin-left:auto; margin-right:auto; }
+  .panel-title {
+    font-family:'Press Start 2P',monospace;
+    font-size:0.70rem; color:#f0a020;
+    letter-spacing:3px; margin-bottom:6px; text-align:center;
+    flex-shrink:0;
+  }
+  .panel-back-btn {
+    margin:0 auto 6px auto !important;
+    padding:6px 0 !important;
+    font-size:0.38rem !important;
+    flex-shrink:0;
+    width:60%;
+  }
   #pauseTitle {
-    font-size:0.75rem; color:#f0a020;
-    letter-spacing:2px; margin-bottom:8px; text-align:center;
+    font-size:0.70rem; color:#f0a020;
+    letter-spacing:3px; margin-bottom:6px; text-align:center;
     flex-shrink:0;
   }
   #guideBody {
@@ -438,7 +451,7 @@
   </div>
 
   <div id="pause" class="panel">
-    <div id="pauseTitle" class="neon-glow-title">PAUSED</div>
+    <div id="pauseTitle" class="panel-title neon-glow-title">PAUSED</div>
     <div id="guideBody">
       <div class="gsec-title" style="text-align:center;">HOW TO PLAY</div>
       <div class="htp-item">
@@ -530,9 +543,9 @@
   </div>
 
   <div id="shopPanel" class="panel">
+    <div class="panel-title neon-glow-title">SHOP</div>
+    <button id="shopBackBtn" class="ob panel-back-btn">BACK</button>
     <div id="shopBody">
-      <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.60rem;letter-spacing:2px;padding:10px 0 6px 0;text-align:center;">SHOP</div>
-      <button id="shopBackBtn" class="ob" style="margin:0 auto 6px auto;">BACK</button>
 
       <!-- Two-column split: HEND left, BEE right -->
       <div style="display:flex;gap:8px;align-items:flex-start;">
@@ -1526,39 +1539,39 @@ const HEND_ACCESSORIES = [
 
 const BEE_SKINS = [
   { id:'classic', name:'DEFAULT',  cost:0, unlockDepth:0,    colors:null, desc:'' },
-  { id:'neon',    name:'NEON',     cost:0, unlockDepth:200,  colors:[[60,255,80],[50,210,65],[160,255,180]], desc:'' },
-  { id:'winter',  name:'WINTER',   cost:0, unlockDepth:350,  colors:[[220,220,220],[190,190,190],[250,250,250]], desc:'' },
-  { id:'crystal', name:'CRYSTAL',  cost:0, unlockDepth:500,  colors:[[140,220,255],[100,170,210],[200,240,255]], desc:'' },
-  { id:'royal',   name:'ROYAL',    cost:0, unlockDepth:700,  colors:[[180,140,255],[140,100,210],[220,200,255]], desc:'' },
-  { id:'hotPink', name:'HOT PINK', cost:0, unlockDepth:800,  colors:[[255,60,150],[200,40,120],[255,160,200]], desc:'' },
-  { id:'inferno', name:'INFERNO',  cost:0, unlockDepth:900,  colors:[[255,110,30],[200,75,15],[255,180,120]], desc:'' },
-  { id:'magma',   name:'MAGMA',    cost:0, unlockDepth:950,  colors:null, desc:'' },
-  { id:'rainbow', name:'RAINBOW',  cost:0, unlockDepth:1000, colors:null, desc:'' },
+  { id:'neon',    name:'NEON',     cost:0, unlockDepth:75,   colors:[[60,255,80],[50,210,65],[160,255,180]], desc:'' },
+  { id:'winter',  name:'WINTER',   cost:0, unlockDepth:150,  colors:[[220,220,220],[190,190,190],[250,250,250]], desc:'' },
+  { id:'crystal', name:'CRYSTAL',  cost:0, unlockDepth:225,  colors:[[140,220,255],[100,170,210],[200,240,255]], desc:'' },
+  { id:'royal',   name:'ROYAL',    cost:0, unlockDepth:300,  colors:[[180,140,255],[140,100,210],[220,200,255]], desc:'' },
+  { id:'hotPink', name:'HOT PINK', cost:0, unlockDepth:400,  colors:[[255,60,150],[200,40,120],[255,160,200]], desc:'' },
+  { id:'inferno', name:'INFERNO',  cost:0, unlockDepth:500,  colors:[[255,110,30],[200,75,15],[255,180,120]], desc:'' },
+  { id:'magma',   name:'MAGMA',    cost:0, unlockDepth:600,  colors:null, desc:'' },
+  { id:'rainbow', name:'RAINBOW',  cost:0, unlockDepth:666,  colors:null, desc:'' },
 ];
 
 const BEE_TRACERS = [
   { id:'classic',   name:'DEFAULT',    cost:0, unlockDepth:0,    color:'rgba(180,180,180,', desc:'' },
-  { id:'honeyDrip', name:'HONEY DRIP', cost:0, unlockDepth:200,  color:'rgba(245,192,48,',  desc:'' },
-  { id:'smoky',     name:'SHADOW',     cost:0, unlockDepth:300,  color:'rgba(15,15,15,',    desc:'' },
-  { id:'neon',      name:'NEON',       cost:0, unlockDepth:400,  color:'rgba(80,255,120,',  desc:'' },
-  { id:'stardust',  name:'STARDUST',   cost:0, unlockDepth:550,  color:'rgba(255,240,180,', desc:'' },
-  { id:'poopLogs',    name:'POOP LOGS',    cost:0, unlockDepth:750,  color:'rgba(90,55,20,',    desc:'' },
-  { id:'monaBalls',   name:'MONA BALLS',   cost:0, unlockDepth:850,  color:'rgba(255,140,30,',  desc:'' },
-  { id:'rainbow',     name:'RAINBOW',      cost:0, unlockDepth:1000, color:null,                desc:'' },
-  { id:'babyBuzzies', name:'BABY BUZZIES', cost:0, unlockDepth:1200, color:null,                desc:'' },
+  { id:'honeyDrip', name:'HONEY DRIP', cost:0, unlockDepth:75,   color:'rgba(245,192,48,',  desc:'' },
+  { id:'smoky',     name:'SHADOW',     cost:0, unlockDepth:150,  color:'rgba(15,15,15,',    desc:'' },
+  { id:'neon',      name:'NEON',       cost:0, unlockDepth:225,  color:'rgba(80,255,120,',  desc:'' },
+  { id:'stardust',  name:'STARDUST',   cost:0, unlockDepth:300,  color:'rgba(255,240,180,', desc:'' },
+  { id:'poopLogs',    name:'POOP LOGS',    cost:0, unlockDepth:400,  color:'rgba(90,55,20,',    desc:'' },
+  { id:'monaBalls',   name:'MONA BALLS',   cost:0, unlockDepth:500,  color:'rgba(255,140,30,',  desc:'' },
+  { id:'rainbow',     name:'RAINBOW',      cost:0, unlockDepth:600,  color:null,                desc:'' },
+  { id:'babyBuzzies', name:'BABY BUZZIES', cost:0, unlockDepth:666,  color:null,                desc:'' },
 ];
 
 // ── Bee Auras (cosmetic glow behind bee) ──
 const BEE_AURAS = [
   { id:'none',      name:'NONE',       cost:0, unlockDepth:0,   color:null },
-  { id:'golden',    name:'GOLDEN',     cost:0, unlockDepth:200, color:'rgba(255,200,60,' },
-  { id:'toxic',     name:'TOXIC',      cost:0, unlockDepth:350, color:'rgba(80,255,60,' },
-  { id:'ghostly',   name:'GHOSTLY',    cost:0, unlockDepth:500, color:'rgba(180,220,255,' },
-  { id:'infernal',  name:'INFERNAL',   cost:0, unlockDepth:700, color:'rgba(255,80,30,' },
-  { id:'royal',     name:'ROYAL',      cost:0, unlockDepth:900, color:'rgba(180,100,255,' },
-  { id:'bloom',     name:'BLOOM',      cost:0, unlockDepth:1100, color:'rgba(255,100,180,' },
-  { id:'moonlight', name:'MOONLIGHT',  cost:0, unlockDepth:1300, color:'rgba(220,230,255,' },
-  { id:'eclipse',   name:'ECLIPSE',    cost:0, unlockDepth:1500, color:'rgba(120,40,160,'   },
+  { id:'golden',    name:'GOLDEN',     cost:0, unlockDepth:75,  color:'rgba(255,200,60,' },
+  { id:'toxic',     name:'TOXIC',      cost:0, unlockDepth:150, color:'rgba(80,255,60,' },
+  { id:'ghostly',   name:'GHOSTLY',    cost:0, unlockDepth:225, color:'rgba(180,220,255,' },
+  { id:'infernal',  name:'INFERNAL',   cost:0, unlockDepth:300, color:'rgba(255,80,30,' },
+  { id:'royal',     name:'ROYAL',      cost:0, unlockDepth:400, color:'rgba(180,100,255,' },
+  { id:'bloom',     name:'BLOOM',      cost:0, unlockDepth:500, color:'rgba(255,100,180,' },
+  { id:'moonlight', name:'MOONLIGHT',  cost:0, unlockDepth:600, color:'rgba(220,230,255,' },
+  { id:'eclipse',   name:'ECLIPSE',    cost:0, unlockDepth:666, color:'rgba(120,40,160,'   },
 ];
 let selectedAura = localStorage.getItem('hendsbee_aura') || 'none';
 
@@ -9902,7 +9915,9 @@ function showPause(showGuide) {
   const gb = document.getElementById('guideBody');
   const pb = document.getElementById('pauseBtns');
   const bb = document.getElementById('guideBackBtn');
+  const pt = document.getElementById('pauseTitle');
   if (showGuide) {
+    if (pt) pt.textContent = 'GUIDE';
     gb.style.display = '';
     gb.scrollTop = 0;
     if (pb) pb.style.display = 'none';
@@ -9910,6 +9925,7 @@ function showPause(showGuide) {
     pausePanel.style.justifyContent = 'flex-start';
     if (window._startGuideBeeAnim) window._startGuideBeeAnim();
   } else {
+    if (pt) pt.textContent = 'PAUSED';
     gb.style.display = 'none';
     if (pb) pb.style.display = '';
     if (bb) bb.style.display = 'none';
@@ -9982,10 +9998,10 @@ function hidePause() { pausePanel.classList.remove('show'); }
 
   // BACK button at top of pause panel (below title), only visible in guide view
   const guideBack = document.createElement('button');
-  guideBack.className = 'ob';
+  guideBack.className = 'ob panel-back-btn';
   guideBack.id = 'guideBackBtn';
   guideBack.textContent = 'BACK';
-  guideBack.style.cssText = 'margin:8px auto 8px auto;display:none;';
+  guideBack.style.cssText = 'display:none;';
   guideBack.onclick = () => {
     if (demoMode) {
       hidePause();
