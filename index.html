@@ -1185,6 +1185,13 @@ const SaveManager = {
 // ═══════════════════════════════════════════════════════════
 const PATCH_NOTES = [
   {
+    version: '1.3.1',
+    date: '2026-03-26',
+    notes: [
+      '* FIXED A BUNCH OF FUCKED UP SHIT FROM THE RECENT "BIG UPDATE"',
+    ],
+  },
+  {
     version: '1.3',
     date: '2026-03-26',
     notes: [
@@ -2022,7 +2029,7 @@ function loadBeeSprites() {
     // New sprites have 100% content fill → draw directly at target size.
     if (imgs[0]) {
       const ar = imgs[0].width / imgs[0].height;
-      BEE_DH = 14;           // 14 game-px draw size (slightly larger than 1:1 grid)
+      BEE_DH = 18;           // 18 game-px draw size (matches fallback grid scale)
       BEE_DW = BEE_DH * ar;  // maintain aspect ratio
     }
   });
