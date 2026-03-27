@@ -111,9 +111,9 @@
     text-shadow:1px 1px 0 #3a1800, 0 0 6px rgba(200,140,40,0.5), 0 0 14px rgba(180,120,30,0.3), 0 0 24px rgba(160,100,20,0.15) !important;
     transition:text-shadow 0.4s ease-out;
   }
-  #settingsPanel { background:#0e0500; inset:-4px; }
-  #shopPanel { background:#0e0500; inset:-4px; }
-  #statsPanel, #devPasscode, #devPanel { inset:-4px; }
+  #settingsPanel { background:#120800; inset:-6px; }
+  #shopPanel { background:#120800; inset:-6px; }
+  #statsPanel, #devPasscode, #devPanel { inset:-6px; }
   #shopBody {
     flex:1; width:100%; overflow-y:auto; overflow-x:hidden;
     padding:0 12px 8px 12px; box-sizing:border-box;
@@ -121,6 +121,10 @@
   #shopBody::-webkit-scrollbar { width:2px; }
   #shopBody::-webkit-scrollbar-track { background:#0a0400; }
   #shopBody::-webkit-scrollbar-thumb { background:#3a1e00; }
+  #pnBody { font-family:'Press Start 2P',monospace; }
+  #pnBody::-webkit-scrollbar { width:2px; }
+  #pnBody::-webkit-scrollbar-track { background:#0a0400; }
+  #pnBody::-webkit-scrollbar-thumb { background:#3a1e00; }
   .shop-dots {
     display:flex; gap:6px; justify-content:center;
     flex-wrap:wrap; padding:2px 8px 8px 8px;
@@ -252,7 +256,7 @@
   /* ── run summary ──────────────────────── */
   #summary {
     background: #040100;
-    inset: -4px;
+    inset: -6px;
     padding: 22px 18px;
     gap: 0;
   }
@@ -271,9 +275,9 @@
 
   /* ── pause / guide ──────────────────── */
   #pause {
-    background:#040100;
-    inset:-4px;
-    padding:14px 4px 4px 4px;
+    background:#120800;
+    inset:-6px;
+    padding:14px 6px 6px 6px;
     align-items:center;
   }
   #pauseBtns .ob { margin-left:auto; margin-right:auto; }
@@ -325,7 +329,7 @@
   .gp-name { font-size:0.55rem; letter-spacing:0.5px; margin-bottom:2px; }
   .gp-desc { font-size:0.38rem; color:#c09050; letter-spacing:0.3px; line-height:1.5; }
   .gp-tag  { font-size:0.32rem; margin-top:1px; }
-  .gp-preview { width:40px; height:40px; flex-shrink:0; image-rendering:pixelated; }
+  .gp-preview { width:40px; height:40px; flex-shrink:0; image-rendering:pixelated; background:#120800; border-radius:4px; }
 
   /* Upgrade rows */
   .gu-row {
@@ -502,7 +506,8 @@
         <button id="toggleHaptics" style="font-family:'Press Start 2P',monospace;font-size:0.34rem;color:#f0a020;background:rgba(240,160,32,0.15);border:1.5px solid #f0a020;border-radius:4px;padding:4px 10px;cursor:pointer;">ON</button>
       </div>
     </div>
-    <button id="btnDevOptions" class="ob" style="margin-top:20px;font-size:0.35rem;opacity:0.5;">DEV OPTIONS</button>
+    <button id="btnPatchNotes" class="ob" style="margin-top:20px;font-size:0.35rem;">PATCH NOTES</button>
+    <button id="btnDevOptions" class="ob" style="margin-top:8px;font-size:0.35rem;opacity:0.5;">DEV OPTIONS</button>
   </div>
 
   <!-- Passcode Lock Panel -->
@@ -574,7 +579,7 @@
     <div id="sumContent"></div>
   </div>
 
-  <div id="statsPanel" class="panel" style="background:#040100;">
+  <div id="statsPanel" class="panel" style="background:#120800;">
     <div class="neon-glow-title" style="font-family:'Press Start 2P',monospace;color:#f0a020;font-size:0.7rem;letter-spacing:2px;margin-bottom:8px;">STATS</div>
     <div id="statsBody" style="width:300px;max-width:90%;background:rgba(10,5,0,0.6);border:1px solid #3a1e00;border-radius:4px;padding:14px;"></div>
     <button class="ob" id="statsBackBtn" style="margin-top:12px;">BACK</button>
@@ -584,6 +589,13 @@
     <div id="puTitle">HONEY JAR FULL</div>
     <div id="puSub">CHOOSE AN UPGRADE</div>
     <div id="puCards"></div>
+  </div>
+
+  <div id="patchNotesPanel" class="panel" style="background:#120800; inset:-6px; padding:12px 0;">
+    <div id="pnTitle" style="font-size:0.60rem;color:#f0a020;text-shadow:2px 2px 0 #4a2000;letter-spacing:2px;margin-bottom:2px;text-align:center;font-family:'Press Start 2P',monospace;">PATCH NOTES</div>
+    <div id="pnVersion" style="font-size:0.32rem;color:#5a3800;letter-spacing:1px;margin-bottom:8px;text-align:center;font-family:'Press Start 2P',monospace;"></div>
+    <div id="pnBody" style="flex:1;width:100%;overflow-y:auto;overflow-x:hidden;padding:0 20px 8px 20px;box-sizing:border-box;"></div>
+    <button class="ob" id="pnClose" style="margin:8px auto;">CONTINUE</button>
   </div>
 
 </div>
@@ -638,7 +650,7 @@ const PAL = {
   hexNorm:        ['#f5c030'],    // warm gold (matches guide)
   hexThick:       ['#7a4800'],    // deep bronze
   hexBrood:       ['#3a2408'],    // dark hive
-  hexHoney:       ['#ffe050'],    // bright gold
+  hexHoney:       ['#e8a010'],    // deep amber-orange (distinct from NORMAL #f5c030)
   hexWax:         ['#e2d9b2'],    // warm waxy cream
   hexPortal:      ['#9020d0'],    // vivid royal purple
   hexHeavy:       ['#8a6830'],    // darker bronze
@@ -1169,6 +1181,84 @@ const SaveManager = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// PATCH NOTES — newest first. Prefixes: + new, * change, - fix
+// ═══════════════════════════════════════════════════════════
+const PATCH_NOTES = [
+  {
+    version: '1.3',
+    date: '2026-03-26',
+    notes: [
+      '+ ADDED BEE-LAX SLOW MOTION POWER-UP',
+      '+ ADDED ARCADE CONTINUE PROMPT ON GAME OVER',
+      '+ ADDED PATCH NOTES SYSTEM',
+      '+ ADDED BLOOM, MOONLIGHT & ECLIPSE AURAS TO SHOP',
+      '+ ADDED MAGMA BEE SKIN — ANIMATED LAVA PIXEL BLOCKS',
+      '+ ADDED WINTER BEE SKIN — BLACK & WHITE BEE',
+      '+ ADDED STARDUST TRAIL EFFECT PREVIEW IN SHOP',
+      '* RENAMED SHADOW SKIN TO WINTER',
+      '* SHADOW TRAIL EFFECT NOW SOLID BLACK',
+      '* IMPROVED HONEY CELL — HONEYCOMB INNER PATTERN & DEEPER AMBER COLOR',
+      '* IMPROVED BEE-ELZEBUB PREVIEW — RED AURA & CLEANED UP TAIL',
+      '* UNIFIED PANEL BACKGROUNDS ACROSS ALL MENUS',
+      '* UPDATED POWER-UP PREVIEW BACKGROUNDS IN GUIDE',
+      '* REVISED TRAIL EFFECT SHOP SWATCHES — CENTERED DOT STYLE',
+      '* FIXED PAUSE SCREEN EDGE BLEED-THROUGH',
+      '* SCALED UP HEX CELL INNER ICONS',
+      '- FIXED BEE ANTENNAE FLICKERING',
+    ]
+  },
+  {
+    version: '1.2',
+    date: '2026-03-24',
+    notes: [
+      '+ ADDED BOSS GATE SYSTEM — QUEEN & ROYAL GUARD CELLS',
+      '+ ADDED BEE-SUS GHOST POWER-UP',
+      '+ ADDED BOMB CELL — AREA-OF-EFFECT EXPLOSION',
+      '+ ADDED WAX CELL — SPLASH DAMAGE TO NEIGHBORS',
+      '* IMPROVED BEE-SUS ANIMATION & GHOST VISUALS',
+      '- FIXED BEE-SUS SWEEP SKIPPING PROTECTED CELLS',
+      '- FIXED BOSS GATE HP SYNC ACROSS CELLS',
+    ]
+  },
+  {
+    version: '1.1',
+    date: '2026-03-21',
+    notes: [
+      '+ ADDED HONEYPOT SPRITE HUD WITH DYNAMIC FILL',
+      '+ ADDED BROOD CELL — SPAWNS NEW CELLS ON BREAK',
+      '+ ADDED PORTAL CELL — TELEPORTS BEE ACROSS THE GRID',
+      '+ ADDED HEND PADDLE SPRITE',
+      '* SWITCHED TO SPRITE-BASED BEE WITH 3-FRAME ANIMATION',
+      '* IMPROVED CAMERA RATCHET — NO MORE BACKPEDALING',
+      '- FIXED BALL TELEPORT ON UNPAUSE (LASTTIME RESET)',
+    ]
+  },
+  {
+    version: '1.0',
+    date: '2026-03-18',
+    notes: [
+      '+ INITIAL RELEASE — HENDSBEE BEE-BREAKER',
+      '+ HEX GRID BRICK-BREAKING WITH BEE THEME',
+      '+ INFINITE SCROLLING DEPTH WITH CHUNK STREAMING',
+      '+ SHOP SYSTEM WITH UPGRADES & POWER-UPS',
+      '+ PROCEDURAL 8-BIT SFX ENGINE',
+      '+ CRT SCANLINE & NEON BOOT SEQUENCE',
+    ]
+  },
+];
+
+function hasUnseenPatchNotes() {
+  if (PATCH_NOTES.length === 0) return false;
+  const last = localStorage.getItem('hendsbee_lastSeenVersion');
+  return last !== PATCH_NOTES[0].version;
+}
+
+function markPatchNotesSeen() {
+  if (PATCH_NOTES.length === 0) return;
+  localStorage.setItem('hendsbee_lastSeenVersion', PATCH_NOTES[0].version);
+}
+
+// ═══════════════════════════════════════════════════════════
 // 8-bit master filter — all SFX route through this for retro crunch
 const _sfxMaster = AC.createGain();
 const _sfx8bitLPF = AC.createBiquadFilter();
@@ -1180,6 +1270,11 @@ _sfx8bitLPF.connect(AC.destination);
 
 function _tone(freq, type, vol, dur, freqEnd) {
   if (demoMode) return; // silent during attract mode
+  // BEE-LAX slow-motion pitch shift (20% lower)
+  if (typeof _beeLaxActive !== 'undefined' && _beeLaxActive) {
+    freq *= 0.8;
+    if (freqEnd) freqEnd *= 0.8;
+  }
   vol *= sfxVolume;
   acResume();
   const o = AC.createOscillator(), g = AC.createGain();
@@ -1221,7 +1316,8 @@ const sfx = {
   boost:    () => { _tone(300,'sine',0.15,0.12,900); },
   gameStart:() => { [262,330,392,523].forEach((f,i) => setTimeout(() => _tone(f,'square',0.14,0.12,f*1.2), i*60)); },
   gameOver: () => { [392,330,262,196].forEach((f,i) => setTimeout(() => _tone(f,'sine',0.18,0.35,f*0.6), i*120)); },
-  whoosh:   () => { _noise(0.08, 0.8); _tone(180, 'sine', 0.04, 0.7, 60); },
+  whoosh:       () => { _noise(0.08, 0.8); _tone(180, 'sine', 0.04, 0.7, 60); },
+  continueBeep: (n) => { _tone(440 - n * 20, 'square', 0.12, 0.15, 220 - n * 10); },
 };
 
 // ═══════════════════════════════════════════════════════
@@ -1425,22 +1521,27 @@ const HEND_ACCESSORIES = [
 ];
 
 const BEE_SKINS = [
-  { id:'classic', name:'DEFAULT',  cost:0, unlockDepth:0,   tint:null,                     desc:'' },
-  { id:'neon',    name:'NEON',     cost:0, unlockDepth:200, tint:'rgba(60,255,80,0.85)',   desc:'' },
-  { id:'shadow',  name:'SHADOW',   cost:0, unlockDepth:350, tint:'rgba(60,40,80,0.85)',    desc:'' },
-  { id:'crystal', name:'CRYSTAL',  cost:0, unlockDepth:500, tint:'rgba(140,220,255,0.85)', desc:'' },
-  { id:'royal',   name:'ROYAL',    cost:0, unlockDepth:700, tint:'rgba(180,140,255,0.85)', desc:'' },
-  { id:'inferno', name:'INFERNO',  cost:0, unlockDepth:900, tint:'rgba(255,100,30,0.85)',  desc:'' },
+  { id:'classic', name:'DEFAULT',  cost:0, unlockDepth:0,    colors:null, desc:'' },
+  { id:'neon',    name:'NEON',     cost:0, unlockDepth:200,  colors:[[60,255,80],[50,210,65],[160,255,180]], desc:'' },
+  { id:'winter',  name:'WINTER',   cost:0, unlockDepth:350,  colors:[[220,220,220],[190,190,190],[250,250,250]], desc:'' },
+  { id:'crystal', name:'CRYSTAL',  cost:0, unlockDepth:500,  colors:[[140,220,255],[100,170,210],[200,240,255]], desc:'' },
+  { id:'royal',   name:'ROYAL',    cost:0, unlockDepth:700,  colors:[[180,140,255],[140,100,210],[220,200,255]], desc:'' },
+  { id:'hotPink', name:'HOT PINK', cost:0, unlockDepth:800,  colors:[[255,60,150],[200,40,120],[255,160,200]], desc:'' },
+  { id:'inferno', name:'INFERNO',  cost:0, unlockDepth:900,  colors:[[255,110,30],[200,75,15],[255,180,120]], desc:'' },
+  { id:'magma',   name:'MAGMA',    cost:0, unlockDepth:950,  colors:null, desc:'' },
+  { id:'rainbow', name:'RAINBOW',  cost:0, unlockDepth:1000, colors:null, desc:'' },
 ];
 
 const BEE_TRACERS = [
   { id:'classic',   name:'DEFAULT',    cost:0, unlockDepth:0,    color:'rgba(180,180,180,', desc:'' },
   { id:'honeyDrip', name:'HONEY DRIP', cost:0, unlockDepth:200,  color:'rgba(245,192,48,',  desc:'' },
-  { id:'smoky',     name:'SHADOW',     cost:0, unlockDepth:300,  color:'rgba(40,20,60,',    desc:'' },
+  { id:'smoky',     name:'SHADOW',     cost:0, unlockDepth:300,  color:'rgba(15,15,15,',    desc:'' },
   { id:'neon',      name:'NEON',       cost:0, unlockDepth:400,  color:'rgba(80,255,120,',  desc:'' },
   { id:'stardust',  name:'STARDUST',   cost:0, unlockDepth:550,  color:'rgba(255,240,180,', desc:'' },
-  { id:'poopLogs',  name:'POOP LOGS',  cost:0, unlockDepth:750,  color:'rgba(90,55,20,',    desc:'' },
-  { id:'rainbow',   name:'RAINBOW',    cost:0, unlockDepth:1000, color:null,               desc:'' },
+  { id:'poopLogs',    name:'POOP LOGS',    cost:0, unlockDepth:750,  color:'rgba(90,55,20,',    desc:'' },
+  { id:'monaBalls',   name:'MONA BALLS',   cost:0, unlockDepth:850,  color:'rgba(255,140,30,',  desc:'' },
+  { id:'rainbow',     name:'RAINBOW',      cost:0, unlockDepth:1000, color:null,                desc:'' },
+  { id:'babyBuzzies', name:'BABY BUZZIES', cost:0, unlockDepth:1200, color:null,                desc:'' },
 ];
 
 // ── Bee Auras (cosmetic glow behind bee) ──
@@ -1451,6 +1552,9 @@ const BEE_AURAS = [
   { id:'ghostly',   name:'GHOSTLY',    cost:0, unlockDepth:500, color:'rgba(180,220,255,' },
   { id:'infernal',  name:'INFERNAL',   cost:0, unlockDepth:700, color:'rgba(255,80,30,' },
   { id:'royal',     name:'ROYAL',      cost:0, unlockDepth:900, color:'rgba(180,100,255,' },
+  { id:'bloom',     name:'BLOOM',      cost:0, unlockDepth:1100, color:'rgba(255,100,180,' },
+  { id:'moonlight', name:'MOONLIGHT',  cost:0, unlockDepth:1300, color:'rgba(220,230,255,' },
+  { id:'eclipse',   name:'ECLIPSE',    cost:0, unlockDepth:1500, color:'rgba(120,40,160,'   },
 ];
 let selectedAura = localStorage.getItem('hendsbee_aura') || 'none';
 
@@ -1516,6 +1620,7 @@ let selectedAccessory = null;
       // Hend skin — global (both hends share)
       if (c.hendSkinL) { selectedHendSkinL = c.hendSkinL; selectedHendSkinR = c.hendSkinL; }
       if (c.beeSkin) selectedBeeSkin = c.beeSkin;
+      if (selectedBeeSkin === 'shadow') selectedBeeSkin = 'winter';
       if (c.tracer) selectedTracer = c.tracer;
       if (c.favourite) favouriteHend = c.favourite;
     }
@@ -1688,13 +1793,172 @@ function generateSkinTones() {
 // ═══════════════════════════════════════════════════════
 // BEE SPRITE LOADING — 4 wing frames from PNGs (HI + MID + LOW + LOWEST)
 // ═══════════════════════════════════════════════════════
-let beeFrames = [];      // array of Image objects [HI, MID, LOW, LOWEST]
-let beeFrameSeq = [0, 1, 2, 3, 2, 1]; // HI, MID, LOW, LOWEST, LOW, MID
+let beeFrames = [];      // array of Image objects [1..5]
+let beeFrameSeq = [0, 1, 2, 3, 2, 1]; // 0→1→2→3→2→1 (ping-pong)
 let beeFrameTick = 0;
 const BEE_FLAP_SPEED = 2; // frames per flap step (lower = faster)
+// Cached bee draw dimensions — set after sprite loading
+let BEE_DW = 20, BEE_DH = 18; // defaults match fallback grid
+
+// ── Pixel-level body color palette swap ──────────────
+// These 3 RGB values are the bee body colors that skins replace.
+// Extracted from sprite pixel data; matched by the BEE BODY ONLY.png guide.
+const BODY_COLORS = [
+  [255, 194, 14],   // bright yellow (main body)
+  [253, 217, 45],   // medium yellow (secondary body)
+  [245, 228, 156],  // pale cream (body highlights)
+];
+const BODY_COLOR_TOL = 5; // per-channel match tolerance
+
+let _skinFrameCache = {};  // { skinId: [canvas0..canvas3] }
+let _activeSkinId = null;
+
+function _hexToRgb(hex) {
+  const n = parseInt(hex.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+function _rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, l = (max + min) / 2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [h, s, l];
+}
+
+function _hslToRgb(h, s, l) {
+  if (s === 0) { const v = Math.round(l * 255); return [v, v, v]; }
+  const hue2rgb = (p, q, t) => {
+    if (t < 0) t += 1; if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  return [Math.round(hue2rgb(p, q, h + 1/3) * 255),
+          Math.round(hue2rgb(p, q, h) * 255),
+          Math.round(hue2rgb(p, q, h - 1/3) * 255)];
+}
+
+function _colMatch(px, i, col) {
+  return Math.abs(px[i] - col[0]) <= BODY_COLOR_TOL &&
+         Math.abs(px[i+1] - col[1]) <= BODY_COLOR_TOL &&
+         Math.abs(px[i+2] - col[2]) <= BODY_COLOR_TOL;
+}
+
+function _buildSkinFrames(skinId) {
+  const skin = BEE_SKINS.find(s => s.id === skinId);
+  if (!skin || !skin.colors || beeFrames.length < 3) return;
+  const target = skin.colors; // [[r,g,b], [r,g,b], [r,g,b]]
+  const frames = [];
+  for (let f = 0; f < beeFrames.length; f++) {
+    if (!beeFrames[f]) { frames.push(null); continue; }
+    const cvs = document.createElement('canvas');
+    const cx = cvs.getContext('2d');
+    cvs.width = beeFrames[f].width; cvs.height = beeFrames[f].height;
+    cx.imageSmoothingEnabled = false;
+    cx.drawImage(beeFrames[f], 0, 0);
+    const id = cx.getImageData(0, 0, cvs.width, cvs.height);
+    const px = id.data;
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i+3] < 30) continue;
+      for (let c = 0; c < 3; c++) {
+        if (_colMatch(px, i, BODY_COLORS[c])) {
+          px[i] = target[c][0]; px[i+1] = target[c][1]; px[i+2] = target[c][2];
+          break;
+        }
+      }
+    }
+    cx.putImageData(id, 0, 0);
+    frames.push(cvs);
+  }
+  _skinFrameCache[skinId] = frames;
+  _activeSkinId = skinId;
+}
+
+// Rainbow: pixel-swap body colors at draw size (small canvas, per-frame)
+function _rainbowSwap(img, dw, dh, hue) {
+  const ow = Math.ceil(dw) + 2, oh = Math.ceil(dh) + 2;
+  _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+  _beeOffCtx.imageSmoothingEnabled = false;
+  _beeOffCtx.clearRect(0, 0, ow, oh);
+  _beeOffCtx.drawImage(img, 1, 1, dw, dh);
+  const id = _beeOffCtx.getImageData(0, 0, ow, oh);
+  const px = id.data;
+  const hNorm = (hue % 360) / 360;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i+3] < 30) continue;
+    for (let c = 0; c < 3; c++) {
+      if (_colMatch(px, i, BODY_COLORS[c])) {
+        const [, , l] = _rgbToHsl(BODY_COLORS[c][0], BODY_COLORS[c][1], BODY_COLORS[c][2]);
+        const [r, g, b] = _hslToRgb(hNorm, 0.9, l);
+        px[i] = r; px[i+1] = g; px[i+2] = b;
+        break;
+      }
+    }
+  }
+  _beeOffCtx.putImageData(id, 0, 0);
+  return _beeOffCvs;
+}
+
+// Magma: pulsing warm hue cycle (red→orange→yellow) with glowing saturation shimmer
+function _magmaSwap(img, dw, dh, t) {
+  const ow = Math.ceil(dw) + 2, oh = Math.ceil(dh) + 2;
+  _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+  _beeOffCtx.imageSmoothingEnabled = false;
+  _beeOffCtx.clearRect(0, 0, ow, oh);
+  _beeOffCtx.drawImage(img, 1, 1, dw, dh);
+  const id = _beeOffCtx.getImageData(0, 0, ow, oh);
+  const px = id.data;
+  // Per-grid-cell lava: each 12×12 art pixel block gets its own color
+  // Grid cell size in canvas pixels (bee art is 12×12, drawn at dw×dh)
+  const cellW = dw / 12, cellH = dh / 12;
+  const basePulse = t * 0.03;  // slow global drift
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i+3] < 30) continue;
+    for (let c = 0; c < 3; c++) {
+      if (_colMatch(px, i, BODY_COLORS[c])) {
+        const pxIdx = i >> 2;
+        const px_x = pxIdx % ow;
+        const px_y = (pxIdx / ow) | 0;
+        // Quantize to 12×12 grid cell so each art pixel is one block
+        const gx = Math.floor((px_x - 1) / cellW);
+        const gy = Math.floor((px_y - 1) / cellH);
+        // Pseudo-random hash per grid cell (deterministic from cell pos)
+        const hash = Math.sin(gx * 127.1 + gy * 311.7) * 43758.5453;
+        const frac = hash - Math.floor(hash); // 0→1 unique per cell
+        // Each cell cycles at its own phase & speed
+        const phase = frac * 6.2832;
+        const wave = Math.sin(basePulse * (1 + frac * 0.5) + phase);
+        // Hue: 0°(red) → 40°(orange), no green/yellow/white
+        const hue = (wave + 1) / 2 * 40;     // 0→40° warm only
+        // Sparkle: some cells briefly flash brighter
+        const sparkle = Math.sin(t * (0.04 + frac * 0.03) * 3 + phase * 2);
+        // Lightness: capped at 0.58 to prevent any white/pale pixels
+        const baseLit = 0.38 + (wave + 1) * 0.06;  // 0.38→0.50
+        const lit = sparkle > 0.7 ? 0.55 : baseLit; // sparkle caps at 0.55
+        const sat = 0.92 + sparkle * 0.06;          // high saturation, no desaturation
+        const [r, g, b] = _hslToRgb(hue / 360, Math.min(1, sat), lit);
+        px[i] = r; px[i+1] = g; px[i+2] = b;
+        break;
+      }
+    }
+  }
+  _beeOffCtx.putImageData(id, 0, 0);
+  return _beeOffCvs;
+}
 
 function loadBeeSprites() {
-  const names = ['1-HI-FLIGHT.png', '2-MID-FLIGHT.png', '3-LOW-FLIGHT.png', '4-LOWEST-FLIGHT.png'];
+  const names = ['TEST 0.png', 'TEST 1.png', 'TEST 2.png', 'TEST 3.png'];
   // Mobile: cap sprite size to avoid canvas memory limits
   const MAX_SPRITE = /Mobi|Android/i.test(navigator.userAgent) ? 512 : 2048;
   return Promise.all(names.map(n => loadImg(['Assets/BEE/' + n, n]).then(img => {
@@ -1738,120 +2002,11 @@ function loadBeeSprites() {
       if (y < h-1 && !visited[p+w] && isWhitish(p+w)) stack.push(p+w);
     }
     ox.putImageData(id, 0, 0);
-    return oc; // return canvas for body-stabilisation pass
+    return oc;
   }))).then(canvases => {
-    // Step 1: Vertically align all frames to 1-HI-FLIGHT's BODY center.
-    // 1-HI-FLIGHT (index 0) is used as the body reference.
-    // Use only the central 40% horizontal strip to find the vertical center,
-    // so wing positions (which vary per frame) don't skew the alignment.
-    if (!canvases[0]) return canvases;
-    const w = canvases[0].width, h = canvases[0].height;
-    function bodyVCenter(cv) {
-      const d = cv.getContext('2d').getImageData(0, 0, w, h).data;
-      // Find horizontal extent first
-      let xMin = w, xMax = 0;
-      for (let y = 0; y < h; y++)
-        for (let x = 0; x < w; x++)
-          if (d[(y * w + x) * 4 + 3] > 10) { if (x < xMin) xMin = x; if (x > xMax) xMax = x; }
-      // Central 40% horizontal strip = body column (excludes wings)
-      const cx = (xMin + xMax) / 2, hw = (xMax - xMin) * 0.2;
-      const bLeft = Math.floor(cx - hw), bRight = Math.ceil(cx + hw);
-      // Find vertical center of body column only
-      let top = h, bot = 0;
-      for (let y = 0; y < h; y++)
-        for (let x = bLeft; x <= bRight; x++)
-          if (d[(y * w + x) * 4 + 3] > 10) { if (y < top) top = y; if (y > bot) bot = y; }
-      return (top + bot) / 2;
-    }
-    const refCY = bodyVCenter(canvases[0]);
-    canvases = canvases.map((cv, i) => {
-      if (!cv || i === 0) return cv;
-      const dy = Math.round(refCY - bodyVCenter(cv));
-      if (dy === 0) return cv;
-      const ac = document.createElement('canvas');
-      ac.width = w; ac.height = h;
-      ac.getContext('2d').drawImage(cv, 0, dy);
-      return ac;
-    });
-
-    // Step 2: Body-stabilisation — use 1-HI-FLIGHT for all shared pixels.
-    // 1-HI-FLIGHT (index 0) is the body reference frame.
-    // For source-only pixels, only include those OUTSIDE the body column
-    // (i.e. wings on the sides). This prevents antenna/stinger tips from
-    // different frames bleeding through.
-    const ref = canvases[0].getContext('2d').getImageData(0, 0, w, h).data;
-    const nPx = w * h;
-
-    // Find 1-HI-FLIGHT's horizontal body column and vertical extent
-    let refXMin = w, refXMax = 0, refYMin = h, refYMax = 0;
-    for (let p = 0; p < nPx; p++) {
-      if (ref[p * 4 + 3] > 10) {
-        const x = p % w, y = Math.floor(p / w);
-        if (x < refXMin) refXMin = x;
-        if (x > refXMax) refXMax = x;
-        if (y < refYMin) refYMin = y;
-        if (y > refYMax) refYMax = y;
-      }
-    }
-    const bodyCX = (refXMin + refXMax) / 2;
-    const bodyHW = (refXMax - refXMin) * 0.15; // 30% of width = narrow body column (torso stripe only)
-    const bodyLeft = bodyCX - bodyHW, bodyRight = bodyCX + bodyHW;
-    // Build "common mask" — pixels present in ALL frames are body (not wings)
-    // Wings move between frames so they only appear in 1-2 frames at each position
-    const allFrameData = canvases.map(cv => cv ? cv.getContext('2d').getImageData(0, 0, w, h).data : null);
-    const isBodyPixel = new Uint8Array(nPx); // 1 = body pixel (present in all frames)
-    for (let p = 0; p < nPx; p++) {
-      let allHave = true;
-      for (let f = 0; f < allFrameData.length; f++) {
-        if (!allFrameData[f] || allFrameData[f][p * 4 + 3] <= 10) { allHave = false; break; }
-      }
-      if (allHave) isBodyPixel[p] = 1;
-    }
-
-    const stabilised = canvases.map((cv, idx) => {
-      if (!cv || idx === 0) return cv; // 1-HI-FLIGHT stays as-is (it IS the reference)
-      const src = cv.getContext('2d').getImageData(0, 0, w, h).data;
-      const nc = document.createElement('canvas');
-      nc.width = w; nc.height = h;
-      const nx = nc.getContext('2d');
-      const out = nx.createImageData(w, h);
-      const od = out.data;
-      const bodyH = refYMax - refYMin;
-      const antennaeY = refYMin + bodyH * 0.15; // top 15% = antennae zone
-      const stingerY = refYMin + bodyH * 0.70;  // bottom 30% = stinger zone
-      for (let p = 0; p < nPx; p++) {
-        const i4 = p * 4;
-        const x = p % w, y = Math.floor(p / w);
-        const sA = src[i4+3], rA = ref[i4+3];
-        if (y < refYMin || y > refYMax) continue;
-        const inStinger = (y >= stingerY);
-        const inAntennae = (y <= antennaeY);
-        if ((inStinger || inAntennae) && rA > 10) {
-          // Stinger/antennae zone — ALWAYS stamp HI-FLIGHT (lock to reference)
-          od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
-          od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
-        } else if (inStinger || inAntennae) {
-          // Stinger/antennae zone, ref transparent → skip
-        } else if (isBodyPixel[p]) {
-          // Body pixel (present in ALL frames) — lock to HI-FLIGHT
-          od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
-          od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
-        } else if (sA > 10) {
-          // Source-only pixel (not in all frames) — wing pixel, keep it
-          od[i4] = src[i4]; od[i4+1] = src[i4+1];
-          od[i4+2] = src[i4+2]; od[i4+3] = src[i4+3];
-        } else if (rA > 10 && x >= bodyLeft && x <= bodyRight) {
-          // Ref-only pixel near body center — shoulder/body, stamp for consistency
-          od[i4] = ref[i4]; od[i4+1] = ref[i4+1];
-          od[i4+2] = ref[i4+2]; od[i4+3] = ref[i4+3];
-        }
-      }
-      nx.putImageData(out, 0, 0);
-      return nc;
-    });
-
-    // Convert canvases to Images
-    return Promise.all(stabilised.map(cv => {
+    // New sprites fill the full canvas (no whitespace to crop).
+    // Convert canvases directly to Images.
+    return Promise.all(canvases.map(cv => {
       if (!cv) return null;
       return new Promise(resolve => {
         const img2 = new Image();
@@ -1859,7 +2014,18 @@ function loadBeeSprites() {
         img2.src = cv.toDataURL();
       });
     }));
-  }).then(imgs => { beeFrames = imgs; });
+  }).then(imgs => {
+    beeFrames = imgs;
+    // Set draw dimensions — sprites fill 100% of canvas, so target
+    // a visual size matching the original fallback pixel grid.
+    // Old sprites had ~30% content fill → 48×43 draw = ~14×13 visible bee.
+    // New sprites have 100% content fill → draw directly at target size.
+    if (imgs[0]) {
+      const ar = imgs[0].width / imgs[0].height;
+      BEE_DH = 14;           // 14 game-px draw size (slightly larger than 1:1 grid)
+      BEE_DW = BEE_DH * ar;  // maintain aspect ratio
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2107,7 +2273,7 @@ const ALL_POWERUPS = [
     id: 'fireBees',
     name: 'FIRE BEES',
     short: 'FIRE',
-    desc: '+1 DAMAGE / SECOND.',
+    desc: '+1 DAMAGE PER SECOND.',
     tag:  'DAMAGE',
     color: '#ff4010', outline: '#a02008',
     max:  6,
@@ -2140,6 +2306,7 @@ const TEMP_POWERUPS = [
   { id:'beeSus',     name:'BEE-SUS',     color:'#f0e8a0', duration:0,   desc:'A DIVINE BEE APPEARS AND CLEARS THE CURRENT PLAY AREA OF BREAKABLE CELLS' },
   { id:'hendOfGod',  name:'HEND OF GOD', color:'#ffffff', duration:-1,  desc:'A HEAVENLY HEND SWOOPS IN TO SAVE THE LAST BEE' },
   { id:'magnetHends', name:'MAGNET HENDS', color:'#60c0ff', duration:600, desc:'BEES GET PULLED TOWARD THE HENDS AS THEY FALL' },
+  { id:'beeLax',      name:'BEE-LAX',      color:'#8080ff', duration:600, desc:'SLOWS DOWN TIME' },
 ];
 let activePowerup = null;   // compat shim — points to most recent entry in activePowerups
 let activePowerups = [];    // [{ id, name, color, ticksLeft }, ...] — stacking powerups
@@ -2188,6 +2355,13 @@ function deactivatePowerup(expiredId) {
   // Reset bee speeds to base when BEE-R expires (prevents missile effect)
   if (expiredId === 'beeR' || (!expiredId && _hasPU('beeR'))) {
     if (!_hasPU('beeR')) for (const b of bees) b.speed = CONFIG.BASE_SPD;
+  }
+  // BEE-LAX: restore timeScale and reset bee speeds to initial velocity
+  if (expiredId === 'beeLax' || (!expiredId && _hasPU('beeLax'))) {
+    _beeLaxTarget = 1.0;
+    _beeLaxActive = false;
+    // Reset all bees to base speed — feels like a fresh start after slow-mo
+    for (const b of bees) b.speed = CONFIG.BASE_SPD;
   }
   if (!expiredId) { activePowerups = []; activePowerup = null; honeySurgeFills = 0; }
   else {
@@ -2250,6 +2424,11 @@ function activatePowerup(type, px, py) {
         whooshPlayed: false
       };
       sfx.whoosh();
+      break;
+    }
+    case 'beeLax': { // Slow-motion: progressively slow game to 50%
+      _beeLaxTarget = 0.5;
+      _beeLaxActive = true;
       break;
     }
     case 'beeElzebub': { // All bees become bomb-bees for 10 seconds
@@ -2408,6 +2587,14 @@ function drawFallingDrops() {
 
 let pickerPending = false;
 let paused = false;   // true while power-up picker is visible
+
+// ── CONTINUE? arcade prompt state ─────────────────────
+let continueUsed = false;       // true after player uses their one continue
+const CONTINUE_TIMER_SECS = 10; // countdown duration
+
+// ── BEE-LAX slow-motion state ─────────────────────────
+let _beeLaxTarget = 1.0;        // target timeScale for BEE-LAX lerp
+let _beeLaxActive = false;      // whether BEE-LAX is currently active
 
 // Smooth picker transition state (legacy — kept for compatibility)
 let timeScale = 1.0;            // 1 = normal speed, 0 = frozen
@@ -3111,6 +3298,31 @@ function drawTrail(b) {
             ctx.fillRect(cx - cs/2, cy - cs/2, cs, cs);
           }
         }
+      } else if (tracerObj.id === 'monaBalls') {
+        // Slightly larger orange dot tracer
+        const dotR = DASH_WIDTH * 1.8;
+        ctx.fillStyle = `rgba(255,140,30,${alpha.toFixed(3)})`;
+        ctx.beginPath(); ctx.arc(d.x, d.y, dotR, 0, Math.PI * 2); ctx.fill();
+        if (alpha > 0.15) {
+          ctx.fillStyle = `rgba(255,180,60,${(alpha * 0.3).toFixed(3)})`;
+          ctx.beginPath(); ctx.arc(d.x, d.y, dotR * 1.6, 0, Math.PI * 2); ctx.fill();
+        }
+        continue;
+      } else if (tracerObj.id === 'babyBuzzies') {
+        // Tiny bee sprites that scatter and fade like baby bees left behind
+        if (beeFrames.length >= 3 && beeFrames[0]) {
+          const bImg = beeFrames[(i * 3) % 4];
+          const tinySize = 3 + ((i * 7 + 3) % 4) * 0.5;
+          const rot = (i * 1.7 + now * 2) % (Math.PI * 2);
+          const scatter = 2.5;
+          const ox = d.x + Math.sin(i * 3.7 + now * 1.5) * scatter;
+          const oy = d.y + Math.cos(i * 2.3 + now * 1.2) * scatter;
+          ctx.save(); ctx.globalAlpha = alpha * 0.8;
+          ctx.translate(ox, oy); ctx.rotate(rot);
+          ctx.drawImage(bImg, -tinySize / 2, -tinySize / 2, tinySize, tinySize);
+          ctx.restore();
+        }
+        continue;
       } else {
         ctx.strokeStyle = `${tracerObj.color}${alpha.toFixed(3)})`;
       }
@@ -3239,45 +3451,56 @@ function drawBee(b) {
   ctx.scale(scale, scale);
 
   // Use PNG bee frames if loaded
-  const usePNG = beeFrames.length === 4 && beeFrames[0];
+  const usePNG = beeFrames.length >= 3 && beeFrames[0];
   if (usePNG) {
     const flap = (_hasPU('beeHemoth') || _hasPU('beeR')) ? 4 : BEE_FLAP_SPEED; // big/drunk bee = slower wings
     const frameIdx = beeFrameSeq[Math.floor(beeFrameTick / flap) % beeFrameSeq.length];
     const img = beeFrames[frameIdx];
-    // Draw centered, scaled to match the pixel sprite bounding box
-    const dw = BOX * 2.4, dh = BOY * 2.4;
+    ctx.imageSmoothingEnabled = false; // crisp pixel art scaling
+    // Draw centered — use cached draw dimensions from sprite load
+    const dw = BEE_DW, dh = BEE_DH;
 
-    // Determine if we need tinting
+    // Determine tinting mode
     const needsBombBeeTint = !!b._bombBee;
     const needsBeeRTint = !needsBombBeeTint && _hasPU('beeR');
-    const needsSkinTint = !needsBeeRTint && !needsBombBeeTint && selectedBeeSkin !== 'classic';
-    const bskin = needsSkinTint ? BEE_SKINS.find(s => s.id === selectedBeeSkin) : null;
-    const hasTint = needsBombBeeTint || needsBeeRTint || (bskin && bskin.tint && lifetimeHoney >= bskin.cost);
+    const isMagma = !needsBeeRTint && !needsBombBeeTint && selectedBeeSkin === 'magma';
+    const isRainbow = !needsBeeRTint && !needsBombBeeTint && !isMagma && selectedBeeSkin === 'rainbow';
+    const needsSkinSwap = !needsBeeRTint && !needsBombBeeTint && !isRainbow && !isMagma && selectedBeeSkin !== 'classic';
+    const needsCompositeTint = needsBombBeeTint || needsBeeRTint;
 
-    if (hasTint) {
-      // Draw bee + tint on offscreen canvas — color blend preserves luminance (black stays black)
+    if (needsCompositeTint) {
+      // Full-bee composite tint (bomb-bee red, BEE-R green) — intentionally tints everything
       const ow = Math.ceil(dw) + 2, oh = Math.ceil(dh) + 2;
       if (_beeOffCvs.width !== ow || _beeOffCvs.height !== oh) {
         _beeOffCvs.width = ow; _beeOffCvs.height = oh;
       }
+      _beeOffCtx.imageSmoothingEnabled = false;
       _beeOffCtx.clearRect(0, 0, ow, oh);
       _beeOffCtx.drawImage(img, 1, 1, dw, dh);
-      // Color blend: replaces hue/saturation, preserves luminance — black stays black, yellow becomes tint colour
       _beeOffCtx.globalCompositeOperation = 'color';
-      if (needsBombBeeTint) {
-        _beeOffCtx.fillStyle = 'rgba(255,80,20,0.55)';
-      } else if (needsBeeRTint) {
-        _beeOffCtx.fillStyle = 'rgba(60,180,70,0.45)';
-      } else {
-        _beeOffCtx.fillStyle = bskin.tint;
-      }
+      _beeOffCtx.fillStyle = needsBombBeeTint ? 'rgba(255,80,20,0.55)' : 'rgba(60,180,70,0.45)';
       _beeOffCtx.fillRect(0, 0, ow, oh);
-      // Clip back to original bee shape (discard tint outside bee pixels)
       _beeOffCtx.globalCompositeOperation = 'destination-in';
       _beeOffCtx.drawImage(img, 1, 1, dw, dh);
       _beeOffCtx.globalCompositeOperation = 'source-over';
-      // Stamp offscreen result onto main canvas
       ctx.drawImage(_beeOffCvs, -dw/2 - 1, -dh/2 - 1);
+    } else if (isMagma) {
+      // Magma: pulsing warm body colors each frame
+      const mc = _magmaSwap(img, dw, dh, tick);
+      ctx.drawImage(mc, -dw/2 - 1, -dh/2 - 1);
+    } else if (isRainbow) {
+      // Rainbow: pixel-swap body colors at draw size each frame
+      const hue = (tick * 3) % 360;
+      const rc = _rainbowSwap(img, dw, dh, hue);
+      ctx.drawImage(rc, -dw/2 - 1, -dh/2 - 1);
+    } else if (needsSkinSwap && _skinFrameCache[selectedBeeSkin]) {
+      // Cosmetic skin: draw pre-built palette-swapped frame
+      const cached = _skinFrameCache[selectedBeeSkin][frameIdx];
+      if (cached) {
+        ctx.drawImage(cached, -dw/2, -dh/2, dw, dh);
+      } else {
+        ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
+      }
     } else {
       ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
     }
@@ -3641,17 +3864,19 @@ function drawHex(h) {
     ctx.fillStyle = dripCol;
     ctx.globalAlpha = dripAlpha;
     ctx.beginPath();
+    const dripScale = isHoney ? 1.2 : 1.0;  // HONEY drips 20% larger
     if (stage === 0) {
       // Small half-circle blob peeking out
-      ctx.arc(dripX, baseY, 3.5, 0, Math.PI);
+      ctx.arc(dripX, baseY, 3.5 * dripScale, 0, Math.PI);
     } else if (stage === 1) {
       // Bulge — wider half-circle starting to hang
-      ctx.arc(dripX, baseY + 1, 4.5, -0.15, Math.PI + 0.15);
+      ctx.arc(dripX, baseY + 1, 4.5 * dripScale, -0.15, Math.PI + 0.15);
     } else {
       // Emerging drip — oval shape, wider at top, rounding at bottom
-      ctx.moveTo(dripX - 4, baseY);
-      ctx.quadraticCurveTo(dripX - 4.5, baseY + 5.5, dripX, baseY + 8.5);
-      ctx.quadraticCurveTo(dripX + 4.5, baseY + 5.5, dripX + 4, baseY);
+      const ds = dripScale;
+      ctx.moveTo(dripX - 4*ds, baseY);
+      ctx.quadraticCurveTo(dripX - 4.5*ds, baseY + 5.5*ds, dripX, baseY + 8.5*ds);
+      ctx.quadraticCurveTo(dripX + 4.5*ds, baseY + 5.5*ds, dripX + 4*ds, baseY);
     }
     ctx.closePath();
     ctx.fill();
@@ -3675,47 +3900,32 @@ function drawHex(h) {
     ctx.strokeStyle = `rgba(${baseHue[0]},${baseHue[1]},${baseHue[2]},${p})`;
     ctx.lineWidth = 2; ctx.stroke();
 
-    // Pink spiraling particles — 8 particles with trailing ghosts (no swirl arms)
+    // Scattered swirl particles — pink for sender, blue/purple for receiver
     ctx.save();
     ctx.translate(h.x, h.y);
     ctx.scale(breathScale, breathScale);
     const swirlDir = isSender ? 1 : -1;
-    for (let i = 0; i < 8; i++) {
-      const seed = h.ci * 31 + i * 17;
-      const cycle = ((tick + seed) % 60) / 60; // 0→1 over 60 frames (slower spread)
-      const angle = (seed * 2.399) + tick * 0.03 * swirlDir;
+    const pColR = isSender ? 255 : 120;
+    const pColG = isSender ? 100 : 80;
+    const pColB = isSender ? 180 : 240;
+    for (let i = 0; i < 6; i++) {
+      const seed = h.ci * 31 + i * 37;  // wider seed spacing for less alignment
+      const period = 80 + (seed % 40);   // varied cycle lengths (80–120 frames)
+      const cycle = ((tick + seed * 3) % period) / period;
+      const angle = (seed * 3.71) + tick * 0.025 * swirlDir; // golden-angle offset, slower rotation
       let dist, alpha;
       if (isSender) {
-        dist = HEX_R * 1.65 * (1 - cycle) * (1 - cycle); // quadratic inward (3× bigger)
-        alpha = 0.2 + cycle * 0.6;
+        dist = HEX_R * 1.8 * (1 - cycle) * (1 - cycle * 0.5); // softer inward spiral
+        alpha = 0.15 + cycle * 0.5;
       } else {
-        dist = HEX_R * 1.80 * cycle; // linear outward (3× bigger)
-        alpha = 0.7 - cycle * 0.55;
+        dist = HEX_R * 2.0 * cycle * (0.6 + cycle * 0.4); // accelerating outward
+        alpha = 0.6 - cycle * 0.5;
       }
       const px = Math.cos(angle) * dist;
       const py = Math.sin(angle) * dist;
-      const sz = 1 + (isSender ? cycle : (1 - cycle)) * 1;
-      ctx.fillStyle = `rgba(255,100,180,${alpha.toFixed(2)})`;
+      const sz = 0.8 + (isSender ? cycle : (1 - cycle)) * 1.2;
+      ctx.fillStyle = `rgba(${pColR},${pColG},${pColB},${alpha.toFixed(2)})`;
       ctx.beginPath(); ctx.arc(px, py, sz, 0, Math.PI*2); ctx.fill();
-      // Particle trail — 3 fading ghosts behind the particle
-      for (let tr = 1; tr <= 3; tr++) {
-        const trCycle = ((tick + seed - tr * 4) % 60) / 60;
-        let trDist, trAlpha;
-        if (isSender) {
-          trDist = HEX_R * 1.65 * (1 - trCycle) * (1 - trCycle);
-          trAlpha = (0.2 + trCycle * 0.6) * (1 - tr * 0.3);
-        } else {
-          trDist = HEX_R * 1.80 * trCycle;
-          trAlpha = (0.7 - trCycle * 0.55) * (1 - tr * 0.3);
-        }
-        if (trAlpha < 0.03) continue;
-        const trAng = (seed * 2.399) + (tick - tr * 4) * 0.03 * swirlDir;
-        const tpx = Math.cos(trAng) * trDist;
-        const tpy = Math.sin(trAng) * trDist;
-        const tsz = sz * (1 - tr * 0.2);
-        ctx.fillStyle = `rgba(255,100,180,${trAlpha.toFixed(2)})`;
-        ctx.beginPath(); ctx.arc(tpx, tpy, tsz, 0, Math.PI*2); ctx.fill();
-      }
     }
     ctx.restore();
 
@@ -3728,6 +3938,23 @@ function drawHex(h) {
     ctx.textAlign = 'left';
     ctx.globalAlpha = 1;
   } else if (h.type === 'HONEY') {
+    // Inner honeycomb pattern — thin golden lines forming small hex outlines
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,200,50,0.35)';
+    ctx.lineWidth = 0.7;
+    const innerR = HEX_R * 0.32;
+    for (const [ox, oy] of [[0, 0], [-HEX_R*0.4, -HEX_R*0.2], [HEX_R*0.4, -HEX_R*0.2], [0, HEX_R*0.4]]) {
+      ctx.beginPath();
+      for (let a = 0; a < 6; a++) {
+        const angle = Math.PI / 6 + a * Math.PI / 3;
+        const px = h.x + ox + Math.cos(angle) * innerR;
+        const py = h.y + oy + Math.sin(angle) * innerR;
+        if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.restore();
     // animated sparkle crosses — crystalline honey effect
     const sparkPhase = (tick + h.ci * 7) % 30;
     if (sparkPhase < 12) {
@@ -3750,31 +3977,28 @@ function drawHex(h) {
     ctx.moveTo(h.x, h.y - HEX_R * 0.7); ctx.lineTo(h.x, h.y + HEX_R * 0.7);
     ctx.stroke();
   } else if (h.type === 'BROOD') {
-    // Just a small static bee — no background, no egg dots
-    const useBeeSprite = beeFrames.length === 4 && beeFrames[0];
-    if (useBeeSprite) {
-      const bImg = beeFrames[0];
-      const beeW = HEX_R * 1.8, beeH = HEX_R * 1.8;
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.drawImage(bImg, h.x - beeW / 2, h.y - beeH / 2, beeW, beeH);
-      ctx.restore();
-    } else {
-      // Fallback: simple bee outline
-      const br = HEX_R * 0.35;
-      ctx.save(); ctx.translate(h.x, h.y);
-      ctx.strokeStyle = 'rgba(255,200,60,0.6)';
-      ctx.fillStyle = 'rgba(255,180,30,0.25)';
-      ctx.lineWidth = 0.8;
-      ctx.beginPath(); ctx.ellipse(0, 0, br, br*0.6, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.strokeStyle = 'rgba(60,30,0,0.4)'; ctx.lineWidth = 0.7;
-      ctx.beginPath(); ctx.moveTo(-br*0.3, -br*0.55); ctx.lineTo(-br*0.3, br*0.55); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(br*0.25, -br*0.5); ctx.lineTo(br*0.25, br*0.5); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 0.6;
-      ctx.beginPath(); ctx.ellipse(-br*0.3, -br*0.6, br*0.4, br*0.25, -0.3, 0, Math.PI); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(br*0.3, -br*0.6, br*0.4, br*0.25, 0.3, 0, Math.PI); ctx.stroke();
-      ctx.restore();
+    // Three egg-sac dots in a triangular cluster
+    const eggR = HEX_R * 0.22;
+    const spread = HEX_R * 0.3;
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    const eggs = [
+      { x: h.x - spread * 0.55, y: h.y + spread * 0.3 },
+      { x: h.x + spread * 0.55, y: h.y + spread * 0.3 },
+      { x: h.x,                  y: h.y - spread * 0.5 },
+    ];
+    for (const e of eggs) {
+      // Outer glow
+      ctx.fillStyle = 'rgba(255,220,120,0.15)';
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, eggR * 1.6, eggR * 1.8, 0, 0, Math.PI * 2); ctx.fill();
+      // Egg body
+      ctx.fillStyle = 'rgba(255,240,200,0.7)';
+      ctx.beginPath(); ctx.ellipse(e.x, e.y, eggR, eggR * 1.25, 0, 0, Math.PI * 2); ctx.fill();
+      // Highlight
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath(); ctx.ellipse(e.x - eggR * 0.2, e.y - eggR * 0.4, eggR * 0.35, eggR * 0.5, -0.3, 0, Math.PI * 2); ctx.fill();
     }
+    ctx.restore();
   } else if (h.type === 'HEAVY') {
     // 3 rivets across center
     ctx.fillStyle = 'rgba(160,130,70,0.5)';
@@ -4039,7 +4263,7 @@ function drawHex(h) {
     { const cl = getCrackLevel(h); if (cl) drawCracks(h.x, h.y, cl, Math.round(h.x)*1000+Math.round(h.y)); }
   }
 
-  // Brood egg-sac dots removed — just the bee sprite now
+  // Brood egg-sac dots drawn inline above
   if (h._telegraphFlicker != null) ctx.globalAlpha = 1; // reset after telegraph
 }
 
@@ -4141,8 +4365,8 @@ function checkHex(b) {
           b.vx = _tvx; b.vy = _tvy;
           b.tpCooldown = CONFIG.PORTAL_COOLDOWN;
           h.flash = 14; dest.flash = 14;
-          spawnParts(h.x,    h.y,    18, ['#cc60ff','#e080ff','#f0c0ff','#fff']);
-          spawnParts(dest.x, dest.y, 18, ['#80e0ff','#b0f0ff','#e0ffff','#fff']);
+          spawnParts(h.x,    h.y,    18, ['#ff60aa','#ff80cc','#ffc0e0','#fff']); // pink entry
+          spawnParts(dest.x, dest.y, 18, ['#6040e0','#8060ff','#b0a0ff','#d0c0ff']); // blue/purple exit
           broodMsgs.push({x:dest.x, y:dest.y-8, life:55, txt:'TELEPORT!'});
           sfx.teleport();
         } else {
@@ -5634,7 +5858,7 @@ function drawUpgradeBanner() {
   const btnW = (bannerW - btnGap * 3) / 2;
   const btnY = bannerY + 18;
   const iconR = 18;                  // hex icon radius
-  const textLeft = iconR * 2 + 8;    // text starts after icon
+  const textLeft = iconR * 2 + 14;   // text starts after icon (extra padding)
 
   for (let i = 0; i < upgradeBannerChoices.length; i++) {
     const pu = upgradeBannerChoices[i];
@@ -7005,6 +7229,9 @@ function resetRun() {
   beeSusAnim = null;
   discoveryBanner = null;
   touchX2 = null; touchIdLeft = null; touchIdRight = null;
+  // CONTINUE? / BEE-LAX reset
+  continueUsed = false;
+  _beeLaxTarget = 1.0; _beeLaxActive = false; timeScale = 1;
 }
 
 function mkBee(x,y,vx,vy,spd) {
@@ -7114,10 +7341,11 @@ function update() {
     }
   }
   if (pickerTransition === 'speeding') {
-    timeScale = Math.min(1, timeScale + 0.025);
+    const _spTarget = _beeLaxActive ? _beeLaxTarget : 1;
+    timeScale = Math.min(_spTarget, timeScale + 0.025);
     blurAmount = (1 - timeScale) * 8;
-    if (timeScale >= 1) {
-      timeScale = 1; blurAmount = 0;
+    if (timeScale >= _spTarget) {
+      timeScale = _spTarget; blurAmount = _beeLaxActive ? 0 : 0;
       pickerTransition = null;
     }
   }
@@ -7131,11 +7359,24 @@ function update() {
     }
   }
   if (_upgradeSlomoState === 'resuming') {
-    timeScale = Math.min(1, timeScale + 0.02); // slower resume than slow-down
-    if (timeScale >= 1) {
-      timeScale = 1;
+    const _urTarget = _beeLaxActive ? _beeLaxTarget : 1;
+    timeScale = Math.min(_urTarget, timeScale + 0.02); // slower resume than slow-down
+    if (timeScale >= _urTarget) {
+      timeScale = _urTarget;
       _upgradeSlomoState = 'none';
     }
+  }
+
+  // ── BEE-LAX slow-motion lerp ──
+  if (_beeLaxActive && pickerTransition === null && _upgradeSlomoState === 'none') {
+    timeScale += (_beeLaxTarget - timeScale) * 0.03;
+    if (Math.abs(timeScale - _beeLaxTarget) < 0.01) timeScale = _beeLaxTarget;
+  }
+  if (!_beeLaxActive && _beeLaxTarget === 1.0 && timeScale < 1.0
+      && pickerTransition === null && _upgradeSlomoState === 'none') {
+    // Lerp back to 1.0 after BEE-LAX expires
+    timeScale += (1.0 - timeScale) * 0.03;
+    if (timeScale > 0.99) timeScale = 1.0;
   }
 
   // ── WAX chain reaction (staggered domino effect) ──
@@ -7281,7 +7522,7 @@ function update() {
   if (dt <= 0 && !pickerTransition) return;  // fully frozen, skip physics
 
   tick++;
-  beeFrameTick += 2; // double speed wing flap
+  beeFrameTick += 4.8; // wing flap speed (100% faster for 5-frame cycle)
   const pw=getPW();
 
   paddle.prevX = paddle.x;
@@ -7861,10 +8102,9 @@ if (b._boostCooldown > 0) b._boostCooldown--;
         }
         h.dead = true;
         spawnParts(h.x, h.y, 8, ['#f0e8a0', '#fff8d0', '#ffffff']);
-        // 50% honey collection
+        // 100% honey collection — BEE-SUS clears feel powerful
         const drops = CELL_TYPES[h.type]?.honey || 0;
-        const halfDrops = Math.ceil(drops / 2);
-        for (let i = 0; i < halfDrops; i++) spawnDroplet(h.x, h.y);
+        for (let i = 0; i < drops; i++) spawnDroplet(h.x, h.y);
       }
       _hexGridRebuild();
     }
@@ -7898,7 +8138,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
       upgradeBannerActive=false;upgradeBannerChoices=[];upgradeBannerGeom=null;
       triggerShake(4,10);
       SaveManager.saveMeta(); // persist best scores before game-over
-      render();setTimeout(showLose,350);return;
+      render();setTimeout(() => { if (!continueUsed) showContinuePrompt(); else showLose(); }, 350);return;
     }
   }
 
@@ -7934,7 +8174,7 @@ if (b._boostCooldown > 0) b._boostCooldown--;
       gameOver=true;touchX=null;touchX2=null;touchIdLeft=null;touchIdRight=null;
       upgradeBannerActive=false;upgradeBannerChoices=[];upgradeBannerGeom=null;
       SaveManager.saveMeta();
-      showLose();
+      if (!continueUsed) { showContinuePrompt(); } else { showLose(); }
       return;
     }
   }
@@ -7948,7 +8188,15 @@ if (b._boostCooldown > 0) b._boostCooldown--;
 // ═══════════════════════════════════════════════════════
 // RENDER
 // ═══════════════════════════════════════════════════════
+function _opaqueOverlayVisible() {
+  const ids = ['settingsPanel','shopPanel','patchNotesPanel','statsPanel','devPanel','devPasscode','summary'];
+  for (const id of ids) { const el = document.getElementById(id); if (el && el.classList.contains('show')) return true; }
+  return false;
+}
 function render() {
+  // Skip drawing when an opaque panel fully covers the canvas
+  // (prevents demo-mode slivers from showing through sub-pixel gaps)
+  if (demoMode && _opaqueOverlayVisible()) return;
   ctx.clearRect(0,0,W,H);
   // Screen shake offset
   let sx = 0, sy = 0;
@@ -8227,78 +8475,10 @@ function render() {
     hexPath(hexPts(d.x, d.y, r));
     ctx.fillStyle = d.type.color; ctx.fill();
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-    // Draw powerup sprite/icon inside the hex (replaces letter)
-    const _dpId = d.type.id;
-    const _dpPNG = beeFrames.length === 4 && beeFrames[0];
-    if (_dpId === 'honeySurge') {
-      ctx.fillStyle = '#000';
-      ctx.font = 'bold 9px "Press Start 2P",monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('x2', d.x, d.y + 1);
-      ctx.textBaseline = 'alphabetic';
-    } else if (_dpId === 'hendOfGod' && hendCanvas) {
-      const _hdw = 16, _hdh = Math.round(_hdw / hendAspect);
-      ctx.globalAlpha = 0.85;
-      ctx.drawImage(hendCanvas, d.x - _hdw/2, d.y - _hdh/2, _hdw, _hdh);
-      ctx.globalAlpha = 1;
-    } else if (_dpId === 'magnetHends') {
-      ctx.save(); ctx.translate(d.x, d.y);
-      ctx.lineCap = 'butt';
-      // Red U-shape body
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = '#d03030';
-      ctx.beginPath(); ctx.arc(0, -1, 6, Math.PI, 0); ctx.stroke();
-      ctx.strokeStyle = '#d03030';
-      ctx.beginPath(); ctx.moveTo(-6, -1); ctx.lineTo(-6, 5); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(6, -1); ctx.lineTo(6, 5); ctx.stroke();
-      // Silver tips
-      ctx.strokeStyle = '#c8c8c8';
-      ctx.beginPath(); ctx.moveTo(-6, 5); ctx.lineTo(-6, 8); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(6, 5); ctx.lineTo(6, 8); ctx.stroke();
-      ctx.restore();
-    } else if (_dpPNG) {
-      ctx.save(); ctx.translate(d.x, d.y);
-      let _dpSc = 0.55;
-      if (_dpId === 'beeBee') _dpSc = 0.4;
-      if (_dpId === 'beeGer') _dpSc = 0.75;
-      if (_dpId === 'beeHemoth') _dpSc = 0.9;
-      if (_dpId === 'booBee') ctx.globalAlpha = 0.45;
-      ctx.scale(_dpSc, _dpSc);
-      const _dpFIdx = beeFrameSeq[Math.floor(d.flash / BEE_FLAP_SPEED) % beeFrameSeq.length];
-      const _dpImg = beeFrames[beeFrameSeq[_dpFIdx]];
-      ctx.imageSmoothingEnabled = true;
-      ctx.drawImage(_dpImg, -BOX*1.2, -BOY*1.2, BOX*2.4, BOY*2.4);
-      // Type-specific tinting
-      if (_dpId === 'booBee') {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(60,200,200,0.5)';
-        ctx.fillRect(-BOX*1.2, -BOY*1.2, BOX*2.4, BOY*2.4);
-        ctx.globalCompositeOperation = 'source-over';
-      } else if (_dpId === 'beeR') {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(60,180,70,0.35)';
-        ctx.fillRect(-BOX*1.2, -BOY*1.2, BOX*2.4, BOY*2.4);
-        ctx.globalCompositeOperation = 'source-over';
-      } else if (_dpId === 'beeElzebub') {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(180,20,40,0.4)';
-        ctx.fillRect(-BOX*1.2, -BOY*1.2, BOX*2.4, BOY*2.4);
-        ctx.globalCompositeOperation = 'source-over';
-      } else if (_dpId === 'beeSus') {
-        ctx.globalCompositeOperation = 'source-atop';
-        ctx.fillStyle = 'rgba(255,240,180,0.35)';
-        ctx.fillRect(-BOX*1.2, -BOY*1.2, BOX*2.4, BOY*2.4);
-        ctx.globalCompositeOperation = 'source-over';
-      }
-      ctx.restore(); ctx.globalAlpha = 1;
-    } else {
-      // Fallback: letter
-      ctx.fillStyle = '#000';
-      ctx.font = 'bold 12px "Press Start 2P",monospace';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(d.type.name[0], d.x, d.y + 1);
-      ctx.textBaseline = 'alphabetic';
-    }
+    // Draw powerup icon inside the hex — uses same renderer as the guide
+    _gpDrawBee(_puDropCvs, d.type.id, d.flash);
+    const _dpDraw = r * 1.6;  // icon size relative to hex radius
+    ctx.drawImage(_puDropCvs, 0, 0, 40, 40, d.x - _dpDraw/2, d.y - _dpDraw/2, _dpDraw, _dpDraw);
   }
 
   // popups — world-space coords
@@ -8520,6 +8700,12 @@ function render() {
 
   // (Death zoom restore removed — hive collapse uses no zoom)
 
+  // ── BEE-LAX slow-motion overlay ──
+  if (_beeLaxActive) {
+    ctx.fillStyle = 'rgba(60,40,140,0.08)';
+    ctx.fillRect(0, 0, W, H);
+  }
+
   // ── CRT post-processing ──
   if (crtIntensity > 0) drawCRT(crtIntensity);
 
@@ -8710,6 +8896,348 @@ function _upgradeIconSVG(id, col) {
   }
 }
 
+// ── Shared powerup icon renderer (used by both guide and in-game drops) ──
+const _puDropCvs = document.createElement('canvas');
+_puDropCvs.width = 40; _puDropCvs.height = 40;
+function _gpDrawBee(cvs, pId, ft) {
+    const gc = cvs.getContext('2d');
+    gc.clearRect(0, 0, 40, 40);
+    // HEND OF GOD — ethereal hand with slow yellow glow pulse
+    if (pId === 'hendOfGod' && hendCanvas) {
+      const dw = 24, dh = Math.round(dw / hendAspect);
+      const hx = (40 - dw) / 2, hy = (40 - dh) / 2;
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.02);
+      const aR = 18 + pulse * 4;
+      const gA = 0.25 + pulse * 0.2;
+      const g = gc.createRadialGradient(20, 20, 2, 20, 20, aR);
+      g.addColorStop(0, `rgba(255,255,255,${gA})`);
+      g.addColorStop(0.4, `rgba(230,245,255,${gA * 0.5})`);
+      g.addColorStop(1, 'rgba(220,240,255,0)');
+      gc.fillStyle = g; gc.fillRect(0, 0, 40, 40);
+      gc.globalAlpha = 0.45 + pulse * 0.15;
+      gc.imageSmoothingEnabled = true;
+      gc.drawImage(hendCanvas, hx, hy, dw, dh);
+      gc.globalCompositeOperation = 'source-atop';
+      gc.fillStyle = 'rgba(230,240,255,0.4)';
+      gc.fillRect(hx, hy, dw, dh);
+      gc.globalCompositeOperation = 'source-over';
+      gc.globalAlpha = 1;
+      return;
+    }
+    // MAGNET HENDS — standard red & silver horseshoe magnet
+    if (pId === 'magnetHends') {
+      gc.save();
+      gc.translate(20, 20);
+      gc.lineCap = 'butt';
+      gc.lineWidth = 4;
+      gc.strokeStyle = '#d03030';
+      gc.beginPath(); gc.arc(0, -2, 8, Math.PI, 0); gc.stroke();
+      gc.beginPath(); gc.moveTo(-8, -2); gc.lineTo(-8, 7); gc.stroke();
+      gc.beginPath(); gc.moveTo(8, -2); gc.lineTo(8, 7); gc.stroke();
+      gc.strokeStyle = '#c8c8c8';
+      gc.beginPath(); gc.moveTo(-8, 7); gc.lineTo(-8, 12); gc.stroke();
+      gc.beginPath(); gc.moveTo(8, 7); gc.lineTo(8, 12); gc.stroke();
+      gc.restore();
+      return;
+    }
+    // HONEY SURGE — just "x2" centered with golden pulse
+    if (pId === 'honeySurge') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.025);
+      const bob = Math.sin(ft * 0.03) * 1.5;
+      gc.font = 'bold 14px "Press Start 2P", monospace';
+      gc.textAlign = 'center'; gc.textBaseline = 'middle';
+      gc.fillStyle = '#000';
+      gc.fillText('x2', 21, 21 + bob + 1);
+      gc.fillStyle = `rgb(255, ${Math.round(200 + pulse * 55)}, ${Math.round(40 + pulse * 40)})`;
+      gc.fillText('x2', 20, 20 + bob);
+      return;
+    }
+    // BEE-LAX: draw a clock icon instead of a bee
+    if (pId === 'beeLax') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.015);
+      const cx = 20, cy = 20;
+      const r = 12;
+      gc.fillStyle = `rgba(100,100,200,${0.15 + pulse * 0.1})`;
+      gc.beginPath(); gc.arc(cx, cy, r + 2, 0, Math.PI * 2); gc.fill();
+      gc.fillStyle = '#1a1a2e';
+      gc.beginPath(); gc.arc(cx, cy, r, 0, Math.PI * 2); gc.fill();
+      gc.strokeStyle = `rgba(140,140,255,${0.7 + pulse * 0.3})`;
+      gc.lineWidth = 1.5;
+      gc.beginPath(); gc.arc(cx, cy, r, 0, Math.PI * 2); gc.stroke();
+      gc.strokeStyle = `rgba(180,180,255,0.6)`;
+      gc.lineWidth = 1;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+        const inner = r - 2.5, outer = r - 1;
+        gc.beginPath();
+        gc.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+        gc.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+        gc.stroke();
+      }
+      const minAngle = (ft * 0.008) % (Math.PI * 2) - Math.PI / 2;
+      gc.strokeStyle = '#c0c0ff';
+      gc.lineWidth = 1.2;
+      gc.beginPath();
+      gc.moveTo(cx, cy);
+      gc.lineTo(cx + Math.cos(minAngle) * (r - 3.5), cy + Math.sin(minAngle) * (r - 3.5));
+      gc.stroke();
+      const hrAngle = (ft * 0.0008) % (Math.PI * 2) - Math.PI / 2;
+      gc.strokeStyle = '#e0e0ff';
+      gc.lineWidth = 1.5;
+      gc.beginPath();
+      gc.moveTo(cx, cy);
+      gc.lineTo(cx + Math.cos(hrAngle) * (r - 6), cy + Math.sin(hrAngle) * (r - 6));
+      gc.stroke();
+      gc.fillStyle = '#e0e0ff';
+      gc.beginPath(); gc.arc(cx, cy, 1.2, 0, Math.PI * 2); gc.fill();
+      return;
+    }
+    let sc = 1.5;
+    if (pId === 'beeBee') sc = 1.0;
+    if (pId === 'beeGer') sc = 2.0;
+    if (pId === 'beeHemoth') sc = 3.0;
+    if (pId === 'booBee') gc.globalAlpha = 0.3;
+    const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 4 : BEE_FLAP_SPEED;
+    const _gpFrameSeq = [0, 1, 2, 3, 2, 1];
+    const fIdx = _gpFrameSeq[Math.floor(ft / flapSpeed) % _gpFrameSeq.length];
+    const bob = 0;
+    const extraBob = (pId === 'booBee') ? Math.sin(ft * 0.02) * 2 : 0;
+    if (pId === 'booBee') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.008);
+      const gy = 20 + bob + extraBob;
+      const aR = 18 + pulse * 3;
+      const aA = 0.22 + pulse * 0.12;
+      const gg = gc.createRadialGradient(20, gy, 3, 20, gy, aR);
+      gg.addColorStop(0, `rgba(60,200,190,${aA})`);
+      gg.addColorStop(0.35, `rgba(40,170,170,${aA * 0.5})`);
+      gg.addColorStop(0.7, `rgba(30,140,150,${aA * 0.2})`);
+      gg.addColorStop(1, 'rgba(20,120,130,0)');
+      gc.globalAlpha = 0.6;
+      gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
+      gc.globalAlpha = 0.45;
+    }
+    if (pId === 'beeSus') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.015);
+      const gy = 20 + bob + extraBob;
+      const aR = 16 + pulse * 4;
+      const aA = 0.25 + pulse * 0.15;
+      const gg = gc.createRadialGradient(20, gy, 3, 20, gy, aR);
+      gg.addColorStop(0, `rgba(255,240,180,${aA * 1.2})`);
+      gg.addColorStop(0.3, `rgba(255,220,100,${aA})`);
+      gg.addColorStop(0.6, `rgba(255,200,60,${aA * 0.4})`);
+      gg.addColorStop(1, 'rgba(255,180,40,0)');
+      gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
+    }
+    if (pId === 'beeElzebub') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.018);
+      const gy = 20 + bob + extraBob;
+      const aR = 16 + pulse * 4;
+      const aA = 0.25 + pulse * 0.15;
+      const gg = gc.createRadialGradient(20, gy, 3, 20, gy, aR);
+      gg.addColorStop(0, `rgba(255,100,40,${aA * 1.2})`);
+      gg.addColorStop(0.3, `rgba(255,50,20,${aA})`);
+      gg.addColorStop(0.6, `rgba(200,20,10,${aA * 0.4})`);
+      gg.addColorStop(1, 'rgba(150,10,0,0)');
+      gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
+    }
+    const usePNG = beeFrames.length >= 3 && beeFrames[0];
+    if (pId === 'beeBee' && usePNG) {
+      const img = beeFrames[fIdx];
+      const dw = BEE_DW * sc, dh = BEE_DH * sc;
+      gc.imageSmoothingEnabled = false;
+      gc.drawImage(img, 20 - dw - 1, 20 + bob - dh / 2, dw, dh);
+      gc.drawImage(img, 20 + 1, 20 + bob - dh / 2, dw, dh);
+    } else {
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        gc.imageSmoothingEnabled = false;
+        const img = beeFrames[fIdx];
+        const dw = BEE_DW, dh = BEE_DH;
+        if (pId === 'beeR') {
+          const tipsy = (Math.sin(ft * 0.02) + 1) / 2;
+          const ow = Math.ceil(dw) + 2, oh = Math.ceil(dh) + 2;
+          _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+          _beeOffCtx.clearRect(0, 0, ow, oh);
+          _beeOffCtx.drawImage(img, 1, 1, dw, dh);
+          if (tipsy > 0.02) {
+            _beeOffCtx.globalCompositeOperation = 'color';
+            _beeOffCtx.fillStyle = `rgba(60,180,70,${tipsy * 0.5})`;
+            _beeOffCtx.fillRect(0, 0, ow, oh);
+            _beeOffCtx.globalCompositeOperation = 'destination-in';
+            _beeOffCtx.drawImage(img, 1, 1, dw, dh);
+            _beeOffCtx.globalCompositeOperation = 'source-over';
+          }
+          gc.drawImage(_beeOffCvs, -dw / 2 - 1, -dh / 2 - 1);
+        } else {
+          gc.drawImage(img, -dw/2, -dh/2, dw, dh);
+        }
+      } else {
+        const px = 2, ox = -(BC*px)/2, oy = -(BR*px)/2;
+        for (let r = 0; r < BR; r++) for (let c = 0; c < BC; c++) {
+          let col = BEE_G[r][c]; if (!col) continue;
+          gc.fillStyle = col; gc.fillRect(ox+c*px, oy+r*px, px, px);
+        }
+      }
+      gc.restore();
+    }
+    gc.globalAlpha = 1;
+    if (pId === 'beeR') {
+      const bTime = ft * 0.07;
+      for (let i = 0; i < 3; i++) {
+        const seed = i * 2.5;
+        const bx = 20 + Math.sin(bTime + seed) * 6 + (i - 1) * 4;
+        const by = 20 - 8 - ((bTime * 0.8 + seed * 3) % 14);
+        const br = 1.0 + Math.sin(bTime + i) * 0.4;
+        const ba = 0.5 - ((bTime * 0.8 + seed * 3) % 14) / 28;
+        if (ba > 0) {
+          gc.strokeStyle = `rgba(80,210,100,${ba})`;
+          gc.lineWidth = 0.7;
+          gc.beginPath(); gc.arc(bx, by, br, 0, Math.PI*2); gc.stroke();
+        }
+      }
+    }
+    if (pId === 'booBee') {
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        const img2 = beeFrames[beeFrameSeq[fIdx]];
+        const dw2 = BEE_DW, dh2 = BEE_DH;
+        const ol = 0.6;
+        gc.globalAlpha = 0.25;
+        for (const [ox, oy] of [[-ol,0],[ol,0],[0,-ol],[0,ol]]) {
+          gc.drawImage(img2, -dw2/2 + ox, -dh2/2 + oy, dw2, dh2);
+        }
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(220,250,255,0.9)';
+        gc.fillRect(-dw2/2 - ol, -dh2/2 - ol, dw2 + ol*2, dh2 + ol*2);
+        gc.globalCompositeOperation = 'source-over';
+        gc.globalAlpha = 0.4;
+        gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(60,180,200,0.65)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        gc.fillStyle = 'rgba(220,250,255,0.3)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-over';
+      }
+      gc.restore();
+      const pts = [[8,10],[30,14],[12,30],[28,28],[20,6],[16,18],[26,22]];
+      for (let i = 0; i < pts.length; i++) {
+        const phase = ft * 0.006 + i * 1.5;
+        const pa = Math.max(0, Math.sin(phase) * 0.4);
+        if (pa > 0.02) {
+          gc.globalAlpha = pa;
+          const colors = ['rgba(80,210,200,0.7)','rgba(100,180,240,0.6)','rgba(220,250,255,0.5)'];
+          gc.fillStyle = colors[i % 3];
+          gc.beginPath(); gc.arc(pts[i][0], pts[i][1], 0.9 + Math.sin(phase)*0.4, 0, Math.PI*2); gc.fill();
+        }
+      }
+      gc.globalAlpha = 1;
+    }
+    if (pId === 'beeSus') {
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        const img2 = beeFrames[beeFrameSeq[fIdx]];
+        const dw2 = BEE_DW, dh2 = BEE_DH;
+        gc.globalAlpha = 0.5;
+        gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-atop';
+        gc.fillStyle = 'rgba(255,240,180,0.6)';
+        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
+        gc.globalCompositeOperation = 'source-over';
+      }
+      gc.restore();
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      const haloPulse = 0.7 + 0.3 * Math.sin(ft * 0.02);
+      gc.strokeStyle = `rgba(255,220,80,${0.6 * haloPulse})`;
+      gc.lineWidth = 1;
+      gc.beginPath();
+      gc.ellipse(0, -8, 5, 1.8, 0, 0, Math.PI * 2);
+      gc.stroke();
+      gc.strokeStyle = `rgba(255,250,200,${0.4 * haloPulse})`;
+      gc.lineWidth = 0.6;
+      gc.beginPath();
+      gc.ellipse(0, -8, 4, 1.3, 0, 0, Math.PI * 2);
+      gc.stroke();
+      gc.restore();
+      const sparkles = [[8,8],[30,10],[6,24],[32,26],[14,32],[26,6],[20,4],[12,14],[28,18]];
+      for (let i = 0; i < sparkles.length; i++) {
+        const phase = ft * 0.025 + i * 0.9;
+        const sa = Math.max(0, Math.sin(phase) * 0.7);
+        if (sa > 0.05) {
+          const sx = sparkles[i][0], sy = sparkles[i][1];
+          gc.globalAlpha = sa;
+          gc.strokeStyle = (i % 3 === 0) ? 'rgba(255,255,240,0.9)' : 'rgba(255,220,80,0.9)';
+          gc.lineWidth = 0.5;
+          const sr = 0.8 + Math.sin(phase) * 0.4;
+          gc.beginPath(); gc.moveTo(sx - sr, sy); gc.lineTo(sx + sr, sy); gc.stroke();
+          gc.beginPath(); gc.moveTo(sx, sy - sr); gc.lineTo(sx, sy + sr); gc.stroke();
+        }
+      }
+      gc.globalAlpha = 1;
+    }
+    if (pId === 'beeElzebub') {
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        const img2 = beeFrames[beeFrameSeq[fIdx]];
+        const dw2 = BEE_DW, dh2 = BEE_DH;
+        const ow = Math.ceil(dw2) + 2, oh = Math.ceil(dh2) + 2;
+        _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+        _beeOffCtx.imageSmoothingEnabled = false;
+        _beeOffCtx.clearRect(0, 0, ow, oh);
+        _beeOffCtx.drawImage(img2, 1, 1, dw2, dh2);
+        const idata = _beeOffCtx.getImageData(0, 0, ow, oh);
+        const px = idata.data;
+        const topRows = Math.ceil(dh2 * 0.25) + 1;
+        for (let y = 0; y < topRows; y++) {
+          for (let x = 0; x < ow; x++) {
+            const idx = (y * ow + x) * 4;
+            if (px[idx + 3] > 30) {
+              const r = px[idx], g = px[idx+1], b = px[idx+2];
+              const brightness = (r + g + b) / 3;
+              if (brightness < 140) {
+                px[idx] = 200; px[idx+1] = 20; px[idx+2] = 20;
+              }
+            }
+          }
+        }
+        _beeOffCtx.putImageData(idata, 0, 0);
+        _beeOffCtx.globalCompositeOperation = 'color';
+        _beeOffCtx.fillStyle = 'rgba(200,30,20,0.35)';
+        _beeOffCtx.fillRect(0, 0, ow, oh);
+        _beeOffCtx.globalCompositeOperation = 'destination-in';
+        _beeOffCtx.drawImage(img2, 1, 1, dw2, dh2);
+        _beeOffCtx.globalCompositeOperation = 'source-over';
+        gc.globalAlpha = 0.85;
+        gc.drawImage(_beeOffCvs, -dw2/2 - 1, -dh2/2 - 1);
+      }
+      gc.restore();
+      const embers = [[10,28],[28,26],[8,16],[30,12],[18,32],[24,8],[14,6]];
+      for (let i = 0; i < embers.length; i++) {
+        const phase = ft * 0.02 + i * 1.1;
+        const life = (Math.sin(phase) + 1) / 2;
+        const ea = life * 0.6;
+        if (ea > 0.05) {
+          const ey = embers[i][1] - life * 5;
+          const er = 0.6 + life * 0.4;
+          gc.globalAlpha = ea;
+          gc.fillStyle = (i % 2 === 0) ? 'rgba(255,120,20,0.9)' : 'rgba(255,60,20,0.9)';
+          gc.beginPath(); gc.arc(embers[i][0], ey, er, 0, Math.PI*2); gc.fill();
+        }
+      }
+      gc.globalAlpha = 1;
+    }
+}
+
 function buildGuide() {
   const TAG_C = { PADDLE:'#f0c040', CONTROL:'#40c0f0', DAMAGE:'#f04040', SWARM:'#80e060', HONEY:'#f0a020', POWERUP:'#40c0ff' };
 
@@ -8729,7 +9257,7 @@ function buildGuide() {
       svg:`<line x1="-5" y1="0" x2="5" y2="0" stroke="rgba(80,120,90,0.5)" stroke-width="1"/><line x1="0" y1="-5" x2="0" y2="5" stroke="rgba(80,120,90,0.5)" stroke-width="1"/>` },
     { name:'TITAN',       type:'TITAN',   col:'#3a3a50', out:'#6060a0', lw:3, hits:'HP: 20',  honey:'1', note:'STANDARD CELL',
       svg:`<circle cx="0" cy="0" r="4" fill="rgba(100,100,160,0.4)"/><circle cx="0" cy="0" r="6" fill="none" stroke="rgba(80,80,140,0.5)" stroke-width="2"/>` },
-    { name:'HONEY',       type:'HONEY',   col:'#ffe050', out:'#e8b000', lw:3, hits:'HP: 1',   honey:'6', note:'HIGH HONEY REWARD',
+    { name:'HONEY',       type:'HONEY',   col:'#e8a010', out:'#b07800', lw:3, hits:'HP: 1',   honey:'6', note:'HIGH HONEY REWARD',
       svg:`<circle cx="0" cy="0" r="6" fill="none" stroke="rgba(255,240,80,0.6)" stroke-width="1.5"/><circle cx="-3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="3" cy="2" r="2" fill="#ff9800" opacity="0.9"/><circle cx="0" cy="-4" r="2" fill="#ff9800" opacity="0.9"/>` },
     { name:'UNBREAKABLE', type:'UNBREAKABLE', col:'#505050', out:'#707070', lw:3, hits:'IMMUNE',  honey:'0', note:'PERMANENT OBSTACLE',
       svg:`` },
@@ -8831,7 +9359,7 @@ function buildGuide() {
   // Animated bee previews for guide power-ups section
   let _gpAnimRunning = false;
   let _gpTick = 0;
-  function _gpDrawBee(cvs, pId, ft) {
+  function _gpDrawBee_OLD(cvs, pId, ft) { // DEAD CODE — _gpDrawBee is now global
     const gc = cvs.getContext('2d');
     gc.clearRect(0, 0, 40, 40);
     // HEND OF GOD — ethereal hand with slow yellow glow pulse
@@ -8889,14 +9417,59 @@ function buildGuide() {
       gc.fillText('x2', 20, 20 + bob);
       return;
     }
-    let sc = 1;
-    if (pId === 'beeBee') sc = 0.65;
-    if (pId === 'beeGer') sc = 1.5;
-    if (pId === 'beeHemoth') sc = 2.0;
+    // BEE-LAX: draw a clock icon instead of a bee
+    if (pId === 'beeLax') {
+      const pulse = 0.5 + 0.5 * Math.sin(ft * 0.015);
+      const cx = 20, cy = 20;
+      const r = 12;
+      // Clock face
+      gc.fillStyle = `rgba(100,100,200,${0.15 + pulse * 0.1})`;
+      gc.beginPath(); gc.arc(cx, cy, r + 2, 0, Math.PI * 2); gc.fill();
+      gc.fillStyle = '#1a1a2e';
+      gc.beginPath(); gc.arc(cx, cy, r, 0, Math.PI * 2); gc.fill();
+      gc.strokeStyle = `rgba(140,140,255,${0.7 + pulse * 0.3})`;
+      gc.lineWidth = 1.5;
+      gc.beginPath(); gc.arc(cx, cy, r, 0, Math.PI * 2); gc.stroke();
+      // Hour ticks
+      gc.strokeStyle = `rgba(180,180,255,0.6)`;
+      gc.lineWidth = 1;
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2 - Math.PI / 2;
+        const inner = r - 2.5, outer = r - 1;
+        gc.beginPath();
+        gc.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+        gc.lineTo(cx + Math.cos(a) * outer, cy + Math.sin(a) * outer);
+        gc.stroke();
+      }
+      // Minute hand (slow rotation)
+      const minAngle = (ft * 0.008) % (Math.PI * 2) - Math.PI / 2;
+      gc.strokeStyle = '#c0c0ff';
+      gc.lineWidth = 1.2;
+      gc.beginPath();
+      gc.moveTo(cx, cy);
+      gc.lineTo(cx + Math.cos(minAngle) * (r - 3.5), cy + Math.sin(minAngle) * (r - 3.5));
+      gc.stroke();
+      // Hour hand (slower rotation)
+      const hrAngle = (ft * 0.0008) % (Math.PI * 2) - Math.PI / 2;
+      gc.strokeStyle = '#e0e0ff';
+      gc.lineWidth = 1.5;
+      gc.beginPath();
+      gc.moveTo(cx, cy);
+      gc.lineTo(cx + Math.cos(hrAngle) * (r - 6), cy + Math.sin(hrAngle) * (r - 6));
+      gc.stroke();
+      // Center dot
+      gc.fillStyle = '#e0e0ff';
+      gc.beginPath(); gc.arc(cx, cy, 1.2, 0, Math.PI * 2); gc.fill();
+      return;
+    }
+    let sc = 1.5;
+    if (pId === 'beeBee') sc = 1.0;
+    if (pId === 'beeGer') sc = 2.0;
+    if (pId === 'beeHemoth') sc = 3.0;
     if (pId === 'booBee') gc.globalAlpha = 0.3;
     const flapSpeed = (pId === 'beeHemoth' || pId === 'beeR') ? 4 : BEE_FLAP_SPEED;
     // Use mid/low-biased frame sequence for guide icons (avoids HI-FLIGHT's wide wings)
-    const _gpFrameSeq = [1, 2, 3, 2, 1, 0];
+    const _gpFrameSeq = [0, 1, 2, 3, 2, 1];
     const fIdx = _gpFrameSeq[Math.floor(ft / flapSpeed) % _gpFrameSeq.length];
     const bob = 0; // frames are now vertically aligned at load time
     const extraBob = (pId === 'booBee') ? Math.sin(ft * 0.02) * 2 : 0;
@@ -8940,34 +9513,52 @@ function buildGuide() {
       gg.addColorStop(1, 'rgba(150,10,0,0)');
       gc.fillStyle = gg; gc.fillRect(0, 0, 40, 40);
     }
-    gc.save();
-    gc.translate(20, 20 + bob + extraBob);
-    gc.scale(sc, sc);
     // Use PNG bee frames if available
-    const usePNG = beeFrames.length === 4 && beeFrames[0];
-    if (usePNG) {
-      gc.imageSmoothingEnabled = false;
+    const usePNG = beeFrames.length >= 3 && beeFrames[0];
+    // BEE-BEE: draw 2 bees side by side
+    if (pId === 'beeBee' && usePNG) {
       const img = beeFrames[fIdx];
-      const dw = BOX * 2.4, dh = BOY * 2.4;
-      gc.drawImage(img, -dw/2, -dh/2, dw, dh);
-      // BEE-R nauseous green tint — fades in/out (tipsy between normal and drunken)
-      if (pId === 'beeR') {
-        const tipsy = (Math.sin(ft * 0.02) + 1) / 2; // 0 = normal, 1 = fully green
-        if (tipsy > 0.02) {
-          gc.globalCompositeOperation = 'source-atop';
-          gc.fillStyle = `rgba(60,180,70,${tipsy * 0.5})`;
-          gc.fillRect(-dw/2, -dh/2, dw, dh);
-          gc.globalCompositeOperation = 'source-over';
+      const dw = BEE_DW * sc, dh = BEE_DH * sc;
+      gc.imageSmoothingEnabled = false;
+      gc.drawImage(img, 20 - dw - 1, 20 + bob - dh / 2, dw, dh);
+      gc.drawImage(img, 20 + 1, 20 + bob - dh / 2, dw, dh);
+    } else {
+      gc.save();
+      gc.translate(20, 20 + bob + extraBob);
+      gc.scale(sc, sc);
+      if (usePNG) {
+        gc.imageSmoothingEnabled = false;
+        const img = beeFrames[fIdx];
+        const dw = BEE_DW, dh = BEE_DH;
+        // BEE-R: use offscreen canvas for green tint to avoid source-atop flicker
+        if (pId === 'beeR') {
+          const tipsy = (Math.sin(ft * 0.02) + 1) / 2;
+          const ow = Math.ceil(dw) + 2, oh = Math.ceil(dh) + 2;
+          _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+          _beeOffCtx.clearRect(0, 0, ow, oh);
+          _beeOffCtx.drawImage(img, 1, 1, dw, dh);
+          if (tipsy > 0.02) {
+            _beeOffCtx.globalCompositeOperation = 'color';
+            _beeOffCtx.fillStyle = `rgba(60,180,70,${tipsy * 0.5})`;
+            _beeOffCtx.fillRect(0, 0, ow, oh);
+            _beeOffCtx.globalCompositeOperation = 'destination-in';
+            _beeOffCtx.drawImage(img, 1, 1, dw, dh);
+            _beeOffCtx.globalCompositeOperation = 'source-over';
+          }
+          gc.drawImage(_beeOffCvs, -dw / 2 - 1, -dh / 2 - 1);
+        } else {
+          gc.drawImage(img, -dw/2, -dh/2, dw, dh);
+        }
+      } else {
+        const px = 2, ox = -(BC*px)/2, oy = -(BR*px)/2;
+        for (let r = 0; r < BR; r++) for (let c = 0; c < BC; c++) {
+          let col = BEE_G[r][c]; if (!col) continue;
+          gc.fillStyle = col; gc.fillRect(ox+c*px, oy+r*px, px, px);
         }
       }
-    } else {
-      const px = 2, ox = -(BC*px)/2, oy = -(BR*px)/2;
-      for (let r = 0; r < BR; r++) for (let c = 0; c < BC; c++) {
-        let col = BEE_G[r][c]; if (!col) continue;
-        gc.fillStyle = col; gc.fillRect(ox+c*px, oy+r*px, px, px);
-      }
+      gc.restore();
     }
-    gc.restore(); gc.globalAlpha = 1;
+    gc.globalAlpha = 1;
     // BEE-R drunken bubbles — always visible
     if (pId === 'beeR') {
       const bTime = ft * 0.07;
@@ -8991,7 +9582,7 @@ function buildGuide() {
       gc.scale(sc, sc);
       if (usePNG) {
         const img2 = beeFrames[beeFrameSeq[fIdx]];
-        const dw2 = BOX * 2.4, dh2 = BOY * 2.4;
+        const dw2 = BEE_DW, dh2 = BEE_DH;
         // Thin white outline — draw sprite offset in 4 directions with white tint
         const ol = 0.6; // outline thickness
         gc.globalAlpha = 0.25;
@@ -9037,7 +9628,7 @@ function buildGuide() {
       gc.scale(sc, sc);
       if (usePNG) {
         const img2 = beeFrames[beeFrameSeq[fIdx]];
-        const dw2 = BOX * 2.4, dh2 = BOY * 2.4;
+        const dw2 = BEE_DW, dh2 = BEE_DH;
         gc.globalAlpha = 0.5;
         gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
         gc.globalCompositeOperation = 'source-atop';
@@ -9046,7 +9637,7 @@ function buildGuide() {
         gc.globalCompositeOperation = 'source-over';
       }
       gc.restore();
-      // Halo — small golden ellipse above the bee head
+      // Halo — small golden ellipse above the bee head (lowered to stay in frame)
       gc.save();
       gc.translate(20, 20 + bob + extraBob);
       gc.scale(sc, sc);
@@ -9054,13 +9645,13 @@ function buildGuide() {
       gc.strokeStyle = `rgba(255,220,80,${0.6 * haloPulse})`;
       gc.lineWidth = 1;
       gc.beginPath();
-      gc.ellipse(0, -12.5, 5, 1.8, 0, 0, Math.PI * 2);
+      gc.ellipse(0, -8, 5, 1.8, 0, 0, Math.PI * 2);
       gc.stroke();
       // Inner brighter halo
       gc.strokeStyle = `rgba(255,250,200,${0.4 * haloPulse})`;
       gc.lineWidth = 0.6;
       gc.beginPath();
-      gc.ellipse(0, -12.5, 4, 1.3, 0, 0, Math.PI * 2);
+      gc.ellipse(0, -8, 4, 1.3, 0, 0, Math.PI * 2);
       gc.stroke();
       gc.restore();
       // Golden sparkle particles — scattered around, twinkle in/out
@@ -9081,54 +9672,60 @@ function buildGuide() {
       }
       gc.globalAlpha = 1;
     }
-    // BEE-ELZEBUB: devil bee — red body tint, horns, red aura, ember particles
+    // BEE-ELZEBUB: devil bee — red body tint, red antennae, red stinger, ember particles
     if (pId === 'beeElzebub') {
-      // Red tint overlay on the bee body via source-atop
+      // Red tint overlay + red antennae via offscreen canvas pixel manipulation
       gc.save();
       gc.translate(20, 20 + bob + extraBob);
       gc.scale(sc, sc);
       if (usePNG) {
         const img2 = beeFrames[beeFrameSeq[fIdx]];
-        const dw2 = BOX * 2.4, dh2 = BOY * 2.4;
-        gc.globalAlpha = 0.55;
-        gc.drawImage(img2, -dw2/2, -dh2/2, dw2, dh2);
-        gc.globalCompositeOperation = 'source-atop';
-        gc.fillStyle = 'rgba(200,30,20,0.7)';
-        gc.fillRect(-dw2/2, -dh2/2, dw2, dh2);
-        gc.globalCompositeOperation = 'source-over';
+        const dw2 = BEE_DW, dh2 = BEE_DH;
+        const ow = Math.ceil(dw2) + 2, oh = Math.ceil(dh2) + 2;
+        _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+        _beeOffCtx.imageSmoothingEnabled = false;
+        _beeOffCtx.clearRect(0, 0, ow, oh);
+        _beeOffCtx.drawImage(img2, 1, 1, dw2, dh2);
+        // Recolor dark antenna pixels (top ~3 rows) to red
+        const idata = _beeOffCtx.getImageData(0, 0, ow, oh);
+        const px = idata.data;
+        const topRows = Math.ceil(dh2 * 0.25) + 1; // top quarter = antennae area
+        for (let y = 0; y < topRows; y++) {
+          for (let x = 0; x < ow; x++) {
+            const idx = (y * ow + x) * 4;
+            if (px[idx + 3] > 30) { // visible pixel
+              const r = px[idx], g = px[idx+1], b = px[idx+2];
+              const brightness = (r + g + b) / 3;
+              if (brightness < 140) { // dark pixel (antenna)
+                px[idx] = 200; px[idx+1] = 20; px[idx+2] = 20;
+              }
+            }
+          }
+        }
+        // Also recolor the stinger (bottom ~2 rows dark pixels) to red
+        const botStart = oh - Math.ceil(dh2 * 0.25) - 1;
+        for (let y = botStart; y < oh; y++) {
+          for (let x = 0; x < ow; x++) {
+            const idx = (y * ow + x) * 4;
+            if (px[idx + 3] > 30) {
+              const brightness = (px[idx] + px[idx+1] + px[idx+2]) / 3;
+              if (brightness < 140) {
+                px[idx] = 220; px[idx+1] = 30; px[idx+2] = 30;
+              }
+            }
+          }
+        }
+        _beeOffCtx.putImageData(idata, 0, 0);
+        // Red body tint via color composite
+        _beeOffCtx.globalCompositeOperation = 'color';
+        _beeOffCtx.fillStyle = 'rgba(200,30,20,0.35)';
+        _beeOffCtx.fillRect(0, 0, ow, oh);
+        _beeOffCtx.globalCompositeOperation = 'destination-in';
+        _beeOffCtx.drawImage(img2, 1, 1, dw2, dh2);
+        _beeOffCtx.globalCompositeOperation = 'source-over';
+        gc.globalAlpha = 0.85;
+        gc.drawImage(_beeOffCvs, -dw2/2 - 1, -dh2/2 - 1);
       }
-      gc.restore();
-      // Devil horns — two small triangles on top of the bee head
-      gc.save();
-      gc.translate(20, 20 + bob + extraBob);
-      gc.scale(sc, sc);
-      gc.fillStyle = '#a01010';
-      // Left horn
-      gc.beginPath();
-      gc.moveTo(-4.5, -8.5);
-      gc.lineTo(-6.5, -13);
-      gc.lineTo(-2.5, -9.5);
-      gc.closePath();
-      gc.fill();
-      // Right horn
-      gc.beginPath();
-      gc.moveTo(4.5, -8.5);
-      gc.lineTo(6.5, -13);
-      gc.lineTo(2.5, -9.5);
-      gc.closePath();
-      gc.fill();
-      gc.restore();
-      // Devil stinger — tiny straight red spike from bee's rear
-      gc.save();
-      gc.translate(20, 20 + bob + extraBob);
-      gc.scale(sc, sc);
-      gc.fillStyle = '#e02020';
-      gc.beginPath();
-      gc.moveTo(-1, 8);
-      gc.lineTo(0, 12);
-      gc.lineTo(1, 8);
-      gc.closePath();
-      gc.fill();
       gc.restore();
       // Ember particles — small dots that rise and fade
       const embers = [[10,28],[28,26],[8,16],[30,12],[18,32],[24,8],[14,6]];
@@ -9290,7 +9887,14 @@ function hidePause() { pausePanel.classList.remove('show'); }
   guideBack.id = 'guideBackBtn';
   guideBack.textContent = 'BACK';
   guideBack.style.cssText = 'margin:8px auto 8px auto;display:none;';
-  guideBack.onclick = () => { showPause(false); };
+  guideBack.onclick = () => {
+    if (demoMode) {
+      hidePause();
+      showOv();
+    } else {
+      showPause(false);
+    }
+  };
   // Insert after pauseTitle, before guideBody
   const pauseTitle = document.getElementById('pauseTitle');
   pauseTitle.parentNode.insertBefore(guideBack, pauseTitle.nextSibling);
@@ -9360,6 +9964,47 @@ function showMenu() {
   startLevel(1);
 }
 
+// ── Patch Notes splash ──────────────────────────────────
+const patchNotesPanel = document.getElementById('patchNotesPanel');
+const pnVersion = document.getElementById('pnVersion');
+const pnBody    = document.getElementById('pnBody');
+const pnClose   = document.getElementById('pnClose');
+
+function showPatchNotes(onClose) {
+  if (PATCH_NOTES.length === 0) { if (onClose) onClose(); return; }
+  pnVersion.textContent = '';
+
+  // Build all patch note entries (newest first)
+  let html = '';
+  for (let i = 0; i < PATCH_NOTES.length; i++) {
+    const entry = PATCH_NOTES[i];
+    // Version header
+    html += `<div style="font-size:0.36rem;color:#f0a020;text-shadow:1px 1px 0 #4a2000;margin-top:${i === 0 ? 0 : 14}px;margin-bottom:4px;font-family:'Press Start 2P',monospace;">v${entry.version}${entry.date ? '  —  ' + entry.date : ''}</div>`;
+    // Note lines with prefix coloring
+    for (const line of entry.notes) {
+      const prefix = line.charAt(0);
+      let col = '#c89030';
+      if (prefix === '+') col = '#60e040';
+      else if (prefix === '*') col = '#f0c040';
+      else if (prefix === '-') col = '#ff6040';
+      html += `<div style="font-size:0.28rem;line-height:2;padding:1px 0;color:${col};text-align:left;word-wrap:break-word;overflow-wrap:break-word;">${line}</div>`;
+    }
+    // Divider between versions
+    if (i < PATCH_NOTES.length - 1) {
+      html += `<div style="border-top:1px solid #3a1e00;margin:8px 0 4px 0;"></div>`;
+    }
+  }
+  pnBody.innerHTML = html;
+
+  pnClose.onclick = () => {
+    markPatchNotesSeen();
+    patchNotesPanel.classList.remove('show');
+    if (onClose) onClose();
+  };
+  patchNotesPanel.classList.add('show');
+}
+
+// ── Dev Patch Notes Input ────────────────────────────────
 // ── Settings panel ──────────────────────────────────────
 let _settingsReturnTo = 'menu';
 const settingsPanel = document.getElementById('settingsPanel');
@@ -9516,6 +10161,12 @@ function showDevMenu() {
   document.getElementById('devPanel').classList.add('show');
 }
 function hideDevMenu() { document.getElementById('devPanel').classList.remove('show'); }
+
+// PATCH NOTES button in settings
+document.getElementById('btnPatchNotes').onclick = () => {
+  hideSettings();
+  showPatchNotes(() => { showSettings(_settingsReturnTo); });
+};
 
 // DEV OPTIONS button in settings
 document.getElementById('btnDevOptions').onclick = () => {
@@ -10421,26 +11072,15 @@ function buildShopDots() {
   _fillTiles('shopTilesBeeSkin', BEE_SKINS.map(s => {
     const locked = (s.unlockDepth || 0) > _bestD;
     return {
-      color: s.tint ? s.tint.replace(/,[0-9.]+\)$/, ',1)') : '#f5c030',
+      color: s.id === 'rainbow' ? 'linear-gradient(90deg,red,orange,yellow,green,blue,violet)' : s.id === 'magma' ? 'linear-gradient(135deg,#ff3000,#ff8000,#ffc000)' : s.colors ? `rgb(${s.colors[0][0]},${s.colors[0][1]},${s.colors[0][2]})` : '#f5c030',
       active: selectedBeeSkin === s.id,
       name: s.name, desc: s.desc, cost: s.cost || 0,
       locked, lockText: locked ? s.name + '\nREACH DEPTH ' + s.unlockDepth + ' TO UNLOCK' : '',
-      onClick: () => { selectedBeeSkin = s.id; saveCosmetics(); buildShopDots(); }
+      onClick: () => { selectedBeeSkin = s.id; if (s.colors && !_skinFrameCache[s.id]) _buildSkinFrames(s.id); saveCosmetics(); buildShopDots(); }
     };
   }));
   document.getElementById('shopTilesBeeSkin').classList.add('swatch-grid');
-  // 3 "coming soon" bee colour placeholders
-  const beeSkinEl = document.getElementById('shopTilesBeeSkin');
-  for (let i = 0; i < 3; i++) {
-    const tile = document.createElement('div'); tile.className = 'shop-tile';
-    const sw = document.createElement('div'); sw.className = 'shop-tile-swatch';
-    sw.style.backgroundColor = '#1a1208'; sw.style.position = 'relative';
-    const q = document.createElement('div');
-    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
-    q.textContent = '?'; sw.appendChild(q); tile.appendChild(sw);
-    tile.onclick = () => showShopToast('COMING SOON');
-    beeSkinEl.appendChild(tile);
-  }
+  // All bee colour slots filled — no placeholders needed
 
   // Trail effect tiles (right column) — with depth unlock gating
   _fillTiles('shopTilesTracer', BEE_TRACERS.map(t => {
@@ -10455,28 +11095,20 @@ function buildShopDots() {
       locked, lockText: locked ? t.name + '\nREACH DEPTH ' + t.unlockDepth + ' TO UNLOCK' : '',
       swatchRender: (sw) => {
         const bg = 'rgba(10,5,0,0.9)';
-        if (t.id === 'rainbow') {
-          sw.style.background = 'repeating-linear-gradient(135deg,red 0px,orange 3px,yellow 6px,green 9px,blue 12px,violet 15px,red 18px)';
+        if (t.id === 'babyBuzzies') {
+          sw.style.background = `radial-gradient(circle at 30% 30%, #f5c030 1px, transparent 2px), radial-gradient(circle at 70% 60%, #f5c030 1px, transparent 2px), radial-gradient(circle at 50% 80%, #f5c030 1px, transparent 2px), ${bg}`;
+        } else if (t.id === 'rainbow') {
+          sw.style.background = `radial-gradient(circle at 50% 50%, red 0px, orange 2px, yellow 3px, green 4px, blue 5px, violet 6px, transparent 10px), ${bg}`;
         } else {
-          sw.style.background = `repeating-linear-gradient(135deg,${solidC} 0px,${solidC} 3px,${bg} 3px,${bg} 7px)`;
+          const glow = t.color ? t.color + '0.3)' : 'rgba(170,170,170,0.3)';
+          sw.style.background = `radial-gradient(circle at 50% 50%, ${solidC} 4px, ${glow} 7px, transparent 10px), ${bg}`;
         }
       },
       onClick: () => { selectedTracer = t.id; saveCosmetics(); buildShopDots(); }
     };
   }));
   document.getElementById('shopTilesTracer').classList.add('swatch-grid');
-  // 2 "coming soon" trail effect placeholders
-  const tracerEl = document.getElementById('shopTilesTracer');
-  for (let i = 0; i < 2; i++) {
-    const tile = document.createElement('div'); tile.className = 'shop-tile';
-    const sw = document.createElement('div'); sw.className = 'shop-tile-swatch';
-    sw.style.backgroundColor = '#1a1208'; sw.style.position = 'relative';
-    const q = document.createElement('div');
-    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
-    q.textContent = '?'; sw.appendChild(q); tile.appendChild(sw);
-    tile.onclick = () => showShopToast('COMING SOON');
-    tracerEl.appendChild(tile);
-  }
+  // (all tracer slots filled — no "coming soon" placeholders)
 
   // Auras — with depth unlock gating
   _fillTiles('shopTilesAuras', BEE_AURAS.map(a => {
@@ -10501,18 +11133,7 @@ function buildShopDots() {
     };
   }));
   document.getElementById('shopTilesAuras').classList.add('swatch-grid');
-  // 3 "coming soon" aura placeholders
-  const auraEl = document.getElementById('shopTilesAuras');
-  for (let i = 0; i < 3; i++) {
-    const tile = document.createElement('div'); tile.className = 'shop-tile';
-    const sw = document.createElement('div'); sw.className = 'shop-tile-swatch';
-    sw.style.backgroundColor = '#1a1208'; sw.style.position = 'relative';
-    const q = document.createElement('div');
-    q.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Press Start 2P",monospace;font-size:0.6em;color:#444;';
-    q.textContent = '?'; sw.appendChild(q); tile.appendChild(sw);
-    tile.onclick = () => showShopToast('COMING SOON');
-    auraEl.appendChild(tile);
-  }
+  // All aura slots filled — no placeholders needed
 }
 
 function _fillDots(containerId, dots) {
@@ -10761,7 +11382,7 @@ function _shopLoop() {
     }
 
     const skin = BEE_SKINS.find(s => s.id === selectedBeeSkin);
-    const usePNG = beeFrames.length === 4 && beeFrames[0];
+    const usePNG = beeFrames.length >= 3 && beeFrames[0];
     if (usePNG) {
       const flap = Math.max(2, Math.round(BEE_FLAP_SPEED / 2));
       const frameIdx = beeFrameSeq[Math.floor(_shopTick / flap) % beeFrameSeq.length];
@@ -10812,6 +11433,59 @@ function _shopLoop() {
             } else if (isHoney) {
               const pulse = 0.85 + 0.15 * Math.sin(_shopTick * 0.05 + dy * 0.1);
               bx.strokeStyle = `rgba(255,210,60,${(alpha * pulse).toFixed(2)})`;
+            } else if (isStar) {
+              // Bright sparkly dash with flickering sparks + star crosses
+              const sparkle = Math.sin(_shopTick * 0.15 + dy * 2.3) * 0.3 + 0.9;
+              bx.strokeStyle = `rgba(255,250,220,${(alpha * sparkle).toFixed(2)})`;
+              // Draw the dash line first
+              bx.beginPath(); bx.moveTo(beeCX, dashY); bx.lineTo(beeCX, dashY + dashLen); bx.stroke();
+              // Flickering sparks around each dash
+              const dashMid = dashY + dashLen / 2;
+              for (let sp = 0; sp < 3; sp++) {
+                const phase = _shopTick * 0.15 * (5 + sp * 2) + dy * (3.1 + sp * 0.7);
+                if (Math.sin(phase) > 0.3) {
+                  const spread = 3 + sp;
+                  const sx = beeCX + Math.sin(_shopTick * 0.1 * (3 + sp) + dy + sp * 2.2) * spread;
+                  const sy = dashMid + Math.cos(_shopTick * 0.1 * (2.5 + sp) + dy + sp * 1.8) * spread;
+                  const sa = alpha * (0.6 + Math.sin(_shopTick * 0.2 + sp) * 0.3);
+                  const cols = ['rgba(255,255,255,','rgba(255,240,160,','rgba(200,220,255,'];
+                  bx.fillStyle = `${cols[sp]}${sa.toFixed(2)})`;
+                  bx.fillRect(sx - 0.5, sy - 0.5, 1, 1);
+                }
+              }
+              // Star cross on every 3rd dash
+              const dashIdx = Math.floor(dy / dashSpacing);
+              if (dashIdx % 3 === 0 && alpha > 0.15) {
+                const sFlash = 0.5 + 0.5 * Math.sin(_shopTick * 0.25 + dy);
+                const sA = alpha * sFlash * 0.6;
+                bx.save();
+                bx.strokeStyle = `rgba(255,255,240,${sA.toFixed(2)})`;
+                bx.lineWidth = 0.6;
+                const cr = 2.5;
+                bx.beginPath(); bx.moveTo(beeCX - cr, dashMid); bx.lineTo(beeCX + cr, dashMid); bx.stroke();
+                bx.beginPath(); bx.moveTo(beeCX, dashMid - cr); bx.lineTo(beeCX, dashMid + cr); bx.stroke();
+                bx.restore();
+                bx.lineWidth = isStar ? 2.5 : 1.8;
+              }
+              continue;
+            } else if (tracerObj.id === 'monaBalls') {
+              bx.fillStyle = `rgba(255,140,30,${alpha.toFixed(2)})`;
+              bx.beginPath(); bx.arc(beeCX, dashY + dashLen / 2, 3, 0, Math.PI * 2); bx.fill();
+              if (alpha > 0.15) {
+                bx.fillStyle = `rgba(255,180,60,${(alpha * 0.3).toFixed(2)})`;
+                bx.beginPath(); bx.arc(beeCX, dashY + dashLen / 2, 5, 0, Math.PI * 2); bx.fill();
+              }
+              continue;
+            } else if (tracerObj.id === 'babyBuzzies') {
+              if (beeFrames.length >= 3 && beeFrames[0]) {
+                bx.save(); bx.globalAlpha = alpha * 0.8;
+                const _bbOx = beeCX + Math.sin(_shopTick * 0.08 + dy * 0.3) * 3;
+                bx.translate(_bbOx, dashY + dashLen / 2);
+                bx.rotate((_shopTick * 0.1 + dy * 0.5) % (Math.PI * 2));
+                bx.drawImage(beeFrames[0], -2.5, -2.5, 5, 5);
+                bx.restore();
+              }
+              continue;
             } else {
               bx.strokeStyle = `${tracerObj.color}${alpha.toFixed(2)})`;
             }
@@ -10845,21 +11519,25 @@ function _shopLoop() {
 
       bx.save();
       bx.translate(beeCX, beeCY);
-      const dw = 80, dh = 80;
-      if (skin && skin.tint) {
-        const ow = dw + 2, oh = dh + 2;
-        if (_beeOffCvs.width !== ow || _beeOffCvs.height !== oh) {
-          _beeOffCvs.width = ow; _beeOffCvs.height = oh;
+      const _sAR = img.width / img.height;
+      const dh = 40, dw = dh * _sAR; // sized for preview box
+      if (skin && skin.id === 'magma') {
+        // Magma: pulsing warm body colors at preview size
+        const mc = _magmaSwap(img, dw, dh, _shopTick);
+        bx.drawImage(mc, -dw / 2 - 1, -dh / 2 - 1);
+      } else if (skin && skin.id === 'rainbow') {
+        // Rainbow: pixel-swap body colors at preview size
+        const hue = (_shopTick * 3) % 360;
+        const rc = _rainbowSwap(img, dw, dh, hue);
+        bx.drawImage(rc, -dw / 2 - 1, -dh / 2 - 1);
+      } else if (skin && skin.colors && _skinFrameCache[skin.id]) {
+        // Cosmetic skin: draw pre-built palette-swapped frame
+        const cached = _skinFrameCache[skin.id][frameIdx];
+        if (cached) {
+          bx.drawImage(cached, -dw/2, -dh/2, dw, dh);
+        } else {
+          bx.drawImage(img, -dw/2, -dh/2, dw, dh);
         }
-        _beeOffCtx.clearRect(0, 0, ow, oh);
-        _beeOffCtx.drawImage(img, 1, 1, dw, dh);
-        _beeOffCtx.globalCompositeOperation = 'color';
-        _beeOffCtx.fillStyle = skin.tint;
-        _beeOffCtx.fillRect(0, 0, ow, oh);
-        _beeOffCtx.globalCompositeOperation = 'destination-in';
-        _beeOffCtx.drawImage(img, 1, 1, dw, dh);
-        _beeOffCtx.globalCompositeOperation = 'source-over';
-        bx.drawImage(_beeOffCvs, -dw/2 - 1, -dh/2 - 1);
       } else {
         bx.drawImage(img, -dw/2, -dh/2, dw, dh);
       }
@@ -10904,6 +11582,69 @@ function _drawAccOnCtx(cx2, accId, ox, oy, dw, dh) {
   cx2.beginPath();
   cx2.ellipse(rx, ry, rw, rh, 0, Math.PI, Math.PI * 2);
   cx2.stroke();
+}
+
+// ── CONTINUE? Arcade Countdown ──────────────────────────
+function showContinuePrompt() {
+  music.play(); music.muffle();
+  // Black out canvas
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, W, H);
+
+  let count = CONTINUE_TIMER_SECS;
+  const cdEl = document.createElement('div');
+  cdEl.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,0.92);z-index:10000;font-family:"Press Start 2P",monospace;color:#f0a020;pointer-events:all;cursor:pointer;gap:12px;';
+  cdEl.innerHTML = `
+    <div style="font-size:min(38px,9vw);color:#f5c030;text-shadow:0 0 20px rgba(240,160,40,0.6),2px 2px 0 #4a2000;letter-spacing:3px;">CONTINUE?</div>
+    <div id="_contNum" style="font-size:min(72px,18vw);color:#ff6020;text-shadow:0 0 30px rgba(255,96,32,0.7),3px 3px 0 #4a1000;margin:8px 0;">${count}</div>
+    <div style="font-size:min(14px,3.5vw);color:#c89030;letter-spacing:1px;opacity:0.8;">TAP TO CONTINUE</div>
+  `;
+  document.body.appendChild(cdEl);
+  sfx.continueBeep(count);
+
+  let resolved = false;
+  const numEl = cdEl.querySelector('#_contNum');
+
+  const intervalId = setInterval(() => {
+    count--;
+    if (count <= 0 || resolved) {
+      clearInterval(intervalId);
+      if (!resolved) {
+        resolved = true;
+        cdEl.remove();
+        showLose();
+      }
+      return;
+    }
+    numEl.textContent = String(count);
+    // Pulse effect — scale up briefly
+    numEl.style.transform = 'scale(1.3)';
+    setTimeout(() => { if (numEl.parentNode) numEl.style.transform = 'scale(1)'; }, 150);
+    sfx.continueBeep(count);
+  }, 1000);
+
+  cdEl.addEventListener('click', () => {
+    if (resolved) return;
+    resolved = true;
+    clearInterval(intervalId);
+    cdEl.remove();
+    continueUsed = true;
+    gameOver = false;
+    // Clear active powerups
+    deactivatePowerup();
+    _beeLaxTarget = 1.0; _beeLaxActive = false; timeScale = 1;
+    // Respawn a bee
+    bees.push(startBee());
+    music.play(); music.unmuffle();
+    sfx.gameStart();
+    lastTime = 0; // RULE #5: must reset before resuming loop
+    loop();
+  });
+
+  cdEl.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    cdEl.click();
+  }, { passive: false });
 }
 
 function showLose() {
@@ -11418,6 +12159,12 @@ let _isFirstBoot = true;
 function playNeonBootSequence() {
   showMenu();
 
+  // Show patch notes splash if there are unseen updates
+  if (hasUnseenPatchNotes()) {
+    // Delay slightly so menu is visible underneath
+    setTimeout(() => showPatchNotes(), 300);
+  }
+
   if (!_isFirstBoot) return; // only flicker on first boot
   _isFirstBoot = false;
 
@@ -11520,11 +12267,15 @@ function playNeonBootSequence() {
     canvas.style.filter = 'blur(0px) brightness(1.0)'; // focuses over 4 seconds
   }, 2200);
 
+  // Collect Phase 3+ timer IDs for skip-boot support
+  const _bootTimers = [];
+  let _bootSkipped = false;
+
   // Phase 3 (delay 4.0s): Buttons power on MUCH slower, staggered more
-  setTimeout(() => {
+  _bootTimers.push(setTimeout(() => {
     // Each button flickers with slower, more deliberate pattern + glow ramp
     buttons.forEach((btn, i) => {
-      setTimeout(() => {
+      _bootTimers.push(setTimeout(() => {
         // Start with dim glow
         btn.style.boxShadow = '3px 3px 0 #4a2000, 0 0 2px rgba(240,160,32,0.15)';
         btn.style.transition = 'box-shadow 1.5s ease-in';
@@ -11538,21 +12289,21 @@ function playNeonBootSequence() {
         neonFlickerElement(btn, pattern, 'neon-glow-btn', 0.015 + Math.random() * 0.01);
         // Ramp glow up after flicker settles
         const flickDur = flickCount * 200 + 200;
-        setTimeout(() => {
+        _bootTimers.push(setTimeout(() => {
           btn.style.boxShadow = '3px 3px 0 #4a2000, 0 0 8px rgba(240,160,32,0.5), 0 0 18px rgba(240,140,20,0.25), 0 0 30px rgba(240,120,10,0.12)';
-        }, flickDur);
-      }, i * 300);
+        }, flickDur));
+      }, i * 300));
     });
 
     // Start power surge after elements settle
-    setTimeout(() => {
+    _bootTimers.push(setTimeout(() => {
       startPowerSurge([title, sub, ...buttons]);
-    }, 2500);
+    }, 2500));
 
-  }, 4000);
+  }, 4000));
 
   // Phase 3b (delay 7s): "HIGHEST CLIMB" subtitle comes on LAST, slow fade-in with glow ramp
-  setTimeout(() => {
+  _bootTimers.push(setTimeout(() => {
     sub.classList.remove('neon-off');
     sub.style.opacity = '0';
     sub.style.textShadow = '1px 1px 0 #3a1800, 0 0 2px rgba(200,140,40,0.2)';
@@ -11561,10 +12312,11 @@ function playNeonBootSequence() {
     sub.style.opacity = '1';
     sub.style.textShadow = '1px 1px 0 #3a1800, 0 0 8px rgba(200,140,40,0.6), 0 0 18px rgba(180,120,30,0.35), 0 0 30px rgba(160,100,20,0.18)';
     sub.classList.add('neon-glow-sub');
-  }, 7000);
+  }, 7000));
 
   // Reset transitions after full sequence, then start title glow pulse
-  setTimeout(() => {
+  _bootTimers.push(setTimeout(() => {
+    _removeSkipListener();
     ov.style.transition = '';
     canvas.style.transition = '';
     canvas.style.filter = '';
@@ -11582,7 +12334,70 @@ function playNeonBootSequence() {
       setTimeout(_titlePulse, 3000);
     }
     _titlePulse();
-  }, 8000);
+  }, 8000));
+
+  // Tap-to-skip: bypass button flickering and jump to fully visible menu
+  function _skipBoot(e) {
+    if (_bootSkipped) return;
+    _bootSkipped = true;
+    e.stopPropagation(); e.preventDefault();
+    // Clear all pending boot timers
+    _bootTimers.forEach(id => clearTimeout(id));
+    _bootTimers.length = 0;
+    // Show all buttons immediately (no flicker)
+    buttons.forEach(btn => {
+      btn.classList.remove('neon-off');
+      btn.style.transition = 'none';
+      btn.style.opacity = '1';
+      btn.classList.add('neon-glow-btn');
+      btn.style.boxShadow = '3px 3px 0 #4a2000, 0 0 8px rgba(240,160,32,0.5), 0 0 18px rgba(240,140,20,0.25), 0 0 30px rgba(240,120,10,0.12)';
+    });
+    // Show subtitle immediately
+    sub.classList.remove('neon-off');
+    sub.style.transition = 'none';
+    sub.style.opacity = '1';
+    sub.style.textShadow = '1px 1px 0 #3a1800, 0 0 8px rgba(200,140,40,0.6), 0 0 18px rgba(180,120,30,0.35), 0 0 30px rgba(160,100,20,0.18)';
+    sub.classList.add('neon-glow-sub');
+    // Show title fully
+    title.classList.remove('neon-off');
+    title.style.transition = 'none';
+    title.style.opacity = '1';
+    title.style.textShadow = '3px 3px 0 #4a2000, 0 0 20px rgba(240,170,40,0.75), 0 0 40px rgba(240,160,32,0.55), 0 0 70px rgba(240,140,20,0.35), 0 0 100px rgba(240,120,10,0.15)';
+    title.classList.add('neon-glow-title');
+    // Show canvas fully (no blur)
+    canvas.style.transition = 'none';
+    canvas.style.opacity = '1';
+    canvas.style.filter = '';
+    // Start power surge and title pulse immediately
+    startPowerSurge([title, sub, ...buttons]);
+    ov.style.transition = '';
+    title.style.transition = 'text-shadow 3s ease-in-out';
+    let _titlePulseOn = true;
+    function _titlePulse() {
+      if (!ov.classList.contains('show')) return;
+      if (_titlePulseOn) {
+        title.style.textShadow = '3px 3px 0 #4a2000, 0 0 20px rgba(240,170,40,0.75), 0 0 40px rgba(240,160,32,0.55), 0 0 70px rgba(240,140,20,0.35), 0 0 100px rgba(240,120,10,0.15)';
+      } else {
+        title.style.textShadow = '3px 3px 0 #4a2000, 0 0 14px rgba(240,170,40,0.6), 0 0 30px rgba(240,160,32,0.4), 0 0 55px rgba(240,140,20,0.25), 0 0 80px rgba(240,120,10,0.1)';
+      }
+      _titlePulseOn = !_titlePulseOn;
+      setTimeout(_titlePulse, 3000);
+    }
+    _titlePulse();
+    // Remove skip listener
+    _removeSkipListener();
+  }
+  function _removeSkipListener() {
+    document.removeEventListener('click', _skipBoot, true);
+    document.removeEventListener('touchstart', _skipBoot, true);
+  }
+  // Delay adding skip listeners so the initial power-hex tap doesn't immediately skip
+  setTimeout(() => {
+    if (!_bootSkipped) {
+      document.addEventListener('click', _skipBoot, true);
+      document.addEventListener('touchstart', _skipBoot, true);
+    }
+  }, 500);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -11604,6 +12419,10 @@ document.addEventListener('visibilitychange', () => {
 });
 
 Promise.all([loadHendImage(), loadBeeSprites(), loadHoneypotImages()]).then(() => {
+  // Build skin frame cache for selected skin on startup
+  if (selectedBeeSkin !== 'classic' && selectedBeeSkin !== 'rainbow' && selectedBeeSkin !== 'magma') {
+    _buildSkinFrames(selectedBeeSkin);
+  }
   // Gate behind Power-On tap to ensure mobile audio sync
   const powerScreen = document.getElementById('powerOnScreen');
   if (!powerScreen) {
