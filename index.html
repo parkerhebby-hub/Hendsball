@@ -7688,7 +7688,7 @@ function update() {
       if (h.y < cullY) { if (i !== _hw) hexes[_hw] = h; _hw++; }
       else if (h.bossGateId != null) {
         const gate = bossGates[h.bossGateId];
-        if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
+        if (gate && !gate.dead) triggerBossGateShatter(gate);
       }
     }
     hexes.length = _hw;
@@ -7714,7 +7714,7 @@ function update() {
         h.dead = true;
         if (h.bossGateId != null) {
           const gate = bossGates[h.bossGateId];
-          if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
+          if (gate && !gate.dead) triggerBossGateShatter(gate);
         }
       }
     }
@@ -7862,7 +7862,7 @@ function update() {
       if (h.y < cullY) { if (i !== _hw) hexes[_hw] = h; _hw++; }
       else if (h.bossGateId != null) {
         const gate = bossGates[h.bossGateId];
-        if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
+        if (gate && !gate.dead) triggerBossGateShatter(gate);
       }
     }
     hexes.length = _hw;
@@ -7890,7 +7890,7 @@ function update() {
         h.dead = true;
         if (h.bossGateId != null) {
           const gate = bossGates[h.bossGateId];
-          if (gate && !gate.dead) { gate.dead = true; gate.hp = 0; }
+          if (gate && !gate.dead) triggerBossGateShatter(gate);
         }
       }
     }
