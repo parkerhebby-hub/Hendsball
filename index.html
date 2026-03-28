@@ -4559,6 +4559,13 @@ function checkHex(b) {
         // separate ball from hex
         const ov = (BALL_R + HEX_COLL_R) - dist + 1;
         b.x += nx*ov; b.y += ny*ov;
+      } else if (piercing) {
+        // Push bee THROUGH the cell so it clears the collision zone
+        // (prevents immediately hitting the next adjacent cell)
+        const bSpd = Math.hypot(b.vx, b.vy) || 1;
+        const pushDist = (BALL_R + HEX_COLL_R) - dist + 2;
+        b.x += (b.vx / bSpd) * pushDist;
+        b.y += (b.vy / bSpd) * pushDist;
       }
 
       // Bomb-bee explosion — detonates on impact (timed, not per-hit)
