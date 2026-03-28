@@ -1199,6 +1199,22 @@ const SaveManager = {
 // ═══════════════════════════════════════════════════════════
 const PATCH_NOTES = [
   {
+    version: '1.3.6',
+    date: '2026-03-28',
+    notes: [
+      '* REWORKED PADDLE BOUNCE — SLOW HEND = MIRROR REFLECTION, FAST HEND = SMASH REDIRECT',
+      '* FIXED BOSS GATE SHATTER — ROYAL GUARD CELLS NOW PROPERLY DIE WHEN QUEEN IS DEFEATED VIA KILL ZONE OR SCROLL CULL',
+      '* FIXED HEND CARRY — SWEEP TEST NOW CATCHES BEES DURING FAST SCROLL INSTEAD OF MISSING THEM',
+      '* CAPPED GAME LOOP AT 60 FPS — FIXES DOUBLE-SPEED ANIMATIONS ON HIGH-REFRESH DISPLAYS',
+      '* REDUCED MAX BEE SPEED FROM 8.1 TO 4.8 — NO MORE LIGHTSPEED BEES',
+      '* NERFED PIERCING STING — MAX 2 CELLS PER HIT, MAX 3 STACKS (WAS 6/6)',
+      '* CAPPED BEE VELOCITY ON PADDLE SMASH TO MAX SPEED LIMIT',
+      '+ ADDED CUSTOM APP ICON FOR MOBILE HOME SCREENS',
+      '* IMPROVED MEDIA SESSION SUPPRESSION — LESS PHANTOM MEDIA PLAYER ON iOS/ANDROID',
+      '* TUNED SHOP BEE PREVIEW TRAIL SPEED TO MATCH IN-GAME FEEL',
+    ],
+  },
+  {
     version: '1.3.5',
     date: '2026-03-27',
     notes: [
@@ -11684,7 +11700,7 @@ function _shopLoop() {
         const tracerObj = selectedTracer !== 'classic' ? BEE_TRACERS.find(t => t.id === selectedTracer) : null;
         const dashSpacing = 14;  // space between dashes
         const dashLen = 5;       // length of each dash
-        const scrollSpeed = 0.6; // pixels per tick — match in-game feel
+        const scrollSpeed = 1.0; // pixels per tick — balanced with 0.35 shopTick
         const scrollOffset = (_shopTick * scrollSpeed) % dashSpacing; // continuous scroll
         const isPoop = tracerObj && tracerObj.id === 'poopLogs';
         const isHoney = tracerObj && tracerObj.id === 'honeyDrip';
