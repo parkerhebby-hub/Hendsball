@@ -704,7 +704,7 @@ function darkenCol(hex, amt) {
 const CONFIG = {
   // Physics
   BASE_SPD:             2.92,
-  MAX_SPD:              8.1,
+  MAX_SPD:              4.8,
   MIN_AXIS:             1.0,
   BLEND_F:              0.15,   // 15% raw-centre blend in hex reflection
   WALL_FRICTION:        0.82,
@@ -2361,10 +2361,10 @@ const ALL_POWERUPS = [
     id: 'piercingSting',
     name: 'PIERCING STING',
     short: 'PRCG',
-    desc: 'BEES PIERCE THROUGH CELLS\nTHAT BREAK IN 1 HIT.',
+    desc: 'BEES PIERCE THROUGH CELLS\nTHAT BREAK IN 1 HIT.\n(MAX 2 CELLS PER HIT)',
     tag:  'DAMAGE',
     color: '#30e0a0', outline: '#18805a',
-    max:  6,
+    max:  3,
     apply() { powers.piercingSting++; }
   },
 ];
@@ -8026,8 +8026,8 @@ function update() {
   const newBees=[];
 
   for (const b of bees) {
-    // PIERCING STING: reset pierce charges each frame
-    b._pierceLeft = powers.piercingSting;
+    // PIERCING STING: reset pierce charges each frame (cap at 2 to prevent blasting)
+    b._pierceLeft = Math.min(powers.piercingSting, 2);
     // BEE-BEE size restore timer
     if (b._shrinkTimer > 0) { b._shrinkTimer--; if (b._shrinkTimer <= 0) b.sizeScale = 1.0; }
     // BEE-ELZEBUB bomb timer
@@ -8094,21 +8094,29 @@ function update() {
       if (b.vy>0 && b.y+BALL_R>=paddleWorldY-CONFIG.HEND_HIT_PAD_Y && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+CONFIG.HEND_HIT_PAD_Y+4
           && b.x>=p.x-CONFIG.HEND_HIT_PAD_X && b.x<=p.x+hendW+CONFIG.HEND_HIT_PAD_X) {
         b.y=paddleWorldY-4-BALL_R; p.squish=7;
-        // Classic brick-breaker: angle based on hit position, biased upward
-        const rel = Math.max(-1, Math.min(1, (b.x-(p.x+hendW/2))/(hendW/2)));
-        // Squash toward center so middle ~60% of paddle is nearly straight up
-        const biased = rel * Math.abs(rel); // quadratic — gentle center, steep edges
-        const ang = biased * (45 * Math.PI/180); // 45° max at extreme edge
-        b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
-        // Moving the hend adds sideways push — smash it to shunt the bee
+        sfx.paddle(); haptic(HAPTIC.paddle);
+        // Paddle velocity (pixels/sec)
         const pv = dt > 0 ? (p.x - p.prevX) / dt : 0;
         const pvAbs = Math.abs(pv);
-        b.vx += pv * 0.45; // strong directional push
-        sfx.paddle(); haptic(HAPTIC.paddle);
-        // Speed boost from hard smash, capped at max speed
-        const smashBoost = Math.min(pvAbs * 0.003, 0.6); // 0–0.6 range
-        b.speed = Math.min(b.speed * (1 + smashBoost), getMaxSpd());
-        // Normalize to boosted speed so direction change sticks
+        // smashFactor: 0 = paddle still (mirror), 1 = paddle moving fast (redirect)
+        const smashFactor = Math.min(pvAbs / 300, 1); // ramps 0→1 over 0→300 px/s
+
+        // ── Mirror reflection (slow/still paddle) ──
+        // Pure physics mirror: flip vy, keep vx — like bouncing off a flat surface
+        const mirrorVx = b.vx;
+        const mirrorVy = -Math.abs(b.vy);
+
+        // ── Smash redirect (fast paddle) ──
+        // Direction based on paddle velocity, with upward bias
+        const smashAng = Math.sign(pv) * Math.min(pvAbs / 300, 1) * (60 * Math.PI/180);
+        const smashVx = b.speed * Math.sin(smashAng);
+        const smashVy = -b.speed * Math.cos(smashAng);
+
+        // Blend between mirror and smash based on paddle speed
+        b.vx = mirrorVx * (1 - smashFactor) + smashVx * smashFactor;
+        b.vy = mirrorVy * (1 - smashFactor) + smashVy * smashFactor;
+
+        // Normalize to current speed
         const _bSpd = Math.hypot(b.vx, b.vy);
         if (_bSpd > 0) { b.vx = b.vx / _bSpd * b.speed; b.vy = b.vy / _bSpd * b.speed; }
         // Guarantee upward component so bee can't go flat
@@ -11676,7 +11684,7 @@ function _shopLoop() {
         const tracerObj = selectedTracer !== 'classic' ? BEE_TRACERS.find(t => t.id === selectedTracer) : null;
         const dashSpacing = 14;  // space between dashes
         const dashLen = 5;       // length of each dash
-        const scrollSpeed = 1.5; // pixels per tick
+        const scrollSpeed = 0.6; // pixels per tick — match in-game feel
         const scrollOffset = (_shopTick * scrollSpeed) % dashSpacing; // continuous scroll
         const isPoop = tracerObj && tracerObj.id === 'poopLogs';
         const isHoney = tracerObj && tracerObj.id === 'honeyDrip';
