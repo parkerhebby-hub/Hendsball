@@ -6975,11 +6975,14 @@ function _resetQueenDebuffs() {
 function _queenWeightedAttack(queenNum) {
   const w = { ...QUEEN_ATK.weights };
   // Progressive attack unlock: limit early queens
-  if (queenNum < 4) delete w.split;
-  if (queenNum < 3) delete w.teleport;
-  if (queenNum < 2) delete w.babyHends;
-  if (queenNum < 1) delete w.splotch;
+  // Queen 0 (first): splotch only
+  // Queen 1+: +babyHends, Queen 2+: +teleport, Queen 3+: +split
+  if (queenNum < 3) delete w.split;
+  if (queenNum < 2) delete w.teleport;
+  if (queenNum < 1) delete w.babyHends;
+  // splotch is always available — never delete it
   const entries = Object.entries(w);
+  if (entries.length === 0) return 'splotch'; // safety fallback
   const total = entries.reduce((s,[,v])=>s+v,0);
   let r = Math.random()*total;
   for (const [k,v] of entries) { r-=v; if(r<0) return k; }
