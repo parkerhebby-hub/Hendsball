@@ -1198,6 +1198,18 @@ const SaveManager = {
 // ═══════════════════════════════════════════════════════════
 const PATCH_NOTES = [
   {
+    version: '1.3.5',
+    date: '2026-03-27',
+    notes: [
+      '* FIXED PADDLE BOUNCE — CLASSIC BRICK-BREAKER STYLE WITH UPWARD BIAS',
+      '+ HEND SMASH NOW REDIRECTS BEE DIRECTION WHEN YOU SLAM THE PADDLE',
+      '* FIXED GAME LOOP CAPPED AT 60 FPS — NO MORE WARP-SPEED ON HIGH-REFRESH DISPLAYS',
+      '* FIXED HEND CARRY ONLY ACTIVATES DURING FAST SCROLL (WAS BREAKING NORMAL GAMEPLAY)',
+      '* SLOWED SHOP BEE PREVIEW ANIMATIONS TO INTENDED SPEED',
+      '* WRAPPED GAME LOOP IN TRY-CATCH — ERRORS LOG TO CONSOLE INSTEAD OF FREEZING',
+    ],
+  },
+  {
     version: '1.3.4',
     date: '2026-03-27',
     notes: [
@@ -7487,6 +7499,8 @@ function loop(ts=0) {
     return;
   }
   if (_crtLoopId) { cancelAnimationFrame(_crtLoopId); _crtLoopId = 0; }
+  // Cap at ~60 fps so frame-based physics stay consistent on high-refresh displays
+  if (lastTime > 0 && ts - lastTime < 15.5) { animId = requestAnimationFrame(loop); return; }
   dt = Math.min((ts - lastTime) / 1000, 1/20); // cap at 50ms to avoid spiral
   if (lastTime === 0) dt = 1/60; // first frame
   // FPS monitoring for adaptive quality
@@ -7892,29 +7906,32 @@ function update() {
   const effectivePaddleY = demoMode ? H - 17 : PADDLE_Y;
   const paddleWorldY = scrollY + effectivePaddleY;
 
-  // ── Hend carry: bees resting on a hend are cushioned upward ──
+  // ── Hend carry: prevent bees from being crushed by upward-scrolling paddle ──
+  // Only activates when camera is scrolling upward (paddle pushing into bee)
   {
-    const _pw = getPW();
-    const _carryTop = paddleWorldY - BALL_R - 8;
-    const _carryBot = paddleWorldY + CONFIG.HEND_COLL_H + 12;
-    for (const b of bees) {
-      b._onHend = false;
-      if (b.y + BALL_R < _carryTop || b.y - BALL_R > _carryBot) continue;
-      let onHend = false;
-      if (isSplitActive()) {
-        const halfW = Math.round(_pw / 2);
-        if ((b.x >= paddle.x - 4 && b.x <= paddle.x + halfW + 4) ||
-            (b.x >= paddle2.x - 4 && b.x <= paddle2.x + halfW + 4)) onHend = true;
-      } else {
-        if (b.x >= paddle.x - 4 && b.x <= paddle.x + _pw + 4) onHend = true;
-      }
-      if (onHend) {
-        b._onHend = true;
-        if (b.y + BALL_R > paddleWorldY - 2) {
-          b.y = paddleWorldY - BALL_R - 2;
+    const _scrollDelta = scrollY - _prevScrollY; // negative = scrolling up
+    if (_scrollDelta < -0.5) {
+      const _pw = getPW();
+      for (const b of bees) {
+        b._onHend = false;
+        // Only carry if bee is right at the paddle surface
+        if (b.y + BALL_R < paddleWorldY - 4 || b.y + BALL_R > paddleWorldY + 4) continue;
+        let onHend = false;
+        if (isSplitActive()) {
+          const halfW = Math.round(_pw / 2);
+          if ((b.x >= paddle.x - 4 && b.x <= paddle.x + halfW + 4) ||
+              (b.x >= paddle2.x - 4 && b.x <= paddle2.x + halfW + 4)) onHend = true;
+        } else {
+          if (b.x >= paddle.x - 4 && b.x <= paddle.x + _pw + 4) onHend = true;
         }
-        if (b.vy > 0) b.vy = 0;
+        if (onHend) {
+          b._onHend = true;
+          b.y = paddleWorldY - BALL_R - 2;
+          if (b.vy > 0) b.vy = 0;
+        }
       }
+    } else {
+      for (const b of bees) b._onHend = false;
     }
   }
 
@@ -8071,12 +8088,21 @@ function update() {
       if (b.vy>0 && b.y+BALL_R>=paddleWorldY-CONFIG.HEND_HIT_PAD_Y && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+CONFIG.HEND_HIT_PAD_Y+4
           && b.x>=p.x-CONFIG.HEND_HIT_PAD_X && b.x<=p.x+hendW+CONFIG.HEND_HIT_PAD_X) {
         b.y=paddleWorldY-4-BALL_R; p.squish=7;
-        // Classic brick-breaker: linear angle based on hit position
+        // Classic brick-breaker: angle based on hit position, biased upward
         const rel = Math.max(-1, Math.min(1, (b.x-(p.x+hendW/2))/(hendW/2)));
-        const ang = rel * (55 * Math.PI/180);
+        // Squash toward center so middle ~60% of paddle is nearly straight up
+        const biased = rel * Math.abs(rel); // quadratic — gentle center, steep edges
+        const ang = biased * (45 * Math.PI/180); // 45° max at extreme edge
         b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
+        // Moving the hend adds sideways push — smash it to direct the bee
+        const pv = dt > 0 ? (p.x - p.prevX) / dt : 0;
+        b.vx += pv * 0.18;
         sfx.paddle(); haptic(HAPTIC.paddle);
-        normSpd(b,b.speed);
+        // Normalize AFTER push so the direction change sticks
+        const _bSpd = Math.hypot(b.vx, b.vy);
+        if (_bSpd > 0) { b.vx = b.vx / _bSpd * b.speed; b.vy = b.vy / _bSpd * b.speed; }
+        // Guarantee upward component so bee can't go flat
+        if (b.vy > -b.speed * 0.3) { b.vy = -b.speed * 0.3; normSpd(b, b.speed); }
         return true;
       }
       return false;
@@ -11477,7 +11503,7 @@ function _startShopAnim() {
 }
 function _shopLoop() {
   if (!shopPanel.classList.contains('show')) { _shopAnimId = 0; return; }
-  _shopTick++;
+  _shopTick += 0.35; // slowed shop preview animations
 
   // ── Hend preview (120×120) ──
   const hc = document.getElementById('shopHendPreview');
