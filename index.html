@@ -8094,15 +8094,19 @@ function update() {
         const biased = rel * Math.abs(rel); // quadratic — gentle center, steep edges
         const ang = biased * (45 * Math.PI/180); // 45° max at extreme edge
         b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
-        // Moving the hend adds sideways push — smash it to direct the bee
+        // Moving the hend adds sideways push — smash it to shunt the bee
         const pv = dt > 0 ? (p.x - p.prevX) / dt : 0;
-        b.vx += pv * 0.18;
+        const pvAbs = Math.abs(pv);
+        b.vx += pv * 0.45; // strong directional push
         sfx.paddle(); haptic(HAPTIC.paddle);
-        // Normalize AFTER push so the direction change sticks
+        // Speed boost from hard smash (up to 1.6x), decays naturally via normSpd elsewhere
+        const smashBoost = Math.min(pvAbs * 0.003, 0.6); // 0–0.6 range
+        const hitSpeed = b.speed * (1 + smashBoost);
+        // Normalize to boosted speed so direction change sticks
         const _bSpd = Math.hypot(b.vx, b.vy);
-        if (_bSpd > 0) { b.vx = b.vx / _bSpd * b.speed; b.vy = b.vy / _bSpd * b.speed; }
+        if (_bSpd > 0) { b.vx = b.vx / _bSpd * hitSpeed; b.vy = b.vy / _bSpd * hitSpeed; }
         // Guarantee upward component so bee can't go flat
-        if (b.vy > -b.speed * 0.3) { b.vy = -b.speed * 0.3; normSpd(b, b.speed); }
+        if (b.vy > -hitSpeed * 0.25) { b.vy = -hitSpeed * 0.25; normSpd(b, hitSpeed); }
         return true;
       }
       return false;
