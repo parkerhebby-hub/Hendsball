@@ -7503,7 +7503,7 @@ function loop(ts=0) {
     }
   }
   lastTime = ts;
-  update(); render();
+  try { update(); render(); } catch(e) { console.error('Loop error:', e); }
   animId=requestAnimationFrame(loop);
 }
 
@@ -8071,24 +8071,12 @@ function update() {
       if (b.vy>0 && b.y+BALL_R>=paddleWorldY-CONFIG.HEND_HIT_PAD_Y && b.y+BALL_R<=paddleWorldY+CONFIG.HEND_COLL_H+CONFIG.HEND_HIT_PAD_Y+4
           && b.x>=p.x-CONFIG.HEND_HIT_PAD_X && b.x<=p.x+hendW+CONFIG.HEND_HIT_PAD_X) {
         b.y=paddleWorldY-4-BALL_R; p.squish=7;
+        // Classic brick-breaker: linear angle based on hit position
         const rel = Math.max(-1, Math.min(1, (b.x-(p.x+hendW/2))/(hendW/2)));
-        // Soft center bias: compress angles toward center (cubic ease)
-        // rel² near center is small → more vertical; edges still deflect
-        const biased = rel * (0.7 + 0.3 * rel * rel);
-        const ang = biased * (CONFIG.HEND_ANGLE_SPREAD * Math.PI/180);
+        const ang = rel * (55 * Math.PI/180);
         b.vx=b.speed*Math.sin(ang); b.vy=-b.speed*Math.cos(ang);
-        // Paddle movement adds horizontal push (reduced for predictability)
-        const pv = dt > 0 ? (p.x - p.prevX) / dt : 0;
-        b.vx += pv * CONFIG.HEND_VEL_BOOST;
-        b.speed = Math.min(b.speed + Math.abs(pv) * CONFIG.HEND_SPD_GAIN, getMaxSpd());
         sfx.paddle(); haptic(HAPTIC.paddle);
         normSpd(b,b.speed);
-        // Guarantee strong upward component — prevents flat skimming
-        const minVy = b.speed * 0.55;
-        if (Math.abs(b.vy) < minVy) {
-          b.vy = -minVy;
-          normSpd(b, b.speed);
-        }
         return true;
       }
       return false;
