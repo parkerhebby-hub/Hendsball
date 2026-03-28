@@ -6994,7 +6994,7 @@ const QUEEN_ATK = {
   telegraphFrames:  60,     // 1s telegraph before attack fires
   weights: { splotch:2, babyHends:2, teleport:2, split:1 },
   stingerDur:   300,        // 5s debuff
-  splotchDur:   240,        // 4s screen honey
+  splotchDur:   480,        // 8s screen honey
   babyHendsDur: 300,        // 5s shrink
   splitDur:     480,        // 8s split form
   shrinkFactor: 0.75,       // paddle shrinks to 75% (-25%)
@@ -7039,14 +7039,14 @@ function _executeQueenAttack(gate, atkId) {
 
   switch(atkId) {
     case 'splotch': {
-      // Spawn 3-5 amber blobs at random screen positions
-      const count = 3 + Math.floor(Math.random()*3);
+      // Spawn 4-6 large amber blobs at random screen positions
+      const count = 4 + Math.floor(Math.random()*3);
       for (let i=0;i<count;i++) {
         queenDebuffs.splotches.push({
-          x: 30 + Math.random()*(W-60),
-          y: 60 + Math.random()*(H*0.5),
-          r: 25 + Math.random()*20,
-          alpha: 0.55 + Math.random()*0.15,
+          x: 20 + Math.random()*(W-40),
+          y: 40 + Math.random()*(H*0.55),
+          r: 45 + Math.random()*35,
+          alpha: 0.85 + Math.random()*0.15,
           dripY: 0
         });
       }
@@ -7135,7 +7135,7 @@ function updateQueenAttacks() {
   if (queenDebuffs.babyHends > 0) queenDebuffs.babyHends--;
   // Splotch drip + fade
   for (const sp of queenDebuffs.splotches) {
-    sp.dripY += 0.3;
+    sp.dripY += 0.15;
     sp.alpha -= 1 / QUEEN_ATK.splotchDur;
   }
   queenDebuffs.splotches = queenDebuffs.splotches.filter(sp => sp.alpha > 0);
@@ -7357,14 +7357,15 @@ function renderQueenAttacks_screen() {
   // Honey splotch overlay (screen-space)
   for (const sp of queenDebuffs.splotches) {
     const g = ctx.createRadialGradient(sp.x, sp.y+sp.dripY, 0, sp.x, sp.y+sp.dripY, sp.r);
-    g.addColorStop(0, `rgba(180,120,20,${sp.alpha*0.7})`);
-    g.addColorStop(0.5, `rgba(200,150,30,${sp.alpha*0.45})`);
+    g.addColorStop(0, `rgba(160,100,10,${sp.alpha*0.92})`);
+    g.addColorStop(0.4, `rgba(180,120,20,${sp.alpha*0.8})`);
+    g.addColorStop(0.75, `rgba(200,150,30,${sp.alpha*0.5})`);
     g.addColorStop(1, `rgba(220,170,40,0)`);
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(sp.x, sp.y+sp.dripY, sp.r, 0, Math.PI*2); ctx.fill();
     // Drip streak
-    ctx.fillStyle = `rgba(180,120,20,${sp.alpha*0.3})`;
-    ctx.fillRect(sp.x-3, sp.y, 6, sp.dripY);
+    ctx.fillStyle = `rgba(160,100,10,${sp.alpha*0.5})`;
+    ctx.fillRect(sp.x-5, sp.y, 10, sp.dripY);
   }
 
   // Debuff indicators near boss HP bar
