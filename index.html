@@ -7528,7 +7528,8 @@ function loop(ts=0) {
   }
   if (_crtLoopId) { cancelAnimationFrame(_crtLoopId); _crtLoopId = 0; }
   // Cap at ~60 fps so frame-based physics stay consistent on high-refresh displays
-  if (lastTime > 0 && ts - lastTime < 15.5) { animId = requestAnimationFrame(loop); return; }
+  // Threshold 12ms: blocks 120Hz+ but never skips 60Hz frames (even with jitter)
+  if (lastTime > 0 && ts - lastTime < 12) { animId = requestAnimationFrame(loop); return; }
   dt = Math.min((ts - lastTime) / 1000, 1/20); // cap at 50ms to avoid spiral
   if (lastTime === 0) dt = 1/60; // first frame
   // FPS monitoring for adaptive quality
@@ -11168,6 +11169,7 @@ const shopPanel = document.getElementById('shopPanel');
 const shopBody = document.getElementById('shopBody');
 let _shopAnimId = 0;
 let _shopTick = 0;
+let _shopLastTime = 0;
 let _shopBeeX = 60, _shopBeeY = 45;
 // ── Stats panel ──────────────────────────────────────────
 let _statsReturnTo = 'menu';
@@ -11542,11 +11544,15 @@ function _fillTiles(containerId, tiles) {
 function _startShopAnim() {
   if (_shopAnimId) cancelAnimationFrame(_shopAnimId);
   _shopTick = 0;
+  _shopLastTime = 0;
   _shopLoop();
 }
-function _shopLoop() {
-  if (!shopPanel.classList.contains('show')) { _shopAnimId = 0; return; }
-  _shopTick += 0.35; // slowed shop preview animations
+function _shopLoop(ts) {
+  if (!shopPanel.classList.contains('show')) { _shopAnimId = 0; _shopLastTime = 0; return; }
+  // Frame-rate-independent tick: always 1.0 per 60fps frame regardless of display refresh
+  const _sDt = _shopLastTime > 0 ? Math.min((ts - _shopLastTime) / 1000, 1/20) : 1/60;
+  _shopLastTime = ts;
+  _shopTick += _sDt * 60;
 
   // ── Hend preview (120×120) ──
   const hc = document.getElementById('shopHendPreview');
@@ -11709,7 +11715,7 @@ function _shopLoop() {
         const tracerObj = selectedTracer !== 'classic' ? BEE_TRACERS.find(t => t.id === selectedTracer) : null;
         const dashSpacing = 14;  // space between dashes
         const dashLen = 5;       // length of each dash
-        const scrollSpeed = 1.0; // pixels per tick — balanced with 0.35 shopTick
+        const scrollSpeed = 1.5; // pixels per tick
         const scrollOffset = (_shopTick * scrollSpeed) % dashSpacing; // continuous scroll
         const isPoop = tracerObj && tracerObj.id === 'poopLogs';
         const isHoney = tracerObj && tracerObj.id === 'honeyDrip';
