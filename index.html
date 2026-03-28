@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HENDSBEE">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="APP%20ICON.png">
+<link rel="apple-touch-icon" href="APP%20ICON.jpg">
 <title>HENDSBEE</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -1428,17 +1428,19 @@ const music = {
     }
     // Suppress iOS Dynamic Island / media player controls — aggressively
     this._suppressMediaSession();
-    // Re-suppress every time playback starts (OS re-asserts on play)
+    // Re-suppress on every event where the OS might reassert media controls
     this.el.addEventListener('play', () => this._suppressMediaSession());
+    this.el.addEventListener('playing', () => this._suppressMediaSession());
     this.el.addEventListener('loadeddata', () => this._suppressMediaSession());
+    this.el.addEventListener('timeupdate', () => this._suppressMediaSession());
   },
 
   _suppressMediaSession() {
     if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({ title: '', artist: '', album: '' });
+      navigator.mediaSession.metadata = null;
       navigator.mediaSession.playbackState = 'none';
       for (const a of ['play','pause','seekbackward','seekforward','previoustrack','nexttrack','seekto','stop'])
-        try { navigator.mediaSession.setActionHandler(a, () => {}); } catch(e) {}
+        try { navigator.mediaSession.setActionHandler(a, null); } catch(e) {}
     }
   },
 
