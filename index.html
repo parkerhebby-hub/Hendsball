@@ -1198,6 +1198,15 @@ const SaveManager = {
 // ═══════════════════════════════════════════════════════════
 const PATCH_NOTES = [
   {
+    version: '1.3.4',
+    date: '2026-03-27',
+    notes: [
+      "+ ADDED HEND CARRY — BEES ARE NOW INVINCIBLE & CUSHIONED ABOVE THE PADDLE, OR AT LEAST I KEEP FRIGGIN TRYING TO MAKE IT SO",
+      '* FIXED LIGHTNING & FIRE NOW DAMAGE QUEENS THROUGH BOSS GATE HP',
+      '* FIXED GAME FREEZING DURING QUEEN SPLIT ATTACK, AGAIN, I THINK???',
+    ],
+  },
+  {
     version: '1.3.3',
     date: '2026-03-27',
     notes: [
@@ -4594,6 +4603,20 @@ function checkHex(b) {
           }
           if (!_eBest) break;
           _eVis.add(_eBest);
+          // QUEEN: route lightning damage to boss gate HP pool
+          if (_eBest.type === 'QUEEN') {
+            const _eGate = (_eBest.bossGateId != null) ? bossGates[_eBest.bossGateId] : null;
+            if (_eGate && !_eGate.dead) {
+              if (!_eGate.damaged) _eGate.damaged = true;
+              _eGate.hp -= 1;
+              _eBest.flash = 8;
+              spawnParts(_eBest.x, _eBest.y, 2, ['#40d0ff','#80e0ff','#fff']);
+              _ePts.push({ x: _eBest.x, y: _eBest.y });
+              if (_eGate.hp <= 0) triggerBossGateShatter(_eGate);
+              _eCur = _eBest;
+              continue;
+            }
+          }
           _eBest.hp -= 1; _eBest.flash = 8;
           spawnParts(_eBest.x, _eBest.y, 2, ['#40d0ff','#80e0ff','#fff']);
           _ePts.push({ x: _eBest.x, y: _eBest.y });
@@ -7149,7 +7172,7 @@ function updateQueenAttacks() {
           gate.queenCells[i].x = orig.x + (targetX-orig.x)*gate._splitLerp;
           gate.queenCells[i].y = orig.y + (targetY-orig.y)*gate._splitLerp;
         }
-        _hexGridRebuild();
+        if (gate.splitTimer % 10 === 0) _hexGridRebuild();
       }
 
       if (gate.splitTimer <= 0) {
@@ -7866,6 +7889,32 @@ function update() {
   const effectivePaddleY = demoMode ? H - 17 : PADDLE_Y;
   const paddleWorldY = scrollY + effectivePaddleY;
 
+  // ── Hend carry: bees resting on a hend are cushioned upward ──
+  {
+    const _pw = getPW();
+    const _carryTop = paddleWorldY - BALL_R - 8;
+    const _carryBot = paddleWorldY + CONFIG.HEND_COLL_H + 12;
+    for (const b of bees) {
+      b._onHend = false;
+      if (b.y + BALL_R < _carryTop || b.y - BALL_R > _carryBot) continue;
+      let onHend = false;
+      if (isSplitActive()) {
+        const halfW = Math.round(_pw / 2);
+        if ((b.x >= paddle.x - 4 && b.x <= paddle.x + halfW + 4) ||
+            (b.x >= paddle2.x - 4 && b.x <= paddle2.x + halfW + 4)) onHend = true;
+      } else {
+        if (b.x >= paddle.x - 4 && b.x <= paddle.x + _pw + 4) onHend = true;
+      }
+      if (onHend) {
+        b._onHend = true;
+        if (b.y + BALL_R > paddleWorldY - 2) {
+          b.y = paddleWorldY - BALL_R - 2;
+        }
+        if (b.vy > 0) b.vy = 0;
+      }
+    }
+  }
+
   // ── Side Wall Cleanup Zone (3 tiers) ──
   // Tiered invisible zones above the paddle that weaken side wall cells.
   // Tier 1 (edge cells):         3 cell heights, 34% maxHP/sec
@@ -8052,7 +8101,7 @@ function update() {
     const _rushPhase = _isRushing && b.vy > 0;
 if (b.tpCooldown > 0) b.tpCooldown--;
 if (b._boostCooldown > 0) b._boostCooldown--;
-    let hit = _rushPhase ? null : checkHex(b);
+    let hit = (_rushPhase || b._onHend) ? null : checkHex(b);
     // Second pass catches bees pushed into indestructible cells (tunneling fix)
     if (hit && !hit.dead && hit.h.type === 'UNBREAKABLE') { const h2 = checkHex(b); if (h2) hit = h2; }
     // PIERCING STING: loop processes multiple hits when bee pierces through one-shot cells
@@ -8200,6 +8249,19 @@ if (b._boostCooldown > 0) b._boostCooldown--;
       h._burn.timer--;
       h._burn.tickAccum++;
       if (h._burn.tickAccum >= 60) {
+        // QUEEN: route fire damage to boss gate HP pool
+        if (h.type === 'QUEEN') {
+          h._burn.tickAccum = 0;
+          const _bGate = (h.bossGateId != null) ? bossGates[h.bossGateId] : null;
+          if (_bGate && !_bGate.dead) {
+            if (!_bGate.damaged) _bGate.damaged = true;
+            _bGate.hp -= 1;
+            h.flash = 6;
+            spawnParts(h.x, h.y, 3, ['#ff6020','#ff9040','#ffcc60']);
+            if (_bGate.hp <= 0) triggerBossGateShatter(_bGate);
+          }
+          continue;
+        }
         h._burn.tickAccum = 0;
         h.hp -= 1; h.flash = 6;
         spawnParts(h.x, h.y, 3, ['#ff6020','#ff9040','#ffcc60']);
