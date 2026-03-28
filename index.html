@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="HENDSBEE">
 <link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="APP ICON.png">
 <title>HENDSBEE</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
@@ -7912,22 +7913,25 @@ function update() {
     const _scrollDelta = scrollY - _prevScrollY; // negative = scrolling up
     if (_scrollDelta < -0.5) {
       const _pw = getPW();
+      const prevPaddleWorldY = _prevScrollY + effectivePaddleY;
       for (const b of bees) {
         b._onHend = false;
-        // Only carry if bee is right at the paddle surface
-        if (b.y + BALL_R < paddleWorldY - 4 || b.y + BALL_R > paddleWorldY + 4) continue;
+        // Catch any bee between prev and current paddle Y (sweep test)
+        // bee bottom = b.y + BALL_R; paddle swept from prevPaddleWorldY down to paddleWorldY
+        const bBot = b.y + BALL_R;
+        if (bBot < paddleWorldY - BALL_R || bBot > prevPaddleWorldY + 6) continue;
         let onHend = false;
         if (isSplitActive()) {
           const halfW = Math.round(_pw / 2);
-          if ((b.x >= paddle.x - 4 && b.x <= paddle.x + halfW + 4) ||
-              (b.x >= paddle2.x - 4 && b.x <= paddle2.x + halfW + 4)) onHend = true;
+          if ((b.x >= paddle.x - 6 && b.x <= paddle.x + halfW + 6) ||
+              (b.x >= paddle2.x - 6 && b.x <= paddle2.x + halfW + 6)) onHend = true;
         } else {
-          if (b.x >= paddle.x - 4 && b.x <= paddle.x + _pw + 4) onHend = true;
+          if (b.x >= paddle.x - 6 && b.x <= paddle.x + _pw + 6) onHend = true;
         }
         if (onHend) {
           b._onHend = true;
           b.y = paddleWorldY - BALL_R - 2;
-          if (b.vy > 0) b.vy = 0;
+          if (b.vy > 0) b.vy = -Math.abs(b.vy) * 0.3; // gentle upward nudge
         }
       }
     } else {
@@ -8099,14 +8103,14 @@ function update() {
         const pvAbs = Math.abs(pv);
         b.vx += pv * 0.45; // strong directional push
         sfx.paddle(); haptic(HAPTIC.paddle);
-        // Speed boost from hard smash (up to 1.6x), decays naturally via normSpd elsewhere
+        // Speed boost from hard smash, capped at max speed
         const smashBoost = Math.min(pvAbs * 0.003, 0.6); // 0–0.6 range
-        const hitSpeed = b.speed * (1 + smashBoost);
+        b.speed = Math.min(b.speed * (1 + smashBoost), getMaxSpd());
         // Normalize to boosted speed so direction change sticks
         const _bSpd = Math.hypot(b.vx, b.vy);
-        if (_bSpd > 0) { b.vx = b.vx / _bSpd * hitSpeed; b.vy = b.vy / _bSpd * hitSpeed; }
+        if (_bSpd > 0) { b.vx = b.vx / _bSpd * b.speed; b.vy = b.vy / _bSpd * b.speed; }
         // Guarantee upward component so bee can't go flat
-        if (b.vy > -hitSpeed * 0.25) { b.vy = -hitSpeed * 0.25; normSpd(b, hitSpeed); }
+        if (b.vy > -b.speed * 0.25) { b.vy = -b.speed * 0.25; normSpd(b, b.speed); }
         return true;
       }
       return false;
